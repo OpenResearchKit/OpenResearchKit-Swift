@@ -5,6 +5,6 @@ A Swift Package to conduct scientific research in iPhone apps:
 - Get user consent
 - Surveys
 - Collect study data
-- Combine survey replies and study data pseudonomously (is that a word?)
+- Combine survey replies and study data anonymously
 
 ![openresearchkit](https://user-images.githubusercontent.com/5204169/202870439-0d5b541c-2ffb-4eff-a138-d2eaaa84cfa6.png)
