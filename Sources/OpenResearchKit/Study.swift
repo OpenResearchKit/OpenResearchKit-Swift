@@ -12,7 +12,7 @@ import SwiftUI
 
 public class Study: ObservableObject {
     
-    public init(title: String, subtitle: String, duration: TimeInterval, identifier: String, universityLogo: UIImage, contactEmail: String, introductorySurveyURL: URL, concludingSurveyURL: URL) {
+    public init(title: String, subtitle: String, duration: TimeInterval, identifier: String, universityLogo: UIImage, contactEmail: String, introductorySurveyURL: URL, concludingSurveyURL: URL, fileSubmissionServer: URL, apiKey: String, uploadFrequency: TimeInterval) {
         self.title = title
         self.subtitle = subtitle
         self.duration = duration
@@ -21,6 +21,9 @@ public class Study: ObservableObject {
         self.contactEmail = contactEmail
         self.introductorySurveyURL = introductorySurveyURL
         self.concludingSurveyURL = concludingSurveyURL
+        self.fileSubmissionServer = fileSubmissionServer
+        self.apiKey = apiKey
+        self.uploadFrequency = uploadFrequency
     }
     
     let title: String
@@ -31,6 +34,9 @@ public class Study: ObservableObject {
     let contactEmail: String
     let introductorySurveyURL: URL
     let concludingSurveyURL: URL
+    let fileSubmissionServer: URL
+    let apiKey: String
+    let uploadFrequency: TimeInterval
     
     
     public var invitationBannerView: StudyBannerInvitation {
