@@ -9,6 +9,7 @@ import Foundation
 import UIKit
 import FredKit
 import SwiftUI
+import Alamofire
 
 public class Study: ObservableObject {
     
@@ -38,6 +39,94 @@ public class Study: ObservableObject {
     let apiKey: String
     let uploadFrequency: TimeInterval
     
+    private var CSVFile: String {
+        return (try? String(contentsOf: csvDataFilePath)) ?? ""
+    }
+    
+    public var lastSuccessfulUploadDate: Date? {
+        return studyUserDefaults["lastSuccessfulUploadDate"] as? Date
+    }
+    
+    public func updateUploadDate(newDate: Date = Date()) {
+        var studyUserDefaults = self.studyUserDefaults
+        studyUserDefaults["lastSuccessfulUploadDate"] = newDate
+        self.save(studyUserDefaults: studyUserDefaults)
+        objectWillChange.send()
+    }
+    
+    public func appendNewCSVLines(newLines: [String]) {
+        var existingFile = self.CSVFile
+        existingFile.append(contentsOf: "\n\(newLines.joined(separator: "\n"))")
+        self.saveAndUploadIfNeccessary(csvFile: existingFile)
+    }
+    
+    private func saveAndUploadIfNeccessary(csvFile: String) {
+        try? csvFile.write(to: csvDataFilePath, atomically: true, encoding: .utf8)
+        self.uploadIfNecessary()
+    }
+    
+    public func uploadIfNecessary() {
+        guard let lastSuccessfulUploadDate = self.lastSuccessfulUploadDate else {
+            self.uploadCSV()
+            return
+        }
+        
+        if abs(lastSuccessfulUploadDate.timeIntervalSinceNow) > uploadFrequency {
+            self.uploadCSV()
+        }
+    }
+    
+    private func uploadCSV() {
+        
+        if let data = try? Data(contentsOf: csvDataFilePath) {
+            
+            AF.upload(multipartFormData: { multiPart in
+                multiPart.append(self.apiKey.data(using: .utf8)!, withName: "api_key")
+                multiPart.append(self.identifier.data(using: .utf8)!, withName: "user_key")
+                multiPart.append(data, withName: "file", fileName: self.fileName, mimeType: "application/octet-stream")
+            }, to: "https://mknztlfet6msiped4d5iuixssy0iekda.lambda-url.eu-central-1.on.aws")
+            .uploadProgress(queue: .main) { progress in
+                print("Upload Progress: \(progress.fractionCompleted)")
+            }
+            .responseJSON { response in
+                switch response.result {
+                case .success(let result):
+                    if let json = result as? [String: Any], let result = json["result"] as? [String: Any], let hadSuccess = result["success"] as? String {
+                        print(hadSuccess)
+                        if hadSuccess == "true" {
+                            self.updateUploadDate()
+                        }
+                    }
+                case .failure(let error):
+                    print(error)
+                }
+            }
+            
+//            AF.upload(multipartFormData: { multiPart in
+//                multiPart.append(self.apiKey.data(using: .utf8)!, withName: "api_key")
+//                multiPart.append(data, withName: "file", fileName: self.fileName, mimeType: "application/octet-stream")
+//            }, with: URLRequest(url: URL(string: "https://mknztlfet6msiped4d5iuixssy0iekda.lambda-url.eu-central-1.on.aws")!))
+//            .uploadProgress(queue: .main) { progress in
+//                print("Upload Progress: \(progress.fractionCompleted)")
+//            }
+//            .responseJSON { response in
+//                print("done: \(response)")
+//            }
+        }
+    }
+    
+    private var documentsDirectory: String {
+        return NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0]
+    }
+    
+    private var fileName: String {
+        "study-\(identifier)-\(localUserIdentifier).csv"
+    }
+    
+    private var csvDataFilePath: URL {
+        let readPath = URL(fileURLWithPath: documentsDirectory).appendingPathComponent(fileName)
+        return readPath
+    }
     
     public var invitationBannerView: StudyBannerInvitation {
         StudyBannerInvitation(study: self)
@@ -48,11 +137,11 @@ public class Study: ObservableObject {
     }
     
     public var userConsentDate: Date? {
-        return studyUserDefaults?["userConsentDate"] as? Date
+        return studyUserDefaults["userConsentDate"] as? Date
     }
     
     public func saveUserConsentHasBeenGiven(consentTimestamp: Date) {
-        var studyUserDefaults = self.studyUserDefaults ?? [:]
+        var studyUserDefaults = self.studyUserDefaults
         studyUserDefaults["userConsentDate"] = consentTimestamp
         self.save(studyUserDefaults: studyUserDefaults)
         objectWillChange.send()
@@ -69,7 +158,7 @@ public class Study: ObservableObject {
     }
     
     public var localUserIdentifier: String {
-        var studyUserDefaults = self.studyUserDefaults ?? [:]
+        var studyUserDefaults = self.studyUserDefaults
         
         if let localUserIdentifier = studyUserDefaults["localUserIdentifier"] as? String {
             return localUserIdentifier
@@ -82,15 +171,29 @@ public class Study: ObservableObject {
         return newLocalUserIdentifier
     }
     
-   
     
     
-    var studyUserDefaults: [String: Any]? {
-        UserDefaults.standard.dictionary(forKey: "open_research_kit")
+    
+    var studyUserDefaults: [String: Any] {
+        OpenResearchKit.researchKitDefaults[self.identifier] ?? [:]
     }
     
     func save(studyUserDefaults: [String: Any]) {
-        UserDefaults.standard.setValue(studyUserDefaults, forKey: "open_research_kit")
+        OpenResearchKit.saveStudyDefaults(defaults: studyUserDefaults, studyIdentifier: self.identifier)
+    }
+}
+
+struct OpenResearchKit {
+    static var researchKitDefaults: [String: [String: Any]] {
+        get {
+            UserDefaults.standard.dictionary(forKey: "open_research_kit") as? [String: [String: Any]] ?? [:]
+        }
+    }
+    
+    static func saveStudyDefaults(defaults: [String: Any], studyIdentifier: String) {
+        var currentDefaults = researchKitDefaults
+        currentDefaults[studyIdentifier] = defaults
+        UserDefaults.standard.set(currentDefaults, forKey: "open_research_kit")
     }
 }
 
@@ -109,7 +212,7 @@ public struct StudyBannerInvitation: View {
     
     public var body: some View {
         Button {
-//            self.showSurveyView = true
+            //            self.showSurveyView = true
             self.showStudyIntroductoryView = true
         } label: {
             HStack {
@@ -168,11 +271,11 @@ struct StudyIntroductionView: View {
                     .bold()
                 Text("""
     Thank you for your interest in the study that we aim to conduct together with the Max Planck Institute for Human Development and the Univeristy of Heidelberg.
-
+    
     Our goal is to examine the effects of “one sec” and ultimately improve the experience even more.
-
+    
     Dont worry, if you chose to participate all data is shared anonymously and cannot be linked to you (in fact, one sec doesn’t even know who you are, there is no login or personal information input in this app).
-
+    
     Thanks a lot for your help!
     """)
                 .multilineTextAlignment(.leading)
@@ -231,15 +334,15 @@ struct SurveyWebView: View {
 
 import SwiftUI
 import WebKit
- 
+
 struct WebView: UIViewRepresentable {
- 
+    
     var url: URL
- 
+    
     func makeUIView(context: Context) -> WKWebView {
         return WKWebView()
     }
- 
+    
     func updateUIView(_ webView: WKWebView, context: Context) {
         let request = URLRequest(url: url)
         webView.load(request)
@@ -261,10 +364,10 @@ struct BigButtonStyle: ButtonStyle {
                 .foregroundColor(textColor)
             Spacer()
         }
-            .padding(16)
-            .background(backgroundColor)
-            .mask(RoundedRectangle(cornerRadius: 12))
-            .opacity(configuration.isPressed ? 0.6 : 1)
-            .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
+        .padding(16)
+        .background(backgroundColor)
+        .mask(RoundedRectangle(cornerRadius: 12))
+        .opacity(configuration.isPressed ? 0.6 : 1)
+        .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
     }
 }

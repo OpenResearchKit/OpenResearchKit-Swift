@@ -16,14 +16,16 @@ let package = Package(
             targets: ["OpenResearchKit"])
     ],
     dependencies: [
-        .package(url: "https://github.com/frogg/FredKit.git", from: "0.0.32")
+        .package(url: "https://github.com/frogg/FredKit.git", from: "0.0.32"),
+        .package(url: "https://github.com/Alamofire/Alamofire", from: "5.6.4")
     ],
     
     targets: [
         .target(
             name: "OpenResearchKit",
             dependencies: [
-                "FredKit"
+                "FredKit",
+                "Alamofire"
             ]
         ),
         .testTarget(
