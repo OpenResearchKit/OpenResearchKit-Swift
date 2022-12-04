@@ -39,8 +39,12 @@ public class Study: ObservableObject {
     let apiKey: String
     let uploadFrequency: TimeInterval
     
-    private var CSVFile: String {
-        return (try? String(contentsOf: csvDataFilePath)) ?? ""
+    private var JSONFile: [ [String: JSONConvertible] ] {
+        if let dict = NSArray(contentsOf: jsonDataFilePath) as?  [ [ String: JSONConvertible ] ] {
+            return dict
+        }
+        
+        return []
     }
     
     public var lastSuccessfulUploadDate: Date? {
@@ -54,32 +58,58 @@ public class Study: ObservableObject {
         objectWillChange.send()
     }
     
-    public func appendNewCSVLines(newLines: [String]) {
-        var existingFile = self.CSVFile
-        existingFile.append(contentsOf: "\n\(newLines.joined(separator: "\n"))")
-        self.saveAndUploadIfNeccessary(csvFile: existingFile)
+    public func appendNewJSONObjects(newObjects: [ [String: JSONConvertible] ]) {
+        var existingFile = self.JSONFile
+        existingFile.append(contentsOf: newObjects)
+        self.saveAndUploadIfNeccessary(jsonFile: existingFile)
     }
     
-    private func saveAndUploadIfNeccessary(csvFile: String) {
-        try? csvFile.write(to: csvDataFilePath, atomically: true, encoding: .utf8)
+    private func saveAndUploadIfNeccessary(jsonFile: [ [String: JSONConvertible] ]) {
+        let array = NSArray(array: jsonFile)
+        array.write(toFile: jsonDataFilePath.path, atomically: true)
         self.uploadIfNecessary()
     }
     
+    private var isCurrentlyUploading = false
     public func uploadIfNecessary() {
+        
+        if isCurrentlyUploading {
+            return
+        }
+        
         guard let lastSuccessfulUploadDate = self.lastSuccessfulUploadDate else {
-            self.uploadCSV()
+            self.uploadJSON()
             return
         }
         
         if abs(lastSuccessfulUploadDate.timeIntervalSinceNow) > uploadFrequency {
-            self.uploadCSV()
+            self.uploadJSON()
         }
     }
     
-    private func uploadCSV() {
+    private func uploadJSON() {
         
-        if let data = try? Data(contentsOf: csvDataFilePath) {
+        isCurrentlyUploading = true
+        
+        if let data = try? Data(contentsOf: jsonDataFilePath) {
             
+//            let uploadSession = MultipartFormDataRequest(url: URL(string: "https://mknztlfet6msiped4d5iuixssy0iekda.lambda-url.eu-central-1.on.aws")!)
+//            uploadSession.addTextField(named: "api_key", value: self.apiKey)
+//            uploadSession.addTextField(named: "user_key", value: self.identifier)
+//            uploadSession.addDataField(named: "file", data: data, mimeType: "application/octet-stream")
+//
+//
+//            let task = URLSession.shared.dataTask(with: uploadSession) { data, response, error in
+//                print(error)
+//                print(response)
+//                if let data = data {
+//                    print(String(data: data, encoding: .utf8))
+//                }
+//            }
+//
+//            task.resume()
+            
+
             AF.upload(multipartFormData: { multiPart in
                 multiPart.append(self.apiKey.data(using: .utf8)!, withName: "api_key")
                 multiPart.append(self.identifier.data(using: .utf8)!, withName: "user_key")
@@ -91,27 +121,30 @@ public class Study: ObservableObject {
             .responseJSON { response in
                 switch response.result {
                 case .success(let result):
+                    self.isCurrentlyUploading = false
                     if let json = result as? [String: Any], let result = json["result"] as? [String: Any], let hadSuccess = result["success"] as? String {
                         print(hadSuccess)
+                        print(json)
                         if hadSuccess == "true" {
                             self.updateUploadDate()
                         }
                     }
                 case .failure(let error):
+                    self.isCurrentlyUploading = false
                     print(error)
                 }
             }
             
-//            AF.upload(multipartFormData: { multiPart in
-//                multiPart.append(self.apiKey.data(using: .utf8)!, withName: "api_key")
-//                multiPart.append(data, withName: "file", fileName: self.fileName, mimeType: "application/octet-stream")
-//            }, with: URLRequest(url: URL(string: "https://mknztlfet6msiped4d5iuixssy0iekda.lambda-url.eu-central-1.on.aws")!))
-//            .uploadProgress(queue: .main) { progress in
-//                print("Upload Progress: \(progress.fractionCompleted)")
-//            }
-//            .responseJSON { response in
-//                print("done: \(response)")
-//            }
+            AF.upload(multipartFormData: { multiPart in
+                multiPart.append(self.apiKey.data(using: .utf8)!, withName: "api_key")
+                multiPart.append(data, withName: "file", fileName: self.fileName, mimeType: "application/octet-stream")
+            }, with: URLRequest(url: URL(string: "https://mknztlfet6msiped4d5iuixssy0iekda.lambda-url.eu-central-1.on.aws")!))
+            .uploadProgress(queue: .main) { progress in
+                print("Upload Progress: \(progress.fractionCompleted)")
+            }
+            .responseJSON { response in
+                print("done: \(response)")
+            }
         }
     }
     
@@ -120,10 +153,10 @@ public class Study: ObservableObject {
     }
     
     private var fileName: String {
-        "study-\(identifier)-\(localUserIdentifier).csv"
+        "study-\(identifier)-\(localUserIdentifier).plist"
     }
     
-    private var csvDataFilePath: URL {
+    private var jsonDataFilePath: URL {
         let readPath = URL(fileURLWithPath: documentsDirectory).appendingPathComponent(fileName)
         return readPath
     }
@@ -371,3 +404,86 @@ struct BigButtonStyle: ButtonStyle {
         .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
     }
 }
+
+
+struct MultipartFormDataRequest {
+    private let boundary: String = UUID().uuidString
+    private var httpBody = NSMutableData()
+    let url: URL
+
+    init(url: URL) {
+        self.url = url
+    }
+
+    func addTextField(named name: String, value: String) {
+        httpBody.append(textFormField(named: name, value: value))
+    }
+
+    private func textFormField(named name: String, value: String) -> String {
+        var fieldString = "--\(boundary)\r\n"
+        fieldString += "Content-Disposition: form-data; name=\"\(name)\"\r\n"
+        fieldString += "Content-Type: text/plain; charset=ISO-8859-1\r\n"
+        fieldString += "Content-Transfer-Encoding: 8bit\r\n"
+        fieldString += "\r\n"
+        fieldString += "\(value)\r\n"
+
+        return fieldString
+    }
+
+    func addDataField(named name: String, data: Data, mimeType: String) {
+        httpBody.append(dataFormField(named: name, data: data, mimeType: mimeType))
+    }
+
+    private func dataFormField(named name: String,
+                               data: Data,
+                               mimeType: String) -> Data {
+        let fieldData = NSMutableData()
+
+        fieldData.append("--\(boundary)\r\n")
+        fieldData.append("Content-Disposition: form-data; name=\"\(name)\"\r\n")
+        fieldData.append("Content-Type: \(mimeType)\r\n")
+        fieldData.append("\r\n")
+        fieldData.append(data)
+        fieldData.append("\r\n")
+
+        return fieldData as Data
+    }
+    
+    func asURLRequest() -> URLRequest {
+        var request = URLRequest(url: url)
+
+        request.httpMethod = "POST"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+        httpBody.append("--\(boundary)--")
+        request.httpBody = httpBody as Data
+        return request
+    }
+}
+
+extension NSMutableData {
+  func append(_ string: String) {
+    if let data = string.data(using: .utf8) {
+      self.append(data)
+    }
+  }
+}
+
+extension URLSession {
+    func dataTask(with request: MultipartFormDataRequest,
+                  completionHandler: @escaping (Data?, URLResponse?, Error?) -> Void)
+    -> URLSessionDataTask {
+        return dataTask(with: request.asURLRequest(), completionHandler: completionHandler)
+    }
+}
+
+
+public protocol JSONConvertible {}
+extension String: JSONConvertible {}
+extension Date: JSONConvertible {}
+extension Int: JSONConvertible {}
+extension Double: JSONConvertible {}
+extension Data: JSONConvertible {}
+extension Bool: JSONConvertible {}
+extension Array<JSONConvertible>: JSONConvertible {}
+extension Dictionary<String, JSONConvertible>: JSONConvertible {}
