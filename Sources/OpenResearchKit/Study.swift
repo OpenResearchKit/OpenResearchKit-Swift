@@ -7,9 +7,7 @@
 
 import Foundation
 import UIKit
-import FredKit
 import SwiftUI
-import Alamofire
 
 public class Study: ObservableObject {
     
@@ -93,59 +91,70 @@ public class Study: ObservableObject {
         
         if let data = try? Data(contentsOf: jsonDataFilePath) {
             
-//            let uploadSession = MultipartFormDataRequest(url: URL(string: "https://mknztlfet6msiped4d5iuixssy0iekda.lambda-url.eu-central-1.on.aws")!)
-//            uploadSession.addTextField(named: "api_key", value: self.apiKey)
-//            uploadSession.addTextField(named: "user_key", value: self.identifier)
-//            uploadSession.addDataField(named: "file", data: data, mimeType: "application/octet-stream")
-//
-//
-//            let task = URLSession.shared.dataTask(with: uploadSession) { data, response, error in
-//                print(error)
-//                print(response)
-//                if let data = data {
-//                    print(String(data: data, encoding: .utf8))
-//                }
-//            }
-//
-//            task.resume()
-            
+            let uploadSession = MultipartFormDataRequest(url: URL(string: "https://mknztlfet6msiped4d5iuixssy0iekda.lambda-url.eu-central-1.on.aws")!)
+            uploadSession.addTextField(named: "api_key", value: self.apiKey)
+            uploadSession.addTextField(named: "user_key", value: self.identifier)
+            uploadSession.addDataField(named: "file", filename: self.fileName, data: data, mimeType: "application/octet-stream")
 
-            AF.upload(multipartFormData: { multiPart in
-                multiPart.append(self.apiKey.data(using: .utf8)!, withName: "api_key")
-                multiPart.append(self.identifier.data(using: .utf8)!, withName: "user_key")
-                multiPart.append(data, withName: "file", fileName: self.fileName, mimeType: "application/octet-stream")
-            }, to: "https://mknztlfet6msiped4d5iuixssy0iekda.lambda-url.eu-central-1.on.aws")
-            .uploadProgress(queue: .main) { progress in
-                print("Upload Progress: \(progress.fractionCompleted)")
-            }
-            .responseJSON { response in
-                switch response.result {
-                case .success(let result):
+
+            let task = URLSession.shared.dataTask(with: uploadSession) { data, response, error in
+                print(error)
+                print(response)
+                if let data = data {
                     self.isCurrentlyUploading = false
-                    if let json = result as? [String: Any], let result = json["result"] as? [String: Any], let hadSuccess = result["success"] as? String {
+                    if let json = try? JSONSerialization.jsonObject(with: data, options: []) as? [String : Any], let result = json["result"] as? [String: Any], let hadSuccess = result["success"] as? String {
                         print(hadSuccess)
                         print(json)
                         if hadSuccess == "true" {
-                            self.updateUploadDate()
+                            DispatchQueue.main.async {
+                                self.updateUploadDate()
+                            }
                         }
                     }
-                case .failure(let error):
-                    self.isCurrentlyUploading = false
-                    print(error)
                 }
             }
+            task.resume()
             
-            AF.upload(multipartFormData: { multiPart in
-                multiPart.append(self.apiKey.data(using: .utf8)!, withName: "api_key")
-                multiPart.append(data, withName: "file", fileName: self.fileName, mimeType: "application/octet-stream")
-            }, with: URLRequest(url: URL(string: "https://mknztlfet6msiped4d5iuixssy0iekda.lambda-url.eu-central-1.on.aws")!))
-            .uploadProgress(queue: .main) { progress in
-                print("Upload Progress: \(progress.fractionCompleted)")
-            }
-            .responseJSON { response in
-                print("done: \(response)")
-            }
+
+//            AF.upload(multipartFormData: { multiPart in
+//                multiPart.append(self.apiKey.data(using: .utf8)!, withName: "api_key")
+//                multiPart.append(self.identifier.data(using: .utf8)!, withName: "user_key")
+//                multiPart.append(data, withName: "file", fileName: self.fileName, mimeType: "application/octet-stream")
+//            }, to: "https://mknztlfet6msiped4d5iuixssy0iekda.lambda-url.eu-central-1.on.aws")
+//            .uploadProgress(queue: .main) { progress in
+//                print("Upload Progress: \(progress.fractionCompleted)")
+//            }
+//            .responseJSON { response in
+//                switch response.result {
+//                case .success(let result):
+//                    self.isCurrentlyUploading = false
+//                    if let json = result as? [String: Any], let result = json["result"] as? [String: Any], let hadSuccess = result["success"] as? String {
+//                        print(hadSuccess)
+//                        print(json)
+//                        if hadSuccess == "true" {
+//                            self.updateUploadDate()
+//                        }
+//                    }
+//                case .failure(let error):
+//                    self.isCurrentlyUploading = false
+//                    print(error)
+//                }
+//            }
+//
+//            AF.upload(multipartFormData: { multiPart in
+//                multiPart.append(self.apiKey.data(using: .utf8)!, withName: "api_key")
+//                multiPart.append(data, withName: "file", fileName: self.fileName, mimeType: "application/octet-stream")
+//            }, with: URLRequest(url: URL(string: "https://mknztlfet6msiped4d5iuixssy0iekda.lambda-url.eu-central-1.on.aws")!))
+//            .uploadProgress(queue: .main) { progress in
+//                print("Upload Progress: \(progress.fractionCompleted)")
+//            }
+//            .responseJSON { response in
+//                print("done: \(response)")
+//            }
+        } else {
+            self.isCurrentlyUploading = false
         }
+
     }
     
     private var documentsDirectory: String {
@@ -430,17 +439,17 @@ struct MultipartFormDataRequest {
         return fieldString
     }
 
-    func addDataField(named name: String, data: Data, mimeType: String) {
-        httpBody.append(dataFormField(named: name, data: data, mimeType: mimeType))
+    func addDataField(named name: String, filename: String, data: Data, mimeType: String) {
+        httpBody.append(dataFormField(named: name, filename: filename, data: data, mimeType: mimeType))
     }
 
-    private func dataFormField(named name: String,
+    private func dataFormField(named name: String, filename: String,
                                data: Data,
                                mimeType: String) -> Data {
         let fieldData = NSMutableData()
 
         fieldData.append("--\(boundary)\r\n")
-        fieldData.append("Content-Disposition: form-data; name=\"\(name)\"\r\n")
+        fieldData.append("Content-Disposition: form-data; name=\"\(name)\"; filename=\"\(filename)\"\r\n")
         fieldData.append("Content-Type: \(mimeType)\r\n")
         fieldData.append("\r\n")
         fieldData.append(data)
@@ -487,3 +496,9 @@ extension Data: JSONConvertible {}
 extension Bool: JSONConvertible {}
 extension Array<JSONConvertible>: JSONConvertible {}
 extension Dictionary<String, JSONConvertible>: JSONConvertible {}
+
+extension Date {
+    var isInFuture: Bool {
+        return self.timeIntervalSinceNow > 0
+    }
+}
