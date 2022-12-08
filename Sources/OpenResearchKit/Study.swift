@@ -38,11 +38,11 @@ public class Study: ObservableObject {
     let uploadFrequency: TimeInterval
     
     private var JSONFile: [ [String: JSONConvertible] ] {
-        let dict = NSArray(contentsOf: jsonDataFilePath) as!  [ [ String: JSONConvertible ] ]
+        if let dict = NSArray(contentsOf: jsonDataFilePath) as?  [ [ String: JSONConvertible ] ] {
             return dict
-//        }
-//
-//        return []
+        }
+
+        return []
     }
     
     public var lastSuccessfulUploadDate: Date? {
