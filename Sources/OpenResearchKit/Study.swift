@@ -11,11 +11,11 @@ import SwiftUI
 
 public class Study: ObservableObject {
     
-    public init(title: String, subtitle: String, duration: TimeInterval, identifier: String, universityLogo: UIImage, contactEmail: String, introductorySurveyURL: URL, concludingSurveyURL: URL, fileSubmissionServer: URL, apiKey: String, uploadFrequency: TimeInterval) {
+    public init(title: String, subtitle: String, duration: TimeInterval, studyIdentifier: String, universityLogo: UIImage, contactEmail: String, introductorySurveyURL: URL, concludingSurveyURL: URL, fileSubmissionServer: URL, apiKey: String, uploadFrequency: TimeInterval) {
         self.title = title
         self.subtitle = subtitle
         self.duration = duration
-        self.identifier = identifier
+        self.studyIdentifier = studyIdentifier
         self.universityLogo = universityLogo
         self.contactEmail = contactEmail
         self.introductorySurveyURL = introductorySurveyURL
@@ -28,7 +28,7 @@ public class Study: ObservableObject {
     let title: String
     let subtitle: String
     let duration: TimeInterval
-    let identifier: String
+    let studyIdentifier: String
     let universityLogo: UIImage
     let contactEmail: String
     let introductorySurveyURL: URL
@@ -38,11 +38,11 @@ public class Study: ObservableObject {
     let uploadFrequency: TimeInterval
     
     private var JSONFile: [ [String: JSONConvertible] ] {
-        if let dict = NSArray(contentsOf: jsonDataFilePath) as?  [ [ String: JSONConvertible ] ] {
+        let dict = NSArray(contentsOf: jsonDataFilePath) as!  [ [ String: JSONConvertible ] ]
             return dict
-        }
-        
-        return []
+//        }
+//
+//        return []
     }
     
     public var lastSuccessfulUploadDate: Date? {
@@ -66,6 +66,18 @@ public class Study: ObservableObject {
         let array = NSArray(array: jsonFile)
         array.write(toFile: jsonDataFilePath.path, atomically: true)
         self.uploadIfNecessary()
+    }
+    
+    public var isDismissedByUser: Bool {
+        get {
+            studyUserDefaults["isDismissedByUser"] as? Bool ?? false
+        }
+        set {
+            var studyUserDefaults = self.studyUserDefaults
+            studyUserDefaults["isDismissedByUser"] = newValue
+            self.save(studyUserDefaults: studyUserDefaults)
+            objectWillChange.send()
+        }
     }
     
     private var isCurrentlyUploading = false
@@ -93,13 +105,11 @@ public class Study: ObservableObject {
             
             let uploadSession = MultipartFormDataRequest(url: URL(string: "https://mknztlfet6msiped4d5iuixssy0iekda.lambda-url.eu-central-1.on.aws")!)
             uploadSession.addTextField(named: "api_key", value: self.apiKey)
-            uploadSession.addTextField(named: "user_key", value: self.identifier)
+            uploadSession.addTextField(named: "user_key", value: self.userIdentifier)
             uploadSession.addDataField(named: "file", filename: self.fileName, data: data, mimeType: "application/octet-stream")
 
 
             let task = URLSession.shared.dataTask(with: uploadSession) { data, response, error in
-                print(error)
-                print(response)
                 if let data = data {
                     self.isCurrentlyUploading = false
                     if let json = try? JSONSerialization.jsonObject(with: data, options: []) as? [String : Any], let result = json["result"] as? [String: Any], let hadSuccess = result["success"] as? String {
@@ -115,42 +125,6 @@ public class Study: ObservableObject {
             }
             task.resume()
             
-
-//            AF.upload(multipartFormData: { multiPart in
-//                multiPart.append(self.apiKey.data(using: .utf8)!, withName: "api_key")
-//                multiPart.append(self.identifier.data(using: .utf8)!, withName: "user_key")
-//                multiPart.append(data, withName: "file", fileName: self.fileName, mimeType: "application/octet-stream")
-//            }, to: "https://mknztlfet6msiped4d5iuixssy0iekda.lambda-url.eu-central-1.on.aws")
-//            .uploadProgress(queue: .main) { progress in
-//                print("Upload Progress: \(progress.fractionCompleted)")
-//            }
-//            .responseJSON { response in
-//                switch response.result {
-//                case .success(let result):
-//                    self.isCurrentlyUploading = false
-//                    if let json = result as? [String: Any], let result = json["result"] as? [String: Any], let hadSuccess = result["success"] as? String {
-//                        print(hadSuccess)
-//                        print(json)
-//                        if hadSuccess == "true" {
-//                            self.updateUploadDate()
-//                        }
-//                    }
-//                case .failure(let error):
-//                    self.isCurrentlyUploading = false
-//                    print(error)
-//                }
-//            }
-//
-//            AF.upload(multipartFormData: { multiPart in
-//                multiPart.append(self.apiKey.data(using: .utf8)!, withName: "api_key")
-//                multiPart.append(data, withName: "file", fileName: self.fileName, mimeType: "application/octet-stream")
-//            }, with: URLRequest(url: URL(string: "https://mknztlfet6msiped4d5iuixssy0iekda.lambda-url.eu-central-1.on.aws")!))
-//            .uploadProgress(queue: .main) { progress in
-//                print("Upload Progress: \(progress.fractionCompleted)")
-//            }
-//            .responseJSON { response in
-//                print("done: \(response)")
-//            }
         } else {
             self.isCurrentlyUploading = false
         }
@@ -162,16 +136,18 @@ public class Study: ObservableObject {
     }
     
     private var fileName: String {
-        "study-\(identifier)-\(localUserIdentifier).plist"
+        "study-\(studyIdentifier)-\(userIdentifier).plist"
     }
     
     private var jsonDataFilePath: URL {
         let readPath = URL(fileURLWithPath: documentsDirectory).appendingPathComponent(fileName)
+        print(readPath.absoluteString)
         return readPath
     }
     
-    public var invitationBannerView: StudyBannerInvitation {
-        StudyBannerInvitation(study: self)
+    public var invitationBannerView: some View {
+        StudyBannerInvitation()
+            .environmentObject(self)
     }
     
     public var hasUserGivenConsent: Bool {
@@ -199,14 +175,14 @@ public class Study: ObservableObject {
         return false
     }
     
-    public var localUserIdentifier: String {
+    public var userIdentifier: String {
         var studyUserDefaults = self.studyUserDefaults
         
         if let localUserIdentifier = studyUserDefaults["localUserIdentifier"] as? String {
             return localUserIdentifier
         }
         
-        let newLocalUserIdentifier = "\(identifier)-\(UUID().uuidString)"
+        let newLocalUserIdentifier = "\(studyIdentifier)-\(UUID().uuidString)"
         studyUserDefaults["localUserIdentifier"] = newLocalUserIdentifier
         self.save(studyUserDefaults: studyUserDefaults)
         objectWillChange.send()
@@ -217,11 +193,25 @@ public class Study: ObservableObject {
     
     
     var studyUserDefaults: [String: Any] {
-        OpenResearchKit.researchKitDefaults[self.identifier] ?? [:]
+        OpenResearchKit.researchKitDefaults[self.studyIdentifier] ?? [:]
     }
     
     func save(studyUserDefaults: [String: Any]) {
-        OpenResearchKit.saveStudyDefaults(defaults: studyUserDefaults, studyIdentifier: self.identifier)
+        OpenResearchKit.saveStudyDefaults(defaults: studyUserDefaults, studyIdentifier: self.studyIdentifier)
+    }
+    
+    public func showCompletionSurvey() {
+        let hostingCOntroller = UIHostingController(rootView: SurveyWebView(study: self, surveyType: .completion))
+        UIViewController.topViewController()?.present(hostingCOntroller, animated: true)
+    }
+    
+    func surveyUrl(for surveyType: SurveyType) -> URL {
+        switch surveyType {
+        case .introductory:
+            return self.introductorySurveyURL.appendingQueryItem(name: "uuid", value: self.userIdentifier)
+        case .completion:
+            return self.concludingSurveyURL.appendingQueryItem(name: "uuid", value: self.userIdentifier)
+        }
     }
 }
 
@@ -242,122 +232,87 @@ struct OpenResearchKit {
 import SafariServices
 public struct StudyBannerInvitation: View {
     
-    @State var showSurveyView: Bool = false
-    @State var showStudyIntroductoryView: Bool = false
+    @State var showIntroSurvey: Bool = false
     
-    internal init(study: Study) {
-        self.study = study
-    }
-    
-    
-    let study: Study
+    @EnvironmentObject var study: Study
     
     public var body: some View {
-        Button {
-            //            self.showSurveyView = true
-            self.showStudyIntroductoryView = true
-        } label: {
-            HStack {
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Image(uiImage: study.universityLogo)
-                        .resizable()
-                        .scaledToFit()
-                        .mask(RoundedRectangle(cornerRadius: 12))
-                        .padding()
-                    Text(study.title)
-                        .foregroundColor(.primary)
-                        .font(.headline)
-                        .bold()
-                    Text(study.subtitle)
-                        .foregroundColor(.secondary)
-                    Button {
-                        
-                    } label: {
-                        Text("Dismiss")
-                            .bold()
-                    }
-                    .padding(.top)
-                }
-                Spacer()
-                Image(systemName: "chevron.forward")
-                    .foregroundColor(Color(UIColor.tertiaryLabel))
-            }
-        }
-        .fullScreenCover(isPresented: $showSurveyView) {
-            SurveyWebView(url: self.study.introductorySurveyURL)
-        }
-        .sheet(isPresented: $showStudyIntroductoryView) {
-            StudyIntroductionView(study: study)
-        }
-    }
-}
-
-
-struct StudyIntroductionView: View {
-    
-    @Environment(\.presentationMode) var presentationMode
-    
-    @State var showIntroSurvey = false
-    
-    let study: Study
-    
-    var body: some View {
-        ScrollView {
+        
+        VStack(alignment: .leading, spacing: 2) {
             Image(uiImage: study.universityLogo)
                 .resizable()
                 .scaledToFit()
-            VStack(alignment: .leading, spacing: 4) {
-                Text(study.title)
-                    .font(.title)
-                    .bold()
-                Text("""
-    Thank you for your interest in the study that we aim to conduct together with the Max Planck Institute for Human Development and the Univeristy of Heidelberg.
-    
-    Our goal is to examine the effects of “one sec” and ultimately improve the experience even more.
-    
-    Dont worry, if you chose to participate all data is shared anonymously and cannot be linked to you (in fact, one sec doesn’t even know who you are, there is no login or personal information input in this app).
-    
-    Thanks a lot for your help!
-    """)
-                .multilineTextAlignment(.leading)
-            }
-            .padding()
-        }
-        VStack(spacing: 12) {
-            Button {
-                self.showIntroSurvey = true
-            } label: {
-                Text("Continue to Study")
-            }
-            .buttonStyle(BigButtonStyle(backgroundColor: .blue, textColor: .black))
-            .fullScreenCover(isPresented: $showIntroSurvey) {
-                SurveyWebView(url: study.introductorySurveyURL)
-            }
+                .mask(RoundedRectangle(cornerRadius: 12))
+                .padding(.vertical)
+            Text(study.title)
+                .foregroundColor(.primary)
+                .font(.headline)
+                .bold()
+            Text(study.subtitle)
+                .foregroundColor(.secondary)
             
-            Button {
-                presentationMode.wrappedValue.dismiss()
-            } label: {
-                Text("Maybe later")
+            HStack {
+                Text("Dismiss")
+                    .bold()
+                    .padding(.horizontal)
+                    .opacity(0.66)
+                    .onTapGesture {
+                        study.isDismissedByUser = true
+                    }
+                
+                HStack {
+                    Spacer()
+                    Text("Learn More")
+                        .bold()
+                        .foregroundColor(Color.accentColor)
+                    Spacer()
+                }
+                .padding()
+                .background(RoundedRectangle(cornerRadius: 8).foregroundColor(Color.accentColor.opacity(0.22)))
+                .onTapGesture {
+                    showIntroSurvey = true
+                }
             }
-            .padding(12)
+            .padding(.vertical)
         }
-        .padding()
+        .fullScreenCover(isPresented: $showIntroSurvey) {
+            SurveyWebView(study: study, surveyType: .introductory)
+        }
+        
     }
 }
 
-
-
+enum SurveyType {
+    case introductory, completion
+}
 
 // this is a web view on purpose so that users cant share the URL
 struct SurveyWebView: View {
     
     @Environment(\.presentationMode) var presentationMode
     
-    let url: URL
+    let study: Study
+    let surveyType: SurveyType
+    
     var body: some View {
         NavigationView {
-            WebView(url: url)
+            WebView(url: study.surveyUrl(for: surveyType), completion: { success in
+                if surveyType == .introductory {
+                    if success {
+                        // schedule push notification for study completed date -> in 6 weeks
+                        // automatically opens completion survey
+                        LocalPushController.shared.askUserForPushPermission { success in
+                            LocalPushController.shared.sendLocalNotification(in: study.duration, title: "Study Completed", subtitle: "Please fill out the post-study-survey", body: "It’s just 3 minutes to complete the survey.", identifier: "survey-completion-notification")
+                        }
+                    } else {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                } else {
+                    presentationMode.wrappedValue.dismiss()
+//                    study.terminate()
+                    // thanks for participating!
+                }
+            })
                 .navigationTitle("Survey")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -380,14 +335,40 @@ import WebKit
 struct WebView: UIViewRepresentable {
     
     var url: URL
+    var completion: (Bool) -> ()
     
     func makeUIView(context: Context) -> WKWebView {
-        return WKWebView()
+        let webView = WKWebView()
+        webView.navigationDelegate = context.coordinator
+        return webView
     }
     
     func updateUIView(_ webView: WKWebView, context: Context) {
         let request = URLRequest(url: url)
         webView.load(request)
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        return Coordinator(completion: completion)
+    }
+    
+    class Coordinator: NSObject, WKNavigationDelegate {
+        internal init(completion: @escaping (Bool) -> ()) {
+            self.completion = completion
+        }
+        
+        var completion: (Bool) -> ()
+        
+        func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+            if let url = webView.url {
+                let urlString = url.absoluteString
+                if urlString.contains("survey-callback/success") {
+                    self.completion(true)
+                } else if urlString.contains("survey-callback/failed") {
+                    self.completion(false)
+                }
+            }
+        }
     }
 }
 
@@ -493,6 +474,9 @@ extension Date: JSONConvertible {}
 extension Int: JSONConvertible {}
 extension Double: JSONConvertible {}
 extension Data: JSONConvertible {}
+extension NSDate: JSONConvertible {}
+extension NSNumber: JSONConvertible {}
+extension NSString: JSONConvertible {}
 extension Bool: JSONConvertible {}
 extension Array<JSONConvertible>: JSONConvertible {}
 extension Dictionary<String, JSONConvertible>: JSONConvertible {}
@@ -500,5 +484,28 @@ extension Dictionary<String, JSONConvertible>: JSONConvertible {}
 extension Date {
     var isInFuture: Bool {
         return self.timeIntervalSinceNow > 0
+    }
+}
+
+extension URL {
+
+    func appendingQueryItem(name: String, value: String?) -> URL {
+
+        var urlComponents = URLComponents(string: absoluteString)!
+
+        // Create array of existing query items
+        var queryItems: [URLQueryItem] = urlComponents.queryItems ??  []
+
+        // Create query item
+        let queryItem = URLQueryItem(name: name, value: value)
+
+        // Append the new query item in the existing query items array
+        queryItems.append(queryItem)
+
+        // Append updated query items array in the url component object
+        urlComponents.queryItems = queryItems
+
+        // Returns the url from new url components
+        return urlComponents.url!
     }
 }
