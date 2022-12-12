@@ -6,8 +6,11 @@
 //
 
 import Foundation
-import UIKit
 import SwiftUI
+#if !os(watchOS)
+import UIKit
+import WebKit
+#endif
 
 public class Study: ObservableObject {
     
@@ -144,11 +147,12 @@ public class Study: ObservableObject {
         print(readPath.absoluteString)
         return readPath
     }
-    
+#if !os(watchOS)
     public var invitationBannerView: some View {
         StudyBannerInvitation()
             .environmentObject(self)
     }
+    #endif
     
     public var hasUserGivenConsent: Bool {
         return userConsentDate != nil
@@ -200,10 +204,12 @@ public class Study: ObservableObject {
         OpenResearchKit.saveStudyDefaults(defaults: studyUserDefaults, studyIdentifier: self.studyIdentifier)
     }
     
+#if !os(watchOS)
     public func showCompletionSurvey() {
         let hostingCOntroller = UIHostingController(rootView: SurveyWebView(study: self, surveyType: .completion))
         UIViewController.topViewController()?.present(hostingCOntroller, animated: true)
     }
+    #endif
     
     func surveyUrl(for surveyType: SurveyType) -> URL {
         switch surveyType {
@@ -213,6 +219,11 @@ public class Study: ObservableObject {
             return self.concludingSurveyURL.appendingQueryItem(name: "uuid", value: self.userIdentifier)
         }
     }
+}
+
+
+enum SurveyType {
+    case introductory, completion
 }
 
 struct OpenResearchKit {
@@ -229,7 +240,8 @@ struct OpenResearchKit {
     }
 }
 
-import SafariServices
+#if !os(watchOS)
+
 public struct StudyBannerInvitation: View {
     
     @State var showIntroSurvey: Bool = false
@@ -282,10 +294,6 @@ public struct StudyBannerInvitation: View {
     }
 }
 
-enum SurveyType {
-    case introductory, completion
-}
-
 // this is a web view on purpose so that users cant share the URL
 struct SurveyWebView: View {
     
@@ -328,10 +336,6 @@ struct SurveyWebView: View {
     }
 }
 
-
-import SwiftUI
-import WebKit
-
 struct WebView: UIViewRepresentable {
     
     var url: URL
@@ -371,7 +375,7 @@ struct WebView: UIViewRepresentable {
         }
     }
 }
-
+#endif
 
 struct BigButtonStyle: ButtonStyle {
     

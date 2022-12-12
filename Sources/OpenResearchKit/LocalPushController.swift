@@ -5,6 +5,7 @@
 //  Created by Frederik Riedel on 08.12.22.
 //
 
+#if canImport(UIKit) && !os(watchOS)
 import Foundation
 import UserNotifications
 import UIKit
@@ -119,3 +120,6 @@ extension UIViewController {
         return base
     }
 }
+
+#endif
+
