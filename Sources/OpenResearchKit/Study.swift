@@ -14,7 +14,19 @@ import WebKit
 
 public class Study: ObservableObject {
     
-    public init(title: String, subtitle: String, duration: TimeInterval, studyIdentifier: String, universityLogo: UIImage, contactEmail: String, introductorySurveyURL: URL, concludingSurveyURL: URL, fileSubmissionServer: URL, apiKey: String, uploadFrequency: TimeInterval) {
+    public init(title: String,
+                subtitle: String,
+                duration: TimeInterval,
+                studyIdentifier: String,
+                universityLogo: UIImage,
+                contactEmail: String,
+                introductorySurveyURL: URL,
+                concludingSurveyURL: URL,
+                fileSubmissionServer: URL,
+                apiKey: String,
+                uploadFrequency: TimeInterval = 60 * 60 * 24,
+                installDate: Date? = nil,
+                defaults: UserDefaults = .standard) {
         self.title = title
         self.subtitle = subtitle
         self.duration = duration
@@ -26,6 +38,8 @@ public class Study: ObservableObject {
         self.fileSubmissionServer = fileSubmissionServer
         self.apiKey = apiKey
         self.uploadFrequency = uploadFrequency
+        self.installDate = installDate
+        self.defaults = defaults
     }
     
     let title: String
@@ -39,6 +53,8 @@ public class Study: ObservableObject {
     let fileSubmissionServer: URL
     let apiKey: String
     let uploadFrequency: TimeInterval
+    let installDate: Date?
+    let defaults: UserDefaults
     
     private var JSONFile: [ [String: JSONConvertible] ] {
         if let dict = NSArray(contentsOf: jsonDataFilePath) as?  [ [ String: JSONConvertible ] ] {
@@ -83,6 +99,21 @@ public class Study: ObservableObject {
         }
     }
     
+    /// A user is eligible if their device is set to English, and they installed the app less then 7 days ago.
+    public var isUserEligible: Bool {
+        guard Bundle.main.preferredLocalizations.first?.hasPrefix("en") ?? false else {
+            return false
+        }
+        if let installDate = self.installDate {
+            return installDate.addingTimeInterval(60 * 60 * 24 * 7).isInFuture
+        }
+        return false
+    }
+    
+    public var shouldShowBanner: Bool {
+        !self.isDismissedByUser && self.userConsentDate == nil && self.isUserEligible
+    }
+    
     private var isCurrentlyUploading = false
     public func uploadIfNecessary() {
         
@@ -106,7 +137,7 @@ public class Study: ObservableObject {
         
         if let data = try? Data(contentsOf: jsonDataFilePath) {
             
-            let uploadSession = MultipartFormDataRequest(url: URL(string: "https://mknztlfet6msiped4d5iuixssy0iekda.lambda-url.eu-central-1.on.aws")!)
+            let uploadSession = MultipartFormDataRequest(url: fileSubmissionServer)
             uploadSession.addTextField(named: "api_key", value: self.apiKey)
             uploadSession.addTextField(named: "user_key", value: self.userIdentifier)
             uploadSession.addDataField(named: "file", filename: self.fileName, data: data, mimeType: "application/octet-stream")
@@ -147,10 +178,10 @@ public class Study: ObservableObject {
         print(readPath.absoluteString)
         return readPath
     }
+    
 #if !os(watchOS)
     public var invitationBannerView: some View {
-        StudyBannerInvitation()
-            .environmentObject(self)
+        StudyBannerInvitation(study: self)
     }
     #endif
     
@@ -179,6 +210,10 @@ public class Study: ObservableObject {
         return false
     }
     
+    public var isFinished: Bool {
+      !(userConsentDate?.addingTimeInterval(duration).isInFuture ?? true)
+    }
+    
     public var userIdentifier: String {
         var studyUserDefaults = self.studyUserDefaults
         
@@ -197,11 +232,11 @@ public class Study: ObservableObject {
     
     
     var studyUserDefaults: [String: Any] {
-        OpenResearchKit.researchKitDefaults[self.studyIdentifier] ?? [:]
+        self.researchKitDefaults[self.studyIdentifier] ?? [:]
     }
     
     func save(studyUserDefaults: [String: Any]) {
-        OpenResearchKit.saveStudyDefaults(defaults: studyUserDefaults, studyIdentifier: self.studyIdentifier)
+        self.saveStudyDefaults(defaults: studyUserDefaults, studyIdentifier: self.studyIdentifier)
     }
     
 #if !os(watchOS)
@@ -219,6 +254,20 @@ public class Study: ObservableObject {
             return self.concludingSurveyURL.appendingQueryItem(name: "uuid", value: self.userIdentifier)
         }
     }
+    
+    var researchKitDefaults: [String: [String: Any]] {
+        get {
+            defaults.dictionary(forKey: Self.defaultsKey) as? [String: [String: Any]] ?? [:]
+        }
+    }
+    
+    func saveStudyDefaults(defaults: [String: Any], studyIdentifier: String) {
+        var currentDefaults = researchKitDefaults
+        currentDefaults[studyIdentifier] = defaults
+        self.defaults.set(currentDefaults, forKey: Self.defaultsKey)
+    }
+    
+    public static var defaultsKey: String = "open_research_kit"
 }
 
 
@@ -226,27 +275,17 @@ enum SurveyType {
     case introductory, completion
 }
 
-struct OpenResearchKit {
-    static var researchKitDefaults: [String: [String: Any]] {
-        get {
-            UserDefaults.standard.dictionary(forKey: "open_research_kit") as? [String: [String: Any]] ?? [:]
-        }
-    }
-    
-    static func saveStudyDefaults(defaults: [String: Any], studyIdentifier: String) {
-        var currentDefaults = researchKitDefaults
-        currentDefaults[studyIdentifier] = defaults
-        UserDefaults.standard.set(currentDefaults, forKey: "open_research_kit")
-    }
-}
-
 #if !os(watchOS)
 
 public struct StudyBannerInvitation: View {
     
-    @State var showIntroSurvey: Bool = false
+    @State private var showIntroSurvey: Bool = false
     
-    @EnvironmentObject var study: Study
+    @ObservedObject var study: Study
+    
+    public init(study: Study) {
+        self.study = study
+    }
     
     public var body: some View {
         
