@@ -46,19 +46,34 @@ public class Study: ObservableObject {
 #endif
     }
     
-    let title: String
-    let subtitle: String
-    let duration: TimeInterval
-    let studyIdentifier: String
-    let universityLogo: UIImage
-    let contactEmail: String
-    let introductorySurveyURL: URL
-    let concludingSurveyURL: URL
-    let fileSubmissionServer: URL
-    let apiKey: String
-    let uploadFrequency: TimeInterval
-    let installDate: Date?
-    let defaults: UserDefaults
+    public let title: String
+    public let subtitle: String
+    public let duration: TimeInterval
+    public let studyIdentifier: String
+    public let universityLogo: UIImage
+    public let contactEmail: String
+    public let introductorySurveyURL: URL
+    public let concludingSurveyURL: URL
+    public let fileSubmissionServer: URL
+    public let apiKey: String
+    public let uploadFrequency: TimeInterval
+    public let installDate: Date?
+    public let defaults: UserDefaults
+    
+    public static var example: Study {
+        Study(title: "Example Project",
+              subtitle: "Participate in a study together with the Example Institute to help us understand how different personalities use Example.",
+              duration: 60 * 60 * 24 * 7 * 6, // 6 weeks
+              studyIdentifier: "example-study",
+              universityLogo: UIImage(),
+              contactEmail: "contact@example.com",
+              introductorySurveyURL: URL(string: "http://example.com/intro")!,
+              concludingSurveyURL: URL(string: "http://example.com/outro")!,
+              fileSubmissionServer: URL(string: "https://example.com/files")!,
+              apiKey: "example-key",
+              installDate: Date().addingTimeInterval(-3600),
+              defaults: .standard)
+    }
     
     private var JSONFile: [ [String: Any] ] {
         if let jsonData = try? Data(contentsOf: jsonDataFilePath),
@@ -78,7 +93,9 @@ public class Study: ObservableObject {
         var studyUserDefaults = self.studyUserDefaults
         studyUserDefaults["lastSuccessfulUploadDate"] = newDate
         self.save(studyUserDefaults: studyUserDefaults)
-        objectWillChange.send()
+        DispatchQueue.main.async {
+            self.objectWillChange.send()
+        }
     }
     
     public func appendNewJSONObjects(newObjects: [ [String: JSONConvertible] ]) {
@@ -102,7 +119,9 @@ public class Study: ObservableObject {
             var studyUserDefaults = self.studyUserDefaults
             studyUserDefaults["isDismissedByUser"] = newValue
             self.save(studyUserDefaults: studyUserDefaults)
-            objectWillChange.send()
+            DispatchQueue.main.async {
+                self.objectWillChange.send()
+            }
         }
     }
     
@@ -112,14 +131,22 @@ public class Study: ObservableObject {
             return false
         }
         if let installDate = self.installDate {
-            return installDate.addingTimeInterval(60 * 60 * 24 * 7).isInFuture
+            return installDate.addingTimeInterval(60 * 60 * 24 * 2).isInFuture
         }
         return false
     }
     
-    public var shouldShowBanner: Bool {
-        !self.isDismissedByUser && self.userConsentDate == nil && self.isUserEligible
+    
+    #if !os(watchOS)
+    public var visibleSurveyType: SurveyType? {
+        if self.shouldDisplayTerminationSurvey {
+            return .completion
+        } else if !self.isDismissedByUser && self.userConsentDate == nil && self.isUserEligible {
+            return .introductory
+        }
+        return nil
     }
+    #endif
     
     private var isCurrentlyUploading = false
     public func uploadIfNecessary() {
@@ -215,7 +242,9 @@ public class Study: ObservableObject {
         var studyUserDefaults = self.studyUserDefaults
         studyUserDefaults["userConsentDate"] = consentTimestamp
         self.save(studyUserDefaults: studyUserDefaults)
-        objectWillChange.send()
+        DispatchQueue.main.async {
+            self.objectWillChange.send()
+        }
     }
     
     public var isActivelyRunning: Bool {
@@ -245,13 +274,15 @@ public class Study: ObservableObject {
             var studyUserDefaults = self.studyUserDefaults
             studyUserDefaults["hasCompletedTerminationSurvey"] = newValue
             self.save(studyUserDefaults: studyUserDefaults)
-            objectWillChange.send()
+            DispatchQueue.main.async {
+                self.objectWillChange.send()
+            }
         }
     }
     
     public var shouldDisplayTerminationSurvey: Bool {
         if let studyEndDate = self.studyEndDate {
-            return studyEndDate.isInFuture && !hasCompletedTerminationSurvey
+            return !studyEndDate.isInFuture && !hasCompletedTerminationSurvey
         }
         
         return false
@@ -267,7 +298,9 @@ public class Study: ObservableObject {
         let newLocalUserIdentifier = "\(studyIdentifier)-\(UUID().uuidString)"
         studyUserDefaults["localUserIdentifier"] = newLocalUserIdentifier
         self.save(studyUserDefaults: studyUserDefaults)
-        objectWillChange.send()
+        DispatchQueue.main.async {
+            self.objectWillChange.send()
+        }
         return newLocalUserIdentifier
     }
     
@@ -289,7 +322,8 @@ public class Study: ObservableObject {
         hostingCOntroller.modalPresentationStyle = .fullScreen
         UIViewController.topViewController()?.present(hostingCOntroller, animated: true)
     }
-    func surveyUrl(for surveyType: SurveyType) -> URL {
+    
+    public func surveyUrl(for surveyType: SurveyType) -> URL {
         switch surveyType {
         case .introductory:
             return self.introductorySurveyURL.appendingQueryItem(name: "uuid", value: self.userIdentifier)
@@ -313,30 +347,6 @@ public class Study: ObservableObject {
     }
     
     public static var defaultsKey: String = "open_research_kit"
-}
-
-
-
-struct BigButtonStyle: ButtonStyle {
-    
-    let backgroundColor: Color
-    let textColor: Color
-    
-    func makeBody(configuration: Configuration) -> some View {
-        
-        HStack {
-            Spacer()
-            configuration.label
-                .font(.body.weight(.semibold))
-                .foregroundColor(textColor)
-            Spacer()
-        }
-        .padding(16)
-        .background(backgroundColor)
-        .mask(RoundedRectangle(cornerRadius: 12))
-        .opacity(configuration.isPressed ? 0.6 : 1)
-        .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
-    }
 }
 
 

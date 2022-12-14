@@ -10,6 +10,29 @@ import Foundation
 import UserNotifications
 import UIKit
 
+extension Study {
+    public var concludingNotificationRequest: UNNotificationRequest? {
+        if let endDate = self.studyEndDate, endDate.isInFuture {
+            let content = UNMutableNotificationContent()
+            content.title = "Concluding our Study"
+            content.subtitle = "Please fill out the post-study-survey"
+            content.body = "It’s just 3 minutes to complete the survey."
+            content.categoryIdentifier = self.studyIdentifier
+            content.sound = .default
+            if #available(iOS 15.0, *) {
+                content.interruptionLevel = .active
+            }
+            
+            let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: endDate)
+            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+            return UNNotificationRequest(identifier: self.studyIdentifier,
+                                                            content: content,
+                                                            trigger: trigger)
+        }
+        return nil
+    }
+}
+
 class LocalPushController {
     
     static let shared = LocalPushController()

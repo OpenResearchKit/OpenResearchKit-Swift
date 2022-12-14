@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SwiftUI
 
 struct MultipartFormDataRequest {
     private let boundary: String = UUID().uuidString
@@ -117,3 +118,26 @@ extension URL {
         return urlComponents.url!
     }
 }
+
+struct BigButtonStyle: ButtonStyle {
+    
+    let backgroundColor: Color
+    let textColor: Color
+    
+    func makeBody(configuration: Configuration) -> some View {
+        
+        HStack {
+            Spacer()
+            configuration.label
+                .font(.body.weight(.semibold))
+                .foregroundColor(textColor)
+            Spacer()
+        }
+        .padding(16)
+        .background(backgroundColor)
+        .mask(RoundedRectangle(cornerRadius: 12))
+        .opacity(configuration.isPressed ? 0.6 : 1)
+        .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
+    }
+}
+

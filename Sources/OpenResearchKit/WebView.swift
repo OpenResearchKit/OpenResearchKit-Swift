@@ -4,7 +4,7 @@ import SwiftUI
 import WebKit
 
 // this is a web view on purpose so that users cant share the URL
-struct SurveyWebView: View {
+public struct SurveyWebView: View {
     
     @Environment(\.presentationMode) var presentationMode
     @ObservedObject var study: Study
@@ -12,10 +12,13 @@ struct SurveyWebView: View {
     
     @State var showPushExplanation: Bool = false
     
-    
-    var body: some View {
+    public init(study: Study, surveyType: SurveyType) {
+        self.study = study
+        self.surveyType = surveyType
+    }
+    public var body: some View {
         NavigationView {
-            WebView(url: study.surveyUrl(for: surveyType), completion: { success in
+            OpenResearchWebView(url: study.surveyUrl(for: surveyType), completion: { success in
                 if surveyType == .introductory {
                     if success {
                         // schedule push notification for study completed date -> in 6 weeks
@@ -60,40 +63,49 @@ struct SurveyWebView: View {
     }
 }
 
-struct WebView: UIViewRepresentable {
+public struct OpenResearchWebView: UIViewRepresentable {
     
     var url: URL
     var completion: (Bool) -> ()
     
-    func makeUIView(context: Context) -> WKWebView {
+    public init(url: URL, completion: @escaping (Bool) -> Void) {
+        self.url = url
+        self.completion = completion
+    }
+    
+    public func makeUIView(context: Context) -> WKWebView {
         let webView = WKWebView()
         webView.navigationDelegate = context.coordinator
         return webView
     }
     
-    func updateUIView(_ webView: WKWebView, context: Context) {
+    public func updateUIView(_ webView: WKWebView, context: Context) {
         let request = URLRequest(url: url)
         webView.load(request)
     }
     
-    func makeCoordinator() -> Coordinator {
+    public func makeCoordinator() -> Coordinator {
         return Coordinator(completion: completion)
     }
     
-    class Coordinator: NSObject, WKNavigationDelegate {
+    public class Coordinator: NSObject, WKNavigationDelegate {
         internal init(completion: @escaping (Bool) -> ()) {
             self.completion = completion
         }
         
         var completion: (Bool) -> ()
         
-        func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+        public func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
             if let url = webView.url {
                 let urlString = url.absoluteString
                 if urlString.contains("survey-callback/success") {
-                    self.completion(true)
+                    DispatchQueue.main.async {
+                        self.completion(true)
+                    }
                 } else if urlString.contains("survey-callback/failed") {
-                    self.completion(false)
+                    DispatchQueue.main.async {
+                        self.completion(false)
+                    }
                 }
             }
         }
