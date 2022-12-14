@@ -211,6 +211,10 @@ public class Study: ObservableObject {
         }
     }
     
+    public var shouldDisplayIntroductorySurvey: Bool {
+        !hasUserGivenConsent && !isDismissedByUser
+    }
+    
     public var shouldDisplayTerminationSurvey: Bool {
         if let studyEndDate = self.studyEndDate {
             return studyEndDate.isInFuture && !hasCompletedTerminationSurvey
