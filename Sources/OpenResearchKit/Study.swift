@@ -40,6 +40,10 @@ public class Study: ObservableObject {
         self.uploadFrequency = uploadFrequency
         self.installDate = installDate
         self.defaults = defaults
+        
+        #if DEBUG
+        LocalPushController.shared.sendLocalNotification(in: 10, title: "Concluding our Study", subtitle: "Please fill out the post-study-survey", body: "It’s just 3 minutes to complete the survey.", identifier: "survey-completion-notification")
+        #endif
     }
     
     let title: String
@@ -56,9 +60,11 @@ public class Study: ObservableObject {
     let installDate: Date?
     let defaults: UserDefaults
     
-    private var JSONFile: [ [String: JSONConvertible] ] {
-        if let dict = NSArray(contentsOf: jsonDataFilePath) as?  [ [ String: JSONConvertible ] ] {
-            return dict
+    private var JSONFile: [ [String: Any] ] {
+        if let jsonData = try? Data(contentsOf: jsonDataFilePath),
+           let decoded = try? JSONSerialization.jsonObject(with: jsonData, options: []),
+           let json = decoded as? [ [String: Any] ] {
+            return json
         }
 
         return []
@@ -81,10 +87,11 @@ public class Study: ObservableObject {
         self.saveAndUploadIfNeccessary(jsonFile: existingFile)
     }
     
-    private func saveAndUploadIfNeccessary(jsonFile: [ [String: JSONConvertible] ]) {
-        let array = NSArray(array: jsonFile)
-        array.write(toFile: jsonDataFilePath.path, atomically: true)
-        self.uploadIfNecessary()
+    private func saveAndUploadIfNeccessary(jsonFile: [ [String: Any] ]) {
+        if let jsonData = try? JSONSerialization.data(withJSONObject: jsonFile, options: .prettyPrinted) {
+            try? jsonData.write(to: jsonDataFilePath)
+            self.uploadIfNecessary()
+        }
     }
     
     public var isDismissedByUser: Bool {
@@ -117,13 +124,16 @@ public class Study: ObservableObject {
     private var isCurrentlyUploading = false
     public func uploadIfNecessary() {
         
-        if isCurrentlyUploading {
-            return
-        }
-        
         guard let lastSuccessfulUploadDate = self.lastSuccessfulUploadDate else {
             self.uploadJSON()
             return
+        }
+        
+        if let studyEndDate = self.studyEndDate, !isActivelyRunning {
+            // study terminated, uploading remaining file
+            if lastSuccessfulUploadDate < studyEndDate {
+                self.uploadJSON()
+            }
         }
         
         if abs(lastSuccessfulUploadDate.timeIntervalSinceNow) > uploadFrequency {
@@ -132,6 +142,10 @@ public class Study: ObservableObject {
     }
     
     private func uploadJSON() {
+        
+        if isCurrentlyUploading {
+            return
+        }
         
         isCurrentlyUploading = true
         
@@ -144,8 +158,8 @@ public class Study: ObservableObject {
 
 
             let task = URLSession.shared.dataTask(with: uploadSession) { data, response, error in
+                self.isCurrentlyUploading = false
                 if let data = data {
-                    self.isCurrentlyUploading = false
                     if let json = try? JSONSerialization.jsonObject(with: data, options: []) as? [String : Any], let result = json["result"] as? [String: Any], let hadSuccess = result["success"] as? String {
                         print(hadSuccess)
                         print(json)
@@ -170,7 +184,7 @@ public class Study: ObservableObject {
     }
     
     private var fileName: String {
-        "study-\(studyIdentifier)-\(userIdentifier).plist"
+        "study-\(studyIdentifier)-\(userIdentifier).json"
     }
     
     private var jsonDataFilePath: URL {
@@ -181,9 +195,15 @@ public class Study: ObservableObject {
     
 #if !os(watchOS)
     public var invitationBannerView: some View {
-        StudyBannerInvitation(study: self)
+        StudyBannerInvitation(surveyType: .introductory)
+            .environmentObject(self)
     }
-    #endif
+    
+    public var terminationBannerView: some View {
+        StudyBannerInvitation(surveyType: .completion)
+            .environmentObject(self)
+    }
+#endif
     
     public var hasUserGivenConsent: Bool {
         return userConsentDate != nil
@@ -201,8 +221,8 @@ public class Study: ObservableObject {
     }
     
     public var isActivelyRunning: Bool {
-        if let userConsentDate = userConsentDate {
-            if userConsentDate.addingTimeInterval(duration).isInFuture {
+        if let studyEndDate = studyEndDate {
+            if studyEndDate.isInFuture {
                 return true
             }
         }
@@ -211,7 +231,32 @@ public class Study: ObservableObject {
     }
     
     public var isFinished: Bool {
-      !(userConsentDate?.addingTimeInterval(duration).isInFuture ?? true)
+      !(studyEndDate.isInFuture ?? true)
+    }
+
+    public var studyEndDate: Date? {
+        userConsentDate?.addingTimeInterval(duration)
+    }
+    
+    public var hasCompletedTerminationSurvey: Bool {
+        get {
+            return studyUserDefaults["hasCompletedTerminationSurvey"] as? Bool ?? false
+        }
+        
+        set {
+            var studyUserDefaults = self.studyUserDefaults
+            studyUserDefaults["hasCompletedTerminationSurvey"] = newValue
+            self.save(studyUserDefaults: studyUserDefaults)
+            objectWillChange.send()
+        }
+    }
+    
+    public var shouldDisplayTerminationSurvey: Bool {
+        if let studyEndDate = self.studyEndDate {
+            return studyEndDate.isInFuture && !hasCompletedTerminationSurvey
+        }
+        
+        return false
     }
     
     public var userIdentifier: String {
@@ -241,7 +286,9 @@ public class Study: ObservableObject {
     
 #if !os(watchOS)
     public func showCompletionSurvey() {
-        let hostingCOntroller = UIHostingController(rootView: SurveyWebView(study: self, surveyType: .completion))
+        let surveyView = SurveyWebView(surveyType: .completion).environmentObject(self)
+        let hostingCOntroller = UIHostingController(rootView: surveyView)
+        hostingCOntroller.modalPresentationStyle = .fullScreen
         UIViewController.topViewController()?.present(hostingCOntroller, animated: true)
     }
     #endif
@@ -279,7 +326,9 @@ enum SurveyType {
 
 public struct StudyBannerInvitation: View {
     
-    @State private var showIntroSurvey: Bool = false
+    let surveyType: SurveyType
+    
+    @State var showSurvey: Bool = false
     
     @ObservedObject var study: Study
     
@@ -295,12 +344,22 @@ public struct StudyBannerInvitation: View {
                 .scaledToFit()
                 .mask(RoundedRectangle(cornerRadius: 12))
                 .padding(.vertical)
-            Text(study.title)
-                .foregroundColor(.primary)
-                .font(.headline)
-                .bold()
-            Text(study.subtitle)
-                .foregroundColor(.secondary)
+            if surveyType == .introductory {
+                Text(study.title)
+                    .foregroundColor(.primary)
+                    .font(.headline)
+                    .bold()
+                Text(study.subtitle)
+                    .foregroundColor(.secondary)
+            } else {
+                Text("Concluding our Study")
+                    .foregroundColor(.primary)
+                    .font(.headline)
+                    .bold()
+                Text("Thanks a lot for parcitipating! The study is now terminated, please fill out the (very short) concluding survey!")
+                    .foregroundColor(.secondary)
+            }
+            
             
             HStack {
                 Text("Dismiss")
@@ -313,7 +372,7 @@ public struct StudyBannerInvitation: View {
                 
                 HStack {
                     Spacer()
-                    Text("Learn More")
+                    Text(surveyType == .introductory ? "Learn More" : "Complete")
                         .bold()
                         .foregroundColor(Color.accentColor)
                     Spacer()
@@ -321,24 +380,31 @@ public struct StudyBannerInvitation: View {
                 .padding()
                 .background(RoundedRectangle(cornerRadius: 8).foregroundColor(Color.accentColor.opacity(0.22)))
                 .onTapGesture {
-                    showIntroSurvey = true
+                    showSurvey = true
                 }
             }
             .padding(.vertical)
         }
-        .fullScreenCover(isPresented: $showIntroSurvey) {
-            SurveyWebView(study: study, surveyType: .introductory)
+        .fullScreenCover(isPresented: $showSurvey) {
+            SurveyWebView(surveyType: surveyType)
+                .environmentObject(study)
         }
-        
     }
 }
 
+enum SurveyType {
+    case introductory, completion
+}
+
+import UIKit
 // this is a web view on purpose so that users cant share the URL
 struct SurveyWebView: View {
     
     @Environment(\.presentationMode) var presentationMode
+    @EnvironmentObject var study: Study
     
-    let study: Study
+    @State var showPushExplanation: Bool = false
+    
     let surveyType: SurveyType
     
     var body: some View {
@@ -348,16 +414,29 @@ struct SurveyWebView: View {
                     if success {
                         // schedule push notification for study completed date -> in 6 weeks
                         // automatically opens completion survey
-                        LocalPushController.shared.askUserForPushPermission { success in
-                            LocalPushController.shared.sendLocalNotification(in: study.duration, title: "Study Completed", subtitle: "Please fill out the post-study-survey", body: "It’s just 3 minutes to complete the survey.", identifier: "survey-completion-notification")
+                        study.saveUserConsentHasBeenGiven(consentTimestamp: Date())
+                        presentationMode.wrappedValue.dismiss()
+                        
+                        let alert = UIAlertController(title: "Post-Study-Questionnaire", message: "We’ll send you a push notification when the study is concluded to fill out the post-questionnaire.", preferredStyle: .alert)
+                        let proceedAction = UIAlertAction(title: "Proceed", style: .default) { _ in
+                            LocalPushController.shared.askUserForPushPermission { success in
+                                var pushDuration = study.duration
+                                #if DEBUG
+                                pushDuration = 10
+                                #endif
+                                LocalPushController.shared.sendLocalNotification(in: pushDuration, title: "Concluding our Study", subtitle: "Please fill out the post-study-survey", body: "It’s just 3 minutes to complete the survey.", identifier: "survey-completion-notification")
+                            }
                         }
+                        alert.addAction(proceedAction)
+                        UIViewController.topViewController()?.present(alert, animated: true)
+                        
+                        self.showPushExplanation = true
                     } else {
                         presentationMode.wrappedValue.dismiss()
                     }
-                } else {
+                } else if surveyType == .completion {
                     presentationMode.wrappedValue.dismiss()
-//                    study.terminate()
-                    // thanks for participating!
+                    study.hasCompletedTerminationSurvey = true
                 }
             })
                 .navigationTitle("Survey")
@@ -513,11 +592,8 @@ extension URLSession {
 
 public protocol JSONConvertible {}
 extension String: JSONConvertible {}
-extension Date: JSONConvertible {}
 extension Int: JSONConvertible {}
 extension Double: JSONConvertible {}
-extension Data: JSONConvertible {}
-extension NSDate: JSONConvertible {}
 extension NSNumber: JSONConvertible {}
 extension NSString: JSONConvertible {}
 extension Bool: JSONConvertible {}
