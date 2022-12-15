@@ -129,7 +129,7 @@ public class Study: ObservableObject {
         
         if let data = try? Data(contentsOf: jsonDataFilePath) {
             
-            let uploadSession = MultipartFormDataRequest(url: URL(string: "https://mknztlfet6msiped4d5iuixssy0iekda.lambda-url.eu-central-1.on.aws")!)
+            let uploadSession = MultipartFormDataRequest(url: self.fileSubmissionServer)
             uploadSession.addTextField(named: "api_key", value: self.apiKey)
             uploadSession.addTextField(named: "user_key", value: self.userIdentifier)
             uploadSession.addDataField(named: "file", filename: self.fileName, data: data, mimeType: "application/octet-stream")
