@@ -57,7 +57,7 @@ public class Study: ObservableObject {
     public let fileSubmissionServer: URL
     public let apiKey: String
     public let uploadFrequency: TimeInterval
-    public let installDate: Date?
+    public var installDate: Date?
     public let defaults: UserDefaults
     
     public static var example: Study {
@@ -86,16 +86,19 @@ public class Study: ObservableObject {
     }
     
     public var lastSuccessfulUploadDate: Date? {
-        return studyUserDefaults["lastSuccessfulUploadDate"] as? Date
+        get {
+            return defaults.value(forKey: "openresearchkit.last_upload." + self.studyIdentifier) as? Date
+        }
+        set {
+            defaults.set(newValue, forKey: "openresearchkit.last_upload." + self.studyIdentifier)
+            DispatchQueue.main.async {
+                self.objectWillChange.send()
+            }
+        }
     }
     
     public func updateUploadDate(newDate: Date = Date()) {
-        var studyUserDefaults = self.studyUserDefaults
-        studyUserDefaults["lastSuccessfulUploadDate"] = newDate
-        self.save(studyUserDefaults: studyUserDefaults)
-        DispatchQueue.main.async {
-            self.objectWillChange.send()
-        }
+        self.lastSuccessfulUploadDate = newDate
     }
     
     public func appendNewJSONObjects(newObjects: [ [String: JSONConvertible] ]) {
@@ -163,9 +166,9 @@ public class Study: ObservableObject {
             }
         }
         
-        if abs(lastSuccessfulUploadDate.timeIntervalSinceNow) > uploadFrequency {
+//        if abs(lastSuccessfulUploadDate.timeIntervalSinceNow) > uploadFrequency {
             self.uploadJSON()
-        }
+//        }
     }
     
     private func uploadJSON() {
@@ -304,6 +307,20 @@ public class Study: ObservableObject {
         return newLocalUserIdentifier
     }
     
+    
+    public var additionalDefaults: [String: Any] {
+        get {
+            self.studyUserDefaults["additionalDefaults"] as? [String: Any] ?? [:]
+        }
+        set {
+            var defaults = self.studyUserDefaults
+            defaults["additionalDefaults"] = newValue
+            self.save(studyUserDefaults: defaults)
+            DispatchQueue.main.async {
+                self.objectWillChange.send()
+            }
+        }
+    }
     
     
     
