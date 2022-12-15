@@ -63,9 +63,12 @@ public class Study: ObservableObject {
     }
     
     public func appendNewJSONObjects(newObjects: [ [String: JSONConvertible] ]) {
-        var existingFile = self.JSONFile
-        existingFile.append(contentsOf: newObjects)
-        self.saveAndUploadIfNeccessary(jsonFile: existingFile)
+        if isActivelyRunning {
+            // only add data if study is running: user has given consent and study has not yet ended
+            var existingFile = self.JSONFile
+            existingFile.append(contentsOf: newObjects)
+            self.saveAndUploadIfNeccessary(jsonFile: existingFile)
+        }
     }
     
     private func saveAndUploadIfNeccessary(jsonFile: [ [String: Any] ]) {
