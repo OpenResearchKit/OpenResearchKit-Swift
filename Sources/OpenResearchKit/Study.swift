@@ -94,16 +94,25 @@ public class Study: ObservableObject {
     public func uploadIfNecessary() {
         
         guard let lastSuccessfulUploadDate = self.lastSuccessfulUploadDate else {
-            self.uploadJSON()
+            if isActivelyRunning {
+                self.uploadJSON()
+            }
             return
         }
         
-        if let studyEndDate = self.studyEndDate, !isActivelyRunning {
-            // study terminated, uploading remaining file
-            if lastSuccessfulUploadDate < studyEndDate {
-                self.uploadJSON()
+        if !isActivelyRunning {
+            if let studyEndDate = self.studyEndDate {
+                // study terminated, uploading remaining file
+                if lastSuccessfulUploadDate < studyEndDate {
+                    self.uploadJSON()
+                    return
+                }
             }
+            
+            // study is not running, dont upload anything
+            return
         }
+        
         
         if abs(lastSuccessfulUploadDate.timeIntervalSinceNow) > uploadFrequency {
             self.uploadJSON()
