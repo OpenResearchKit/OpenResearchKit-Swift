@@ -11,6 +11,12 @@ import SwiftUI
 import UIKit
 import WebKit
 #endif
+import os
+
+let logger = Logger(
+    subsystem: Bundle.main.bundleIdentifier!,
+    category: "OpenResearchKit"
+)
 
 public class Study: ObservableObject {
     
@@ -105,6 +111,7 @@ public class Study: ObservableObject {
         var existingFile = self.JSONFile
         existingFile.append(contentsOf: newObjects)
         self.saveAndUploadIfNeccessary(jsonFile: existingFile)
+        logger.info("Append new json: \(newObjects)")
     }
     
     private func saveAndUploadIfNeccessary(jsonFile: [ [String: Any] ]) {
@@ -166,9 +173,9 @@ public class Study: ObservableObject {
             }
         }
         
-//        if abs(lastSuccessfulUploadDate.timeIntervalSinceNow) > uploadFrequency {
+        if abs(lastSuccessfulUploadDate.timeIntervalSinceNow) > uploadFrequency {
             self.uploadJSON()
-//        }
+        }
     }
     
     private func uploadJSON() {
@@ -191,8 +198,7 @@ public class Study: ObservableObject {
                 self.isCurrentlyUploading = false
                 if let data = data {
                     if let json = try? JSONSerialization.jsonObject(with: data, options: []) as? [String : Any], let result = json["result"] as? [String: Any], let hadSuccess = result["success"] as? String {
-                        print(hadSuccess)
-                        print(json)
+                        logger.info("Uploaded JSON (success=\(hadSuccess)) with response: \(json)")
                         if hadSuccess == "true" {
                             DispatchQueue.main.async {
                                 self.updateUploadDate()

@@ -76,12 +76,15 @@ public struct OpenResearchWebView: UIViewRepresentable {
     public func makeUIView(context: Context) -> WKWebView {
         let webView = WKWebView()
         webView.navigationDelegate = context.coordinator
+        DispatchQueue.main.async {
+            let request = URLRequest(url: url)
+            webView.load(request)
+        }
         return webView
     }
     
     public func updateUIView(_ webView: WKWebView, context: Context) {
-        let request = URLRequest(url: url)
-        webView.load(request)
+        
     }
     
     public func makeCoordinator() -> Coordinator {
