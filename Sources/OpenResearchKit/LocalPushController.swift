@@ -14,9 +14,9 @@ extension Study {
     public var concludingNotificationRequest: UNNotificationRequest? {
         if let endDate = self.studyEndDate, endDate.isInFuture {
             let content = UNMutableNotificationContent()
-            content.title = "Concluding our Study"
-            content.subtitle = "Please fill out the post-study-survey"
-            content.body = "It’s just 3 minutes to complete the survey."
+            content.title = "Concluding the study"
+            content.subtitle = "Thanks for participating. Please fill out one last survey."
+            content.body = "It only takes 3 minutes to complete this survey."
             content.categoryIdentifier = self.studyIdentifier
             content.sound = .default
             if #available(iOS 15.0, *) {
