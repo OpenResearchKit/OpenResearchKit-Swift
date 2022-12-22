@@ -25,7 +25,7 @@ public class Study: ObservableObject {
         self.uploadFrequency = uploadFrequency
         
         #if DEBUG
-        LocalPushController.shared.sendLocalNotification(in: 10, title: "Concluding our Study", subtitle: "Please fill out the post-study-survey", body: "It’s just 3 minutes to complete the survey.", identifier: "survey-completion-notification")
+        LocalPushController.shared.sendLocalNotification(in: 10, title: "Concluding the study", subtitle: "Please fill out the post-study-survey", body: "It’s just 3 minutes to complete the survey.", identifier: "survey-completion-notification")
         #endif
     }
     
@@ -59,7 +59,9 @@ public class Study: ObservableObject {
         var studyUserDefaults = self.studyUserDefaults
         studyUserDefaults["lastSuccessfulUploadDate"] = newDate
         self.save(studyUserDefaults: studyUserDefaults)
-        objectWillChange.send()
+        DispatchQueue.main.async {
+            self.objectWillChange.send()
+        }
     }
     
     public func appendNewJSONObjects(newObjects: [ [String: JSONConvertible] ]) {
@@ -86,7 +88,9 @@ public class Study: ObservableObject {
             var studyUserDefaults = self.studyUserDefaults
             studyUserDefaults["isDismissedByUser"] = newValue
             self.save(studyUserDefaults: studyUserDefaults)
-            objectWillChange.send()
+            DispatchQueue.main.async {
+                self.objectWillChange.send()
+            }
         }
     }
     
@@ -193,7 +197,9 @@ public class Study: ObservableObject {
         var studyUserDefaults = self.studyUserDefaults
         studyUserDefaults["userConsentDate"] = consentTimestamp
         self.save(studyUserDefaults: studyUserDefaults)
-        objectWillChange.send()
+        DispatchQueue.main.async {
+            self.objectWillChange.send()
+        }
     }
     
     public var isActivelyRunning: Bool {
@@ -219,7 +225,9 @@ public class Study: ObservableObject {
             var studyUserDefaults = self.studyUserDefaults
             studyUserDefaults["hasCompletedTerminationSurvey"] = newValue
             self.save(studyUserDefaults: studyUserDefaults)
-            objectWillChange.send()
+            DispatchQueue.main.async {
+                self.objectWillChange.send()
+            }
         }
     }
     
@@ -245,7 +253,9 @@ public class Study: ObservableObject {
         let newLocalUserIdentifier = "\(studyIdentifier)-\(UUID().uuidString)"
         studyUserDefaults["localUserIdentifier"] = newLocalUserIdentifier
         self.save(studyUserDefaults: studyUserDefaults)
-        objectWillChange.send()
+        DispatchQueue.main.async {
+            self.objectWillChange.send()
+        }
         return newLocalUserIdentifier
     }
     
@@ -303,6 +313,17 @@ public struct StudyBannerInvitation: View {
     public var body: some View {
         
         VStack(alignment: .leading, spacing: 2) {
+            HStack {
+                Spacer()
+                Image(systemName: "xmark.circle.fill")
+                    .resizable()
+                    .frame(width: 24, height: 24)
+                    .foregroundColor(.secondary)
+                    .opacity(0.75)
+                    .onTapGesture {
+                        study.isDismissedByUser = true
+                    }
+            }
             Image(uiImage: study.universityLogo)
                 .resizable()
                 .scaledToFit()
@@ -316,36 +337,25 @@ public struct StudyBannerInvitation: View {
                 Text(study.subtitle)
                     .foregroundColor(.secondary)
             } else {
-                Text("Concluding our Study")
+                Text(study.title)
                     .foregroundColor(.primary)
                     .font(.headline)
                     .bold()
-                Text("Thanks a lot for parcitipating! The study is now terminated, please fill out the (very short) concluding survey!")
+                Text("Thanks a lot for participating in the study, the 6 weeks of participation are now completed. Please fill out one last 3 minute survey!")
                     .foregroundColor(.secondary)
             }
             
-            
             HStack {
-                Text("Dismiss")
+                Spacer()
+                Text(surveyType == .introductory ? "Learn more" : "Complete")
                     .bold()
-                    .padding(.horizontal)
-                    .opacity(0.66)
-                    .onTapGesture {
-                        study.isDismissedByUser = true
-                    }
-                
-                HStack {
-                    Spacer()
-                    Text(surveyType == .introductory ? "Learn More" : "Complete")
-                        .bold()
-                        .foregroundColor(Color.accentColor)
-                    Spacer()
-                }
-                .padding()
-                .background(RoundedRectangle(cornerRadius: 8).foregroundColor(Color.accentColor.opacity(0.22)))
-                .onTapGesture {
-                    showSurvey = true
-                }
+                    .foregroundColor(Color.accentColor)
+                Spacer()
+            }
+            .padding()
+            .background(RoundedRectangle(cornerRadius: 8).foregroundColor(Color.accentColor.opacity(0.22)))
+            .onTapGesture {
+                showSurvey = true
             }
             .padding(.vertical)
         }
@@ -388,7 +398,7 @@ struct SurveyWebView: View {
                                 #if DEBUG
                                 pushDuration = 10
                                 #endif
-                                LocalPushController.shared.sendLocalNotification(in: pushDuration, title: "Concluding our Study", subtitle: "Please fill out the post-study-survey", body: "It’s just 3 minutes to complete the survey.", identifier: "survey-completion-notification")
+                                LocalPushController.shared.sendLocalNotification(in: pushDuration, title: "Concluding the study", subtitle: "Thanks for participating. Please fill out one last survey.", body: "It only takes 3 minutes to complete this survey.", identifier: "survey-completion-notification")
                             }
                         }
                         alert.addAction(proceedAction)
