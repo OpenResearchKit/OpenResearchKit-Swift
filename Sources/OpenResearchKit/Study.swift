@@ -218,7 +218,15 @@ public class Study: ObservableObject {
     }
     
     public func terminateParticipationImmediately() {
-        self.terminatedByUserDate = Date()
+        let terminationDate = Date()
+        self.appendNewJSONObjects(newObjects: [
+            [
+                "terminationReason": "terminatedByUser",
+                "timestamp": terminationDate.timeIntervalSince1970
+            ]
+        ])
+        self.terminatedByUserDate = terminationDate
+        self.uploadIfNecessary()
     }
     
     var terminatedByUserDate: Date? {
