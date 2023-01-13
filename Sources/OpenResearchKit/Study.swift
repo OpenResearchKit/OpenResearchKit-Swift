@@ -185,6 +185,11 @@ public class Study: ObservableObject {
             .environmentObject(self)
     }
     
+    public detailInfosView: some View {
+        StudyActiveDetailInfos()
+            .environmentObject(self)
+    }
+    
     public var hasUserGivenConsent: Bool {
         return userConsentDate != nil
     }
