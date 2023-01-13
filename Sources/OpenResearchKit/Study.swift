@@ -185,7 +185,7 @@ public class Study: ObservableObject {
             .environmentObject(self)
     }
     
-    public detailInfosView: some View {
+    public var detailInfosView: some View {
         StudyActiveDetailInfos()
             .environmentObject(self)
     }
