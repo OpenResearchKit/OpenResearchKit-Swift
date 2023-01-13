@@ -8,13 +8,13 @@
 import Foundation
 import SwiftUI
 
-struct StudyActiveDetailInfos: View {
+public struct StudyActiveDetailInfos: View {
     
     @EnvironmentObject var study: Study
     
     @State var showTerminationDialog = false
     
-    var body: some View {
+    public var body: some View {
         List {
             Section {
                 if study.isActivelyRunning {
