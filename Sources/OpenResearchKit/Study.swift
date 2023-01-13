@@ -24,12 +24,12 @@ public class Study: ObservableObject {
         self.apiKey = apiKey
         self.uploadFrequency = uploadFrequency
         
-        #if DEBUG
-        LocalPushController.shared.sendLocalNotification(in: 10, title: "Concluding the study", subtitle: "Please fill out the post-study-survey", body: "It’s just 3 minutes to complete the survey.", identifier: "survey-completion-notification")
-        #endif
+//        #if DEBUG
+//        LocalPushController.shared.sendLocalNotification(in: 10, title: "Concluding the study", subtitle: "Please fill out the post-study-survey", body: "It’s just 3 minutes to complete the survey.", identifier: "survey-completion-notification")
+//        #endif
     }
     
-    let title: String
+    public let title: String
     let subtitle: String
     let duration: TimeInterval
     let studyIdentifier: String
