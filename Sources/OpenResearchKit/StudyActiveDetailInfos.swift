@@ -16,9 +16,16 @@ public struct StudyActiveDetailInfos: View {
     
     public var body: some View {
         List {
+            
             Section {
-                if study.isActivelyRunning {
-                    Text("You are currently participating in a scientific study to help make one sec even better. If you have any questions, please contact us.")
+                Image(uiImage: study.universityLogo)
+                    .resizable()
+                    .scaledToFit()
+            }
+            
+            Section {
+                if study.isActivelyRunning || isDebug {
+                    Text("You are currently participating in a scientific study to help make this app even better. If you have any questions, please contact us.")
                 }
                 
                 Button("Contact \(study.contactEmail)") {
@@ -64,5 +71,13 @@ public struct StudyActiveDetailInfos: View {
             
         }
         .navigationBarTitle(study.title)
+    }
+    
+    var isDebug: Bool {
+        #if DEBUG
+        return true
+        #else
+        return false
+        #endif
     }
 }
