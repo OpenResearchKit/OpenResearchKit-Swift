@@ -29,7 +29,7 @@ public struct StudyActiveDetailInfos: View {
                 }
                 
                 Button("Contact \(study.contactEmail)") {
-                    let email = "mailto://"
+                    let email = "mailto:"
                     let emailformatted = email + study.contactEmail
                     guard let url = URL(string: emailformatted) else { return }
                     UIApplication.shared.open(url)
