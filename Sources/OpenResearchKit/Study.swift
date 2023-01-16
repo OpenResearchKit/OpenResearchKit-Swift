@@ -310,7 +310,9 @@ public class Study: ObservableObject {
         let surveyView = SurveyWebView(surveyType: .completion).environmentObject(self)
         let hostingCOntroller = UIHostingController(rootView: surveyView)
         hostingCOntroller.modalPresentationStyle = .fullScreen
-        UIViewController.topViewController()?.present(hostingCOntroller, animated: true)
+        UIApplication.shared.keyWindow?.rootViewController?.dismiss(animated: false, completion: {
+            UIViewController.topViewController()?.present(hostingCOntroller, animated: true)
+        })
     }
     
     func surveyUrl(for surveyType: SurveyType) -> URL {
