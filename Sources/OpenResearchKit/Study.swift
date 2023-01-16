@@ -162,16 +162,25 @@ public class Study: ObservableObject {
     public func uploadIfNecessary() {
         
         guard let lastSuccessfulUploadDate = self.lastSuccessfulUploadDate else {
-            self.uploadJSON()
+            if isActivelyRunning {
+                self.uploadJSON()
+            }
             return
         }
         
-        if let studyEndDate = self.studyEndDate, !isActivelyRunning {
-            // study terminated, uploading remaining file
-            if lastSuccessfulUploadDate < studyEndDate {
-                self.uploadJSON()
+        if !isActivelyRunning {
+            if let studyEndDate = self.studyEndDate {
+                // study terminated, uploading remaining file
+                if lastSuccessfulUploadDate < studyEndDate {
+                    self.uploadJSON()
+                    return
+                }
             }
+            
+            // study is not running, dont upload anything
+            return
         }
+        
         
         if abs(lastSuccessfulUploadDate.timeIntervalSinceNow) > uploadFrequency {
             self.uploadJSON()
@@ -188,7 +197,7 @@ public class Study: ObservableObject {
         
         if let data = try? Data(contentsOf: jsonDataFilePath) {
             
-            let uploadSession = MultipartFormDataRequest(url: fileSubmissionServer)
+            let uploadSession = MultipartFormDataRequest(url: self.fileSubmissionServer)
             uploadSession.addTextField(named: "api_key", value: self.apiKey)
             uploadSession.addTextField(named: "user_key", value: self.userIdentifier)
             uploadSession.addDataField(named: "file", filename: self.fileName, data: data, mimeType: "application/octet-stream")
@@ -237,6 +246,10 @@ public class Study: ObservableObject {
     public var terminationBannerView: some View {
         StudyBannerInvitation(study: self, surveyType: .completion)
     }
+    public var detailInfosView: some View {
+        StudyActiveDetailInfos()
+            .environmentObject(self)
+    }
 #endif
     
     public var hasUserGivenConsent: Bool {
@@ -265,13 +278,44 @@ public class Study: ObservableObject {
         
         return false
     }
-    
-    public var isFinished: Bool {
+
+     public var isFinished: Bool {
         !(studyEndDate?.isInFuture ?? true)
+     }
+    
+    public func terminateParticipationImmediately() {
+        let terminationDate = Date()
+        self.appendNewJSONObjects(newObjects: [
+            [
+                "terminationReason": "terminatedByUser",
+                "timestamp": terminationDate.timeIntervalSince1970
+            ]
+        ])
+        self.terminatedByUserDate = terminationDate
+        self.uploadIfNecessary()
+    }
+    
+    var terminatedByUserDate: Date? {
+        get {
+            studyUserDefaults["terminatedByUserDate"] as? Date
+        }
+        
+        set {
+            var studyUserDefaults = self.studyUserDefaults
+            studyUserDefaults["terminatedByUserDate"] = newValue
+            self.save(studyUserDefaults: studyUserDefaults)
+            DispatchQueue.main.async {
+                self.objectWillChange.send()
+            }
+        }
     }
     
     public var studyEndDate: Date? {
-        userConsentDate?.addingTimeInterval(duration)
+        if let terminatedByUserDate = self.terminatedByUserDate {
+            return terminatedByUserDate
+        }
+        
+        return userConsentDate?.addingTimeInterval(duration)
     }
     
     public var hasCompletedTerminationSurvey: Bool {
@@ -287,6 +331,10 @@ public class Study: ObservableObject {
                 self.objectWillChange.send()
             }
         }
+    }
+    
+    public var shouldDisplayIntroductorySurvey: Bool {
+        !hasUserGivenConsent && !isDismissedByUser
     }
     
     public var shouldDisplayTerminationSurvey: Bool {
@@ -313,6 +361,29 @@ public class Study: ObservableObject {
         return newLocalUserIdentifier
     }
     
+    public var shouldDisplayWeeklyCheckIn: Bool {
+        guard self.isActivelyRunning, let consentDate = self.userConsentDate else {
+            return false
+        }
+        return consentDate.addingTimeInterval(Double(self.lastCheckInWeek + 1) * 60 * 60 * 24 * 7) < Date()
+    }
+    
+    public func displayedWeeklyCheckIn(at date: Date = .init()) {
+        guard let consentDate = self.userConsentDate else {
+            return
+        }
+        self.lastCheckInWeek = Int(-consentDate.timeIntervalSinceNow / 60 / 60 / 24 / 7)
+        
+    }
+
+    public var lastCheckInWeek: Int {
+        get {
+            self.studyUserDefaults["lastCheckInWeek"] as? Int ?? 0
+        }
+        set {
+            self.studyUserDefaults["lastCheckInWeek"] = newValue
+        }
+    }
     
     public var additionalDefaults: [String: Any] {
         get {
@@ -328,10 +399,17 @@ public class Study: ObservableObject {
         }
     }
     
+  
+    
     
     
     var studyUserDefaults: [String: Any] {
-        self.researchKitDefaults[self.studyIdentifier] ?? [:]
+        get {
+            self.researchKitDefaults[self.studyIdentifier] ?? [:]
+        }
+        set {
+            self.save(studyUserDefaults: newValue)
+        }
     }
     
     func save(studyUserDefaults: [String: Any]) {
@@ -370,6 +448,10 @@ public class Study: ObservableObject {
     }
     
     public static var defaultsKey: String = "open_research_kit"
+    
+    public static var universityLogo: UIImage? {
+        UIImage(named: "university_header", in: .module, with: .none)
+    }
 }
 
 

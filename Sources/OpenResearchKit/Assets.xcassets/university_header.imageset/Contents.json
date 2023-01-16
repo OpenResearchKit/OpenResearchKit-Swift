@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "university_header.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
