@@ -1,6 +1,6 @@
 //
 //  File.swift
-//  
+//
 //
 //  Created by Frederik Riedel on 18.11.22.
 //
@@ -65,6 +65,8 @@ public class Study: ObservableObject {
     public let uploadFrequency: TimeInterval
     public var installDate: Date?
     public let defaults: UserDefaults
+    
+    @Published public var dataURL: String?
     
     public static var example: Study {
         Study(title: "Example Project",
@@ -187,7 +189,7 @@ public class Study: ObservableObject {
         }
     }
     
-    private func uploadJSON() {
+    public func uploadJSON() {
         
         if isCurrentlyUploading {
             return
@@ -207,6 +209,9 @@ public class Study: ObservableObject {
                 self.isCurrentlyUploading = false
                 if let data = data {
                     if let json = try? JSONSerialization.jsonObject(with: data, options: []) as? [String : Any], let result = json["result"] as? [String: Any], let hadSuccess = result["success"] as? String {
+                        if let path = result["path"] as? String {
+                            self.dataURL = path
+                        }
                         logger.info("Uploaded JSON (success=\(hadSuccess)) with response: \(json)")
                         if hadSuccess == "true" {
                             DispatchQueue.main.async {
