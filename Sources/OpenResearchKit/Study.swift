@@ -344,7 +344,7 @@ public class Study: ObservableObject {
     
     public var shouldDisplayTerminationSurvey: Bool {
         if let studyEndDate = self.studyEndDate {
-            return !studyEndDate.isInFuture && !hasCompletedTerminationSurvey
+            return !studyEndDate.isInFuture && !hasCompletedTerminationSurvey && self.terminatedByUserDate == nil
         }
         
         return false

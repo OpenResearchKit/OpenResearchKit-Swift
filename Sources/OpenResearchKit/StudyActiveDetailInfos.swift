@@ -15,6 +15,8 @@ public struct StudyActiveDetailInfos: View {
     
     @State var showTerminationDialog = false
     
+    @Environment(\.presentationMode) var presentationMode
+    
     public init() { }
     
     public var body: some View {
@@ -62,6 +64,8 @@ public struct StudyActiveDetailInfos: View {
                     .confirmationDialog("Would you like to end participation in the scientific study?", isPresented: $showTerminationDialog) {
                         Button("Terminate", role: .destructive) {
                             study.terminateParticipationImmediately()
+                            self.presentationMode.wrappedValue.dismiss()
+                            
                         }
                         
                         Button("Continue Participating", role: .none) {
