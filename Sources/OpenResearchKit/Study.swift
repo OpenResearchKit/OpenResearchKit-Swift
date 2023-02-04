@@ -32,7 +32,7 @@ public class Study: ObservableObject {
     public let title: String
     let subtitle: String
     public let duration: TimeInterval
-    let studyIdentifier: String
+    public let studyIdentifier: String
     public let universityLogo: UIImage
     public let contactEmail: String
     let introductorySurveyURL: URL
