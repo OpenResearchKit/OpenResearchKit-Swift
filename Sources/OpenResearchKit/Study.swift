@@ -244,7 +244,10 @@ public class Study: ObservableObject {
     
     public var assignedGroup: String? {
         get {
-            studyUserDefaults["assignedGroup"] as? String
+            if self.isActivelyRunning {
+                return studyUserDefaults["assignedGroup"] as? String
+            }
+            return nil
         }
         
         set {
