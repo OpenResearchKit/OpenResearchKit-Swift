@@ -31,6 +31,10 @@ struct SurveyWebView: View {
                         // automatically opens completion survey
                         study.saveUserConsentHasBeenGiven(consentTimestamp: Date())
                        
+                        if let group = parameters["assignedGroup"] {
+                            study.assignedGroup = group
+                        }
+                        
                         study.introSurveyComletionHandler?(
                             parameters
                         )
