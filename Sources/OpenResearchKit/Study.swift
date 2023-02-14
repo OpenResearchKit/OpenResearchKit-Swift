@@ -242,6 +242,21 @@ public class Study: ObservableObject {
         }
     }
     
+    public var assignedGroup: String? {
+        get {
+            studyUserDefaults["assignedGroup"] as? String
+        }
+        
+        set {
+            var studyUserDefaults = self.studyUserDefaults
+            studyUserDefaults["assignedGroup"] = newValue
+            self.save(studyUserDefaults: studyUserDefaults)
+            DispatchQueue.main.async {
+                self.objectWillChange.send()
+            }
+        }
+    }
+    
     public var studyEndDate: Date? {
         if let terminatedByUserDate = self.terminatedByUserDate {
             return terminatedByUserDate
