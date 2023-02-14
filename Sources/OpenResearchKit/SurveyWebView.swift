@@ -24,13 +24,16 @@ struct SurveyWebView: View {
     
     var body: some View {
         NavigationView {
-            WebView(url: study.surveyUrl(for: surveyType), completion: { success in
+            WebView(url: study.surveyUrl(for: surveyType), completion: { (success, parameters) in
                 if surveyType == .introductory {
                     if success {
                         // schedule push notification for study completed date -> in 6 weeks
                         // automatically opens completion survey
                         study.saveUserConsentHasBeenGiven(consentTimestamp: Date())
                        
+                        study.introSurveyComletionHandler?(
+                            parameters
+                        )
                         
                         let alert = UIAlertController(title: "Post-Study-Questionnaire", message: "We’ll send you a push notification when the study is concluded to fill out the post-questionnaire.", preferredStyle: .alert)
                         let proceedAction = UIAlertAction(title: "Proceed", style: .default) { _ in
@@ -78,7 +81,7 @@ import WebKit
 struct WebView: UIViewRepresentable {
     
     let url: URL
-    let completion: (Bool) -> ()
+    let completion: (Bool, [String: String]) -> ()
     
     func makeUIView(context: Context) -> WKWebView {
         let webView = WKWebView()
@@ -101,25 +104,37 @@ struct WebView: UIViewRepresentable {
     }
     
     class Coordinator: NSObject, WKNavigationDelegate {
-        internal init(completion: @escaping (Bool) -> ()) {
+        internal init(completion: @escaping (Bool, [String: String]) -> ()) {
             self.completion = completion
         }
         
-        var completion: (Bool) -> ()
+        let completion: (Bool, [String: String]) -> ()
         
         func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
             if let url = webView.url {
                 let urlString = url.absoluteString
                 if urlString.contains("survey-callback/success") {
-                    self.completion(true)
+                    self.completion(true, url.queryParameters ?? [:])
                 } else if urlString.contains("survey-callback/failed") {
-                    self.completion(false)
+                    self.completion(false, url.queryParameters ?? [:])
                 }
             }
         }
         
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             
+        }
+    }
+}
+
+
+extension URL {
+    public var queryParameters: [String: String]? {
+        guard
+            let components = URLComponents(url: self, resolvingAgainstBaseURL: true),
+            let queryItems = components.queryItems else { return nil }
+        return queryItems.reduce(into: [String: String]()) { (result, item) in
+            result[item.name] = item.value
         }
     }
 }

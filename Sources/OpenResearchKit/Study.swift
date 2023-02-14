@@ -11,7 +11,7 @@ import SwiftUI
 
 public class Study: ObservableObject {
     
-    public init(title: String, subtitle: String, duration: TimeInterval, studyIdentifier: String, universityLogo: UIImage, contactEmail: String, introductorySurveyURL: URL, concludingSurveyURL: URL, fileSubmissionServer: URL, apiKey: String, uploadFrequency: TimeInterval) {
+    public init(title: String, subtitle: String, duration: TimeInterval, studyIdentifier: String, universityLogo: UIImage, contactEmail: String, introductorySurveyURL: URL, concludingSurveyURL: URL, fileSubmissionServer: URL, apiKey: String, uploadFrequency: TimeInterval, introSurveyComletionHandler: (([String: String]) -> Void)? ) {
         self.title = title
         self.subtitle = subtitle
         self.duration = duration
@@ -23,10 +23,7 @@ public class Study: ObservableObject {
         self.fileSubmissionServer = fileSubmissionServer
         self.apiKey = apiKey
         self.uploadFrequency = uploadFrequency
-        
-        #if DEBUG
-        LocalPushController.shared.sendLocalNotification(in: 10, title: "Concluding the study", subtitle: "Please fill out the post-study-survey", body: "It’s just 3 minutes to complete the survey.", identifier: "survey-completion-notification")
-        #endif
+        self.introSurveyComletionHandler = introSurveyComletionHandler
     }
     
     public let title: String
@@ -40,6 +37,7 @@ public class Study: ObservableObject {
     let fileSubmissionServer: URL
     let apiKey: String
     let uploadFrequency: TimeInterval
+    let introSurveyComletionHandler: (([String: String]) -> Void)?
     
     private var JSONFile: [ [String: Any] ] {
         if let jsonData = try? Data(contentsOf: jsonDataFilePath),
