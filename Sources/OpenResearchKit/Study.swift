@@ -46,10 +46,6 @@ public class Study: ObservableObject {
         self.uploadFrequency = uploadFrequency
         self.installDate = installDate
         self.defaults = defaults
-        
-#if DEBUG && !os(watchOS)
-        LocalPushController.shared.sendLocalNotification(in: 10, title: "Concluding our Study", subtitle: "Please fill out the post-study-survey", body: "It’s just 3 minutes to complete the survey.", identifier: "survey-completion-notification")
-#endif
     }
     
     public let title: String
