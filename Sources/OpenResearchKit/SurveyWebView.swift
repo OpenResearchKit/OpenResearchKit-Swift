@@ -35,10 +35,6 @@ struct SurveyWebView: View {
                             study.assignedGroup = group
                         }
                         
-                        study.introSurveyComletionHandler?(
-                            parameters
-                        )
-                        
                         let alert = UIAlertController(title: "Post-Study-Questionnaire", message: "We’ll send you a push notification when the study is concluded to fill out the post-questionnaire.", preferredStyle: .alert)
                         let proceedAction = UIAlertAction(title: "Proceed", style: .default) { _ in
                             LocalPushController.shared.askUserForPushPermission { success in
@@ -53,6 +49,9 @@ struct SurveyWebView: View {
                         
                         UIViewController.topViewController()?.dismiss(animated: false, completion: {
                             UIViewController.topViewController()?.present(alert, animated: true)
+                            study.introSurveyComletionHandler?(
+                                parameters
+                            )
                         })
                         
                     } else {
