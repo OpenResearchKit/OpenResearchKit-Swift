@@ -48,10 +48,10 @@ struct SurveyWebView: View {
                         alert.addAction(proceedAction)
                         
                         UIViewController.topViewController()?.dismiss(animated: false, completion: {
-                            UIViewController.topViewController()?.present(alert, animated: true)
                             study.introSurveyComletionHandler?(
                                 parameters
                             )
+                            UIViewController.topViewController()?.present(alert, animated: true)
                         })
                         
                     } else {
