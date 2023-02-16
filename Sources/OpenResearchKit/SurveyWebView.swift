@@ -51,7 +51,8 @@ struct SurveyWebView: View {
                             study.introSurveyComletionHandler?(
                                 parameters
                             )
-                            UIViewController.topViewController()?.present(alert, animated: true)
+                            
+                            UIViewController.topViewController()?.present(alert, animated: true)
                         })
                         
                     } else {
