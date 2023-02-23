@@ -11,7 +11,7 @@ import SwiftUI
 
 public class Study: ObservableObject {
     
-    public init(title: String, subtitle: String, duration: TimeInterval, studyIdentifier: String, universityLogo: UIImage, contactEmail: String, introductorySurveyURL: URL, concludingSurveyURL: URL, fileSubmissionServer: URL, apiKey: String, uploadFrequency: TimeInterval, introSurveyComletionHandler: (([String: String]) -> Void)? ) {
+    public init(title: String, subtitle: String, duration: TimeInterval, studyIdentifier: String, universityLogo: UIImage, contactEmail: String, introductorySurveyURL: URL, concludingSurveyURL: URL, fileSubmissionServer: URL, apiKey: String, uploadFrequency: TimeInterval, participationIsPossible: Bool = true, introSurveyComletionHandler: (([String: String]) -> Void)? ) {
         self.title = title
         self.subtitle = subtitle
         self.duration = duration
@@ -23,11 +23,13 @@ public class Study: ObservableObject {
         self.fileSubmissionServer = fileSubmissionServer
         self.apiKey = apiKey
         self.uploadFrequency = uploadFrequency
+        self.participationIsPossible = participationIsPossible
         self.introSurveyComletionHandler = introSurveyComletionHandler
     }
     
     public let title: String
     let subtitle: String
+    public var participationIsPossible: Bool
     public let duration: TimeInterval
     public let studyIdentifier: String
     public let universityLogo: UIImage
@@ -284,7 +286,10 @@ public class Study: ObservableObject {
     }
     
     public var shouldDisplayIntroductorySurvey: Bool {
-        !hasUserGivenConsent && !isDismissedByUser
+        if !participationIsPossible {
+            return false
+        }
+        return !hasUserGivenConsent && !isDismissedByUser
     }
     
     public var shouldDisplayTerminationSurvey: Bool {
