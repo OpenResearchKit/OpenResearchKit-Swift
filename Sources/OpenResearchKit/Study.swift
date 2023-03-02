@@ -319,7 +319,7 @@ public class Study: ObservableObject {
     
     
     
-    var studyUserDefaults: [String: Any] {
+    public var studyUserDefaults: [String: Any] {
         OpenResearchKit.researchKitDefaults[self.studyIdentifier] ?? [:]
     }
     
