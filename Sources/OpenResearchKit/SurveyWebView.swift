@@ -24,7 +24,7 @@ struct SurveyWebView: View {
     
     var body: some View {
         NavigationView {
-            WebView(url: study.surveyUrl(for: surveyType), completion: { (success, parameters) in
+            ResearchWebView(url: study.surveyUrl(for: surveyType), completion: { (success, parameters) in
                 if surveyType == .introductory {
                     if success {
                         // schedule push notification for study completed date -> in 6 weeks
@@ -82,12 +82,12 @@ struct SurveyWebView: View {
 import SwiftUI
 import WebKit
 
-public struct WebView: UIViewRepresentable {
+public struct ResearchWebView: UIViewRepresentable {
     
-    let url: URL
-    let completion: (Bool, [String: String]) -> ()
+    public let url: URL
+    public let completion: (Bool, [String: String]) -> ()
     
-    func makeUIView(context: Context) -> WKWebView {
+    public func makeUIView(context: Context) -> WKWebView {
         let webView = WKWebView()
         webView.navigationDelegate = context.coordinator
         
@@ -99,15 +99,15 @@ public struct WebView: UIViewRepresentable {
         return webView
     }
     
-    func updateUIView(_ webView: WKWebView, context: Context) {
+    public func updateUIView(_ webView: WKWebView, context: Context) {
         
     }
     
-    func makeCoordinator() -> Coordinator {
+    public func makeCoordinator() -> Coordinator {
         return Coordinator(completion: completion)
     }
     
-    class Coordinator: NSObject, WKNavigationDelegate {
+    public class Coordinator: NSObject, WKNavigationDelegate {
         internal init(completion: @escaping (Bool, [String: String]) -> ()) {
             self.completion = completion
         }
