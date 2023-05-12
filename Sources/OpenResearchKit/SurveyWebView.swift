@@ -82,7 +82,7 @@ struct SurveyWebView: View {
 import SwiftUI
 import WebKit
 
-struct WebView: UIViewRepresentable {
+public struct WebView: UIViewRepresentable {
     
     let url: URL
     let completion: (Bool, [String: String]) -> ()
