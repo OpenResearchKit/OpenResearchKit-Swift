@@ -114,7 +114,7 @@ public struct ResearchWebView: UIViewRepresentable {
         
         let completion: (Bool, [String: String]) -> ()
         
-        func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+        public func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
             if let url = webView.url {
                 let urlString = url.absoluteString
                 if urlString.contains("survey-callback/success") {
@@ -125,7 +125,7 @@ public struct ResearchWebView: UIViewRepresentable {
             }
         }
         
-        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             
         }
     }
