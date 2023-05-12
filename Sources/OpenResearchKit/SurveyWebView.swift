@@ -87,7 +87,7 @@ public struct ResearchWebView: UIViewRepresentable {
     public let url: URL
     public let completion: (Bool, [String: String]) -> ()
     
-    public init(url: URL, completion: (Bool, [String: String]) -> ()) {
+    public init(url: URL, completion: @escaping (Bool, [String: String]) -> ()) {
         self.url = url
         self.completion = completion
     }
