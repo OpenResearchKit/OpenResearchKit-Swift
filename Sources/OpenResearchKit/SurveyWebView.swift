@@ -87,6 +87,11 @@ public struct ResearchWebView: UIViewRepresentable {
     public let url: URL
     public let completion: (Bool, [String: String]) -> ()
     
+    public init(url: URL, completion: (Bool, [String: String]) -> ()) {
+        self.url = url
+        self.completion = completion
+    }
+    
     public func makeUIView(context: Context) -> WKWebView {
         let webView = WKWebView()
         webView.navigationDelegate = context.coordinator
