@@ -7,12 +7,12 @@
 
 import SafariServices
 import SwiftUI
+import UIKit
+import FredKit
 
 public struct StudyBannerInvitation: View {
     
     let surveyType: SurveyType
-    
-    @State var showSurvey: Bool = false
     
     @EnvironmentObject var study: Study
     
@@ -53,14 +53,12 @@ public struct StudyBannerInvitation: View {
             }
             
             Button(surveyType == .introductory ? "Learn more" : "Complete") {
-                self.showSurvey = true
+                let surveyView = UIHostingController(rootView: SurveyWebView(surveyType: surveyType).environmentObject(study))
+                surveyView.modalPresentationStyle = .fullScreen
+                UIViewController.topViewController()?.present(surveyView, animated: true)
             }
             .buttonStyle(BigButtonStyle(backgroundColor: Color.accentColor.opacity(0.22), textColor: Color.accentColor))
             .padding(.vertical)
-        }
-        .fullScreenCover(isPresented: $showSurvey) {
-            SurveyWebView(surveyType: surveyType)
-                .environmentObject(study)
         }
     }
 }
