@@ -21,14 +21,15 @@ public struct StudyBannerInvitation: View {
         VStack(alignment: .leading, spacing: 2) {
             HStack {
                 Spacer()
-                Image(systemName: "xmark.circle.fill")
-                    .resizable()
-                    .frame(width: 24, height: 24)
-                    .foregroundColor(.secondary)
-                    .opacity(0.75)
-                    .onTapGesture {
-                        study.isDismissedByUser = true
-                    }
+                Button {
+                    study.isDismissedByUser = true
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .resizable()
+                        .frame(width: 24, height: 24)
+                        .foregroundColor(.secondary)
+                        .opacity(0.75)
+                }
             }
             Image(uiImage: study.universityLogo)
                 .resizable()
@@ -51,18 +52,10 @@ public struct StudyBannerInvitation: View {
                     .foregroundColor(.secondary)
             }
             
-            HStack {
-                Spacer()
-                Text(surveyType == .introductory ? "Learn more" : "Complete")
-                    .bold()
-                    .foregroundColor(Color.accentColor)
-                Spacer()
+            Button(surveyType == .introductory ? "Learn more" : "Complete") {
+                self.showSurvey = true
             }
-            .padding()
-            .background(RoundedRectangle(cornerRadius: 8).foregroundColor(Color.accentColor.opacity(0.22)))
-            .onTapGesture {
-                showSurvey = true
-            }
+            .buttonStyle(BigButtonStyle(backgroundColor: Color.accentColor.opacity(0.22), textColor: Color.accentColor))
             .padding(.vertical)
         }
         .fullScreenCover(isPresented: $showSurvey) {
