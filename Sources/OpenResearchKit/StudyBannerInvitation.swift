@@ -8,7 +8,6 @@
 import SafariServices
 import SwiftUI
 import UIKit
-import FredKit
 
 public struct StudyBannerInvitation: View {
     
