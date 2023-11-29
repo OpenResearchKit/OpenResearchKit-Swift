@@ -341,7 +341,13 @@ public class Study: ObservableObject {
         case .introductory:
             return self.introductorySurveyURL.appendingQueryItem(name: "uuid", value: self.userIdentifier)
         case .completion:
-            return self.concludingSurveyURL.appendingQueryItem(name: "uuid", value: self.userIdentifier)
+            let url = self.concludingSurveyURL.appendingQueryItem(name: "uuid", value: self.userIdentifier)
+            
+            if let assignedGroup = self.assignedGroup {
+                return url.appendingQueryItem(name: "assignedGroup", value: self.assignedGroup)
+            }
+            
+            return url
         }
     }
 }
