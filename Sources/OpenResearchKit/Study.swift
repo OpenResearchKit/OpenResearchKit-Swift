@@ -343,7 +343,7 @@ public class Study: ObservableObject {
         case .completion:
             let url = self.concludingSurveyURL.appendingQueryItem(name: "uuid", value: self.userIdentifier)
             
-            if let assignedGroup = self.assignedGroup {
+            if let assignedGroup = self.studyUserDefaults["assignedGroup"] as? String {
                 return url.appendingQueryItem(name: "assignedGroup", value: self.assignedGroup)
             }
             
