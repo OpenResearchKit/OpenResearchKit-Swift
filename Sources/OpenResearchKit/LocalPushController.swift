@@ -88,6 +88,16 @@ class LocalPushController {
         let appName = dictionary["CFBundleName"] as! String
         return appName
     }
+    
+    static func clearNotifications(with identifier: String) {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [
+            identifier
+        ])
+        
+        UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: [
+            identifier
+        ])
+    }
 }
 
 extension UIViewController {

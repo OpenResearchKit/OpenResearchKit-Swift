@@ -7,6 +7,7 @@
 
 import SwiftUI
 import WebKit
+import FredKit
 
 enum SurveyType {
     case introductory, completion
@@ -43,6 +44,8 @@ struct SurveyWebView: View {
                                 pushDuration = 10
                                 #endif
                                 LocalPushController.shared.sendLocalNotification(in: pushDuration, title: "Concluding the study", subtitle: "Thanks for participating. Please fill out one last survey.", body: "It only takes 3 minutes to complete this survey.", identifier: "survey-completion-notification")
+                                
+                                LocalPushController.shared.sendLocalNotification(in: pushDuration + 3 * TimeInterval.day, title: "Survey Completion Still Pending", subtitle: "Thanks for participating. You can complete the exit survey at any time.", body: "It only takes about 3 minutes.", identifier: "survey-completion-notification")
                             }
                         }
                         alert.addAction(proceedAction)
@@ -59,6 +62,9 @@ struct SurveyWebView: View {
                         presentationMode.wrappedValue.dismiss()
                     }
                 } else if surveyType == .completion {
+                    
+                    LocalPushController.clearNotifications(with: "survey-completion-notification")
+                    
                     presentationMode.wrappedValue.dismiss()
                     study.hasCompletedTerminationSurvey = true
                 }
