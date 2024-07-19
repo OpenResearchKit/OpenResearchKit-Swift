@@ -320,7 +320,7 @@ public class Study: ObservableObject {
         return !hasUserGivenConsent && !isDismissedByUser
     }
     
-    func manuallyGiveUserConsent(timeStamp: Date = Date(), userId: String?) {
+    public func manuallyGiveUserConsent(timeStamp: Date = Date(), userId: String?) {
         self.saveUserConsentHasBeenGiven(consentTimestamp: timeStamp)
         if let userId {
             self.userIdentifier = userId
