@@ -30,11 +30,14 @@ public struct StudyBannerInvitation: View {
                         .opacity(0.75)
                 }
             }
-            Image(uiImage: study.universityLogo)
-                .resizable()
-                .scaledToFit()
-                .mask(RoundedRectangle(cornerRadius: 12))
-                .padding(.vertical)
+            
+            if let image = study.universityLogo {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .mask(RoundedRectangle(cornerRadius: 12))
+                    .padding(.vertical)
+            }
             if surveyType == .introductory {
                 Text(study.title)
                     .foregroundColor(.primary)

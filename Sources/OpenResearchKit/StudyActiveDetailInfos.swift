@@ -21,10 +21,12 @@ public struct StudyActiveDetailInfos: View {
     public var body: some View {
         List {
             
-            Section {
-                Image(uiImage: study.universityLogo)
-                    .resizable()
-                    .scaledToFit()
+            if let image = study.universityLogo {
+                Section {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                }
             }
             
             Section {

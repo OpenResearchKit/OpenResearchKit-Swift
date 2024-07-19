@@ -16,7 +16,7 @@ public class Study: ObservableObject {
         subtitle: String,
         duration: TimeInterval,
         studyIdentifier: String,
-        universityLogo: UIImage,
+        universityLogo: UIImage?,
         contactEmail: String,
         introductorySurveyURL: URL?,
         concludingSurveyURL: URL,
@@ -48,7 +48,7 @@ public class Study: ObservableObject {
     public var participationIsPossible: Bool
     public let duration: TimeInterval
     public let studyIdentifier: String
-    public let universityLogo: UIImage
+    public let universityLogo: UIImage?
     public let contactEmail: String
     let introductorySurveyURL: URL?
     let concludingSurveyURL: URL
