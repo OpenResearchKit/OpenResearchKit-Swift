@@ -7,7 +7,6 @@
 
 import Foundation
 import SwiftUI
-import FredKit
 
 public struct StudyActiveDetailInfos: View {
     
@@ -67,7 +66,7 @@ public struct StudyActiveDetailInfos: View {
                     Text("Last upload")
                     Spacer()
                     if let date = self.lastUploadDate {
-                        Text(date.humanReadableDateAndTimeString)
+                        Text(date.description)
                             .foregroundColor(.secondary)
                     } else {
                         Text("–")
