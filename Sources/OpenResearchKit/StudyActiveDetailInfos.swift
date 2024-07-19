@@ -55,7 +55,7 @@ public struct StudyActiveDetailInfos: View {
             
             Section {
                 HStack {
-                    Text("Contributed")
+                    Text("Collected")
                     Spacer()
                     Text("\(self.studyData.count) data points")
                         .foregroundColor(.secondary)
@@ -72,6 +72,14 @@ public struct StudyActiveDetailInfos: View {
                             .foregroundColor(.secondary)
                     }
                     
+                }
+                
+                NavigationLink("View Data") {
+                    List {
+                        ForEach(Array(self.studyData.enumerated()), id: \.offset) { item in
+                            Text(item.element.description)
+                        }
+                    }
                 }
             }
             
