@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUI
+import FredKit
 
 public struct StudyActiveDetailInfos: View {
     
@@ -47,6 +48,28 @@ public struct StudyActiveDetailInfos: View {
                     }
                 Text("Consent date: `\(study.userConsentDate?.description ?? "n/a")`")
                 Text("End date: `\(study.studyEndDate?.description ?? "n/a")`")
+            }
+            
+            Section {
+                HStack {
+                    Text("Contributed")
+                    Spacer()
+                    Text("\(study.JSONFile.count) data points")
+                        .foregroundColor(.secondary)
+                }
+                
+                HStack {
+                    Text("Last upload")
+                    Spacer()
+                    if let date = study.lastSuccessfulUploadDate {
+                        Text(date.humanReadableDateAndTimeString)
+                            .foregroundColor(.secondary)
+                    } else {
+                        Text("–")
+                            .foregroundColor(.secondary)
+                    }
+                    
+                }
             }
             
             

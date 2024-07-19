@@ -58,7 +58,7 @@ public class Study: ObservableObject {
     let introSurveyComletionHandler: (([String: String]) -> Void)?
     let sharedAppGroupIdentifier: String?
     
-    private var JSONFile: [ [String: Any] ] {
+    internal var JSONFile: [ [String: Any] ] {
         if let jsonData = try? Data(contentsOf: jsonDataFilePath),
            let decoded = try? JSONSerialization.jsonObject(with: jsonData, options: []),
            let json = decoded as? [ [String: Any] ] {
