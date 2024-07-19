@@ -11,7 +11,22 @@ import SwiftUI
 
 public class Study: ObservableObject {
     
-    public init(title: String, subtitle: String, duration: TimeInterval, studyIdentifier: String, universityLogo: UIImage, contactEmail: String, introductorySurveyURL: URL, concludingSurveyURL: URL, fileSubmissionServer: URL, apiKey: String, uploadFrequency: TimeInterval, participationIsPossible: Bool = true, introSurveyComletionHandler: (([String: String]) -> Void)? ) {
+    public init(
+        title: String,
+        subtitle: String,
+        duration: TimeInterval,
+        studyIdentifier: String,
+        universityLogo: UIImage,
+        contactEmail: String,
+        introductorySurveyURL: URL?,
+        concludingSurveyURL: URL,
+        fileSubmissionServer: URL,
+        apiKey: String,
+        uploadFrequency: TimeInterval,
+        participationIsPossible: Bool = true,
+        sharedAppGroupIdentifier: String? = nil,
+        introSurveyComletionHandler: (([String: String]) -> Void)?
+    ) {
         self.title = title
         self.subtitle = subtitle
         self.duration = duration
@@ -24,6 +39,7 @@ public class Study: ObservableObject {
         self.apiKey = apiKey
         self.uploadFrequency = uploadFrequency
         self.participationIsPossible = participationIsPossible
+        self.sharedAppGroupIdentifier = sharedAppGroupIdentifier
         self.introSurveyComletionHandler = introSurveyComletionHandler
     }
     
@@ -34,12 +50,13 @@ public class Study: ObservableObject {
     public let studyIdentifier: String
     public let universityLogo: UIImage
     public let contactEmail: String
-    let introductorySurveyURL: URL
+    let introductorySurveyURL: URL?
     let concludingSurveyURL: URL
     let fileSubmissionServer: URL
     let apiKey: String
     let uploadFrequency: TimeInterval
     let introSurveyComletionHandler: (([String: String]) -> Void)?
+    let sharedAppGroupIdentifier: String?
     
     private var JSONFile: [ [String: Any] ] {
         if let jsonData = try? Data(contentsOf: jsonDataFilePath),
@@ -170,8 +187,14 @@ public class Study: ObservableObject {
     }
     
     private var jsonDataFilePath: URL {
+        
+        if let sharedAppGroupIdentifier {
+            let fileManager = FileManager.default
+            let directory = fileManager.containerURL(forSecurityApplicationGroupIdentifier: sharedAppGroupIdentifier)!
+            return directory.appendingPathComponent(fileName)
+        }
+        
         let readPath = URL(fileURLWithPath: documentsDirectory).appendingPathComponent(fileName)
-        print(readPath.absoluteString)
         return readPath
     }
     
@@ -286,10 +309,22 @@ public class Study: ObservableObject {
     }
     
     public var shouldDisplayIntroductorySurvey: Bool {
+        
+        if introductorySurveyURL == nil {
+            return false
+        }
+        
         if !participationIsPossible {
             return false
         }
         return !hasUserGivenConsent && !isDismissedByUser
+    }
+    
+    func manuallyGiveUserConsent(timeStamp: Date = Date(), userId: String?) {
+        self.saveUserConsentHasBeenGiven(consentTimestamp: timeStamp)
+        if let userId {
+            self.userIdentifier = userId
+        }
     }
     
     public var shouldDisplayTerminationSurvey: Bool {
@@ -300,31 +335,38 @@ public class Study: ObservableObject {
         return false
     }
     
-    public var userIdentifier: String {
-        var studyUserDefaults = self.studyUserDefaults
-        
-        if let localUserIdentifier = studyUserDefaults["localUserIdentifier"] as? String {
-            return localUserIdentifier
+    public private(set) var userIdentifier: String {
+        get {
+            var studyUserDefaults = self.studyUserDefaults
+            
+            if let localUserIdentifier = studyUserDefaults["localUserIdentifier"] as? String {
+                return localUserIdentifier
+            }
+            
+            let newLocalUserIdentifier = "\(studyIdentifier)-\(UUID().uuidString)"
+            self.userIdentifier = newLocalUserIdentifier
+            return newLocalUserIdentifier
         }
         
-        let newLocalUserIdentifier = "\(studyIdentifier)-\(UUID().uuidString)"
-        studyUserDefaults["localUserIdentifier"] = newLocalUserIdentifier
-        self.save(studyUserDefaults: studyUserDefaults)
-        DispatchQueue.main.async {
-            self.objectWillChange.send()
+        set {
+            var studyUserDefaults = self.studyUserDefaults
+            studyUserDefaults["localUserIdentifier"] = newValue
+            self.save(studyUserDefaults: studyUserDefaults)
+            DispatchQueue.main.async {
+                self.objectWillChange.send()
+            }
         }
-        return newLocalUserIdentifier
     }
     
     
     
     
     public var studyUserDefaults: [String: Any] {
-        OpenResearchKit.researchKitDefaults[self.studyIdentifier] ?? [:]
+        OpenResearchKit.researchKitDefaults(appGroup: self.sharedAppGroupIdentifier)[self.studyIdentifier] ?? [:]
     }
     
     func save(studyUserDefaults: [String: Any]) {
-        OpenResearchKit.saveStudyDefaults(defaults: studyUserDefaults, studyIdentifier: self.studyIdentifier)
+        OpenResearchKit.saveStudyDefaults(defaults: studyUserDefaults, appGroup: self.sharedAppGroupIdentifier, studyIdentifier: self.studyIdentifier)
     }
     
     public func showCompletionSurvey() {
@@ -336,10 +378,10 @@ public class Study: ObservableObject {
         })
     }
     
-    func surveyUrl(for surveyType: SurveyType) -> URL {
+    func surveyUrl(for surveyType: SurveyType) -> URL? {
         switch surveyType {
         case .introductory:
-            return self.introductorySurveyURL.appendingQueryItem(name: "uuid", value: self.userIdentifier)
+            return self.introductorySurveyURL?.appendingQueryItem(name: "uuid", value: self.userIdentifier)
         case .completion:
             let url = self.concludingSurveyURL.appendingQueryItem(name: "uuid", value: self.userIdentifier)
             
@@ -353,16 +395,21 @@ public class Study: ObservableObject {
 }
 
 struct OpenResearchKit {
-    static var researchKitDefaults: [String: [String: Any]] {
-        get {
-            UserDefaults.standard.dictionary(forKey: "open_research_kit") as? [String: [String: Any]] ?? [:]
+    static func researchKitDefaults(appGroup: String?) -> [String: [String: Any]] {
+        if let appGroup {
+            return UserDefaults(suiteName: appGroup)!.dictionary(forKey: "open_research_kit") as? [String: [String: Any]] ?? [:]
         }
+        return UserDefaults.standard.dictionary(forKey: "open_research_kit") as? [String: [String: Any]] ?? [:]
     }
     
-    static func saveStudyDefaults(defaults: [String: Any], studyIdentifier: String) {
-        var currentDefaults = researchKitDefaults
+    static func saveStudyDefaults(defaults: [String: Any], appGroup: String?, studyIdentifier: String) {
+        var currentDefaults = researchKitDefaults(appGroup: appGroup)
         currentDefaults[studyIdentifier] = defaults
-        UserDefaults.standard.set(currentDefaults, forKey: "open_research_kit")
+        if let appGroup {
+            UserDefaults(suiteName: appGroup)!.set(currentDefaults, forKey: "open_research_kit")
+        } else {
+            UserDefaults.standard.set(currentDefaults, forKey: "open_research_kit")
+        }
     }
 }
 
