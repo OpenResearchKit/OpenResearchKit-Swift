@@ -15,6 +15,9 @@ public struct StudyActiveDetailInfos: View {
     
     @State var showTerminationDialog = false
     
+    @State var lastUploadDate: Date?
+    @State var studyData: [ [String: Any] ] = []
+    
     public var body: some View {
         List {
             
@@ -54,14 +57,14 @@ public struct StudyActiveDetailInfos: View {
                 HStack {
                     Text("Contributed")
                     Spacer()
-                    Text("\(study.JSONFile.count) data points")
+                    Text("\(self.studyData.count) data points")
                         .foregroundColor(.secondary)
                 }
                 
                 HStack {
                     Text("Last upload")
                     Spacer()
-                    if let date = study.lastSuccessfulUploadDate {
+                    if let date = self.lastUploadDate {
                         Text(date.humanReadableDateAndTimeString)
                             .foregroundColor(.secondary)
                     } else {
@@ -94,6 +97,10 @@ public struct StudyActiveDetailInfos: View {
             
         }
         .navigationBarTitle(study.title)
+        .onAppear {
+            self.lastUploadDate = study.lastSuccessfulUploadDate
+            self.studyData = study.JSONFile
+        }
     }
     
     var isDebug: Bool {
