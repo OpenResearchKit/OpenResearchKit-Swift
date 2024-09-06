@@ -9,6 +9,11 @@ import Foundation
 import UIKit
 import SwiftUI
 
+public struct MidStudySurvey {
+    let showAfter: TimeInterval
+    let url: URL
+}
+
 public class Study: ObservableObject {
     
     public init(
@@ -19,6 +24,7 @@ public class Study: ObservableObject {
         universityLogo: UIImage?,
         contactEmail: String,
         introductorySurveyURL: URL?,
+        midStudySurvey: MidStudySurvey? = nil,
         concludingSurveyURL: URL,
         fileSubmissionServer: URL,
         apiKey: String,
@@ -34,6 +40,7 @@ public class Study: ObservableObject {
         self.universityLogo = universityLogo
         self.contactEmail = contactEmail
         self.introductorySurveyURL = introductorySurveyURL
+        self.midStudySurvey = midStudySurvey
         self.concludingSurveyURL = concludingSurveyURL
         self.fileSubmissionServer = fileSubmissionServer
         self.apiKey = apiKey
@@ -51,6 +58,7 @@ public class Study: ObservableObject {
     public let universityLogo: UIImage?
     public let contactEmail: String
     let introductorySurveyURL: URL?
+    let midStudySurvey: MidStudySurvey?
     let concludingSurveyURL: URL
     let fileSubmissionServer: URL
     let apiKey: String
@@ -227,6 +235,30 @@ public class Study: ObservableObject {
         self.save(studyUserDefaults: studyUserDefaults)
         DispatchQueue.main.async {
             self.objectWillChange.send()
+            
+            let alert = UIAlertController(title: "Post-Study-Questionnaire", message: "We’ll send you a push notification when the study is concluded to fill out the post-questionnaire.", preferredStyle: .alert)
+            let proceedAction = UIAlertAction(title: "Proceed", style: .default) { _ in
+                LocalPushController.shared.askUserForPushPermission { success in
+                    var pushDuration = self.duration
+                    #if DEBUG
+                    pushDuration = 10
+                    #endif
+                    
+                    if let midStudySurvey = self.midStudySurvey {
+                        LocalPushController.shared.sendLocalNotification(in: midStudySurvey.showAfter, title: "Mid-Study Survey", subtitle: "Please fill out our short mid-study survey.", body: "It only takes 3 minutes to complete this survey.", identifier: "mid-study-survey-notification")
+                        
+                        LocalPushController.shared.sendLocalNotification(in: midStudySurvey.showAfter + 3 * 24 * 60 * 60, title: "Survey Completion Still Pending", subtitle: "Reminder: Please fill out our short mid-study survey.", body: "It only takes about 3 minutes.", identifier: "mid-study-survey-notification")
+                    }
+                    
+                    
+                    
+                    LocalPushController.shared.sendLocalNotification(in: pushDuration, title: "Concluding the study", subtitle: "Thanks for participating. Please fill out one last survey.", body: "It only takes 3 minutes to complete this survey.", identifier: "survey-completion-notification")
+                    
+                    LocalPushController.shared.sendLocalNotification(in: pushDuration + 3 * 24 * 60 * 60, title: "Survey Completion Still Pending", subtitle: "Thanks for participating. You can complete the exit survey at any time.", body: "It only takes about 3 minutes.", identifier: "survey-completion-notification")
+                }
+            }
+            alert.addAction(proceedAction)
+            UIViewController.topViewController()?.present(alert, animated: true)
         }
     }
     
@@ -304,6 +336,27 @@ public class Study: ObservableObject {
             self.save(studyUserDefaults: studyUserDefaults)
             DispatchQueue.main.async {
                 self.objectWillChange.send()
+                if newValue {
+                    LocalPushController.clearNotifications(with: "survey-completion-notification")
+                }
+            }
+        }
+    }
+    
+    public var hasCompletedMidSurvey: Bool {
+        get {
+            return studyUserDefaults["hasCompletedMidSurvey"] as? Bool ?? false
+        }
+        
+        set {
+            var studyUserDefaults = self.studyUserDefaults
+            studyUserDefaults["hasCompletedMidSurvey"] = newValue
+            self.save(studyUserDefaults: studyUserDefaults)
+            DispatchQueue.main.async {
+                self.objectWillChange.send()
+                if newValue {
+                    LocalPushController.clearNotifications(with: "mid-study-survey-notification")
+                }
             }
         }
     }
@@ -325,6 +378,19 @@ public class Study: ObservableObject {
         if let userId {
             self.userIdentifier = userId
         }
+    }
+    
+    public var shouldDisplayMidSurvey: Bool {
+        
+        if let midStudySurvey, let userConsentDate {
+            let showAfterDate = userConsentDate.addingTimeInterval(midStudySurvey.showAfter)
+            if !showAfterDate.isInFuture && !hasCompletedMidSurvey {
+                return true
+            }
+        }
+        
+        
+        return false
     }
     
     public var shouldDisplayTerminationSurvey: Bool {
@@ -378,6 +444,19 @@ public class Study: ObservableObject {
         })
     }
     
+    public func showMidStudySurvey() {
+        guard let midStudySurvey else {
+            return
+        }
+        
+        let surveyView = SurveyWebView(surveyType: .mid).environmentObject(self)
+        let hostingCOntroller = UIHostingController(rootView: surveyView)
+        hostingCOntroller.modalPresentationStyle = .fullScreen
+        UIApplication.shared.keyWindow?.rootViewController?.dismiss(animated: false, completion: {
+            UIViewController.topViewController()?.present(hostingCOntroller, animated: true)
+        })
+    }
+    
     func surveyUrl(for surveyType: SurveyType) -> URL? {
         switch surveyType {
         case .introductory:
@@ -390,6 +469,8 @@ public class Study: ObservableObject {
             }
             
             return url
+        case .mid:
+            return self.midStudySurvey?.url
         }
     }
 }

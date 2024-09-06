@@ -9,7 +9,7 @@ import SwiftUI
 import WebKit
 
 enum SurveyType {
-    case introductory, completion
+    case introductory, mid, completion
 }
 
 import UIKit
@@ -30,43 +30,30 @@ struct SurveyWebView: View {
                         if success {
                             // schedule push notification for study completed date -> in 6 weeks
                             // automatically opens completion survey
-                            study.saveUserConsentHasBeenGiven(consentTimestamp: Date())
                            
                             if let group = parameters["assignedGroup"] {
                                 study.assignedGroup = group
                             }
                             
-                            let alert = UIAlertController(title: "Post-Study-Questionnaire", message: "We’ll send you a push notification when the study is concluded to fill out the post-questionnaire.", preferredStyle: .alert)
-                            let proceedAction = UIAlertAction(title: "Proceed", style: .default) { _ in
-                                LocalPushController.shared.askUserForPushPermission { success in
-                                    var pushDuration = study.duration
-                                    #if DEBUG
-                                    pushDuration = 10
-                                    #endif
-                                    LocalPushController.shared.sendLocalNotification(in: pushDuration, title: "Concluding the study", subtitle: "Thanks for participating. Please fill out one last survey.", body: "It only takes 3 minutes to complete this survey.", identifier: "survey-completion-notification")
-                                    
-                                    LocalPushController.shared.sendLocalNotification(in: pushDuration + 3 * 24 * 60 * 60, title: "Survey Completion Still Pending", subtitle: "Thanks for participating. You can complete the exit survey at any time.", body: "It only takes about 3 minutes.", identifier: "survey-completion-notification")
-                                }
-                            }
-                            alert.addAction(proceedAction)
+                            
                             
                             UIViewController.topViewController()?.dismiss(animated: false, completion: {
                                 study.introSurveyComletionHandler?(
                                     parameters
                                 )
                                 
-                                UIViewController.topViewController()?.present(alert, animated: true)
+                                study.saveUserConsentHasBeenGiven(consentTimestamp: Date())
                             })
                             
                         } else {
                             presentationMode.wrappedValue.dismiss()
                         }
                     } else if surveyType == .completion {
-                        
-                        LocalPushController.clearNotifications(with: "survey-completion-notification")
-                        
                         presentationMode.wrappedValue.dismiss()
                         study.hasCompletedTerminationSurvey = true
+                    } else if surveyType == .mid {
+                        presentationMode.wrappedValue.dismiss()
+                        study.hasCompletedMidSurvey = true
                     }
                 })
                 .navigationTitle("Survey")
