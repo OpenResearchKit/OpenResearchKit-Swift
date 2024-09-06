@@ -234,7 +234,7 @@ public class Study: ObservableObject {
         return studyUserDefaults["userConsentDate"] as? Date
     }
     
-    public func saveUserConsentHasBeenGiven(consentTimestamp: Date) {
+    public func saveUserConsentHasBeenGiven(consentTimestamp: Date, completion: @escaping () -> Void) {
         var studyUserDefaults = self.studyUserDefaults
         studyUserDefaults["userConsentDate"] = consentTimestamp
         self.save(studyUserDefaults: studyUserDefaults)
@@ -260,6 +260,8 @@ public class Study: ObservableObject {
                     LocalPushController.shared.sendLocalNotification(in: pushDuration, title: "Concluding the study", subtitle: "Thanks for participating. Please fill out one last survey.", body: "It only takes 3 minutes to complete this survey.", identifier: "survey-completion-notification")
                     
                     LocalPushController.shared.sendLocalNotification(in: pushDuration + 3 * 24 * 60 * 60, title: "Survey Completion Still Pending", subtitle: "Thanks for participating. You can complete the exit survey at any time.", body: "It only takes about 3 minutes.", identifier: "survey-completion-notification")
+                    
+                    completion()
                 }
             }
             alert.addAction(proceedAction)
@@ -378,8 +380,8 @@ public class Study: ObservableObject {
         return !hasUserGivenConsent && !isDismissedByUser
     }
     
-    public func manuallyGiveUserConsent(timeStamp: Date = Date(), userId: String?) {
-        self.saveUserConsentHasBeenGiven(consentTimestamp: timeStamp)
+    public func manuallyGiveUserConsent(timeStamp: Date = Date(), userId: String?, completion: @escaping () -> Void) {
+        self.saveUserConsentHasBeenGiven(consentTimestamp: timeStamp, completion: completion)
         if let userId {
             self.userIdentifier = userId
         }

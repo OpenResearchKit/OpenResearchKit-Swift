@@ -35,15 +35,13 @@ struct SurveyWebView: View {
                                 study.assignedGroup = group
                             }
                             
-                            
-                            
-                            UIViewController.topViewController()?.dismiss(animated: false, completion: {
+                            study.saveUserConsentHasBeenGiven(consentTimestamp: Date()) {
+                                presentationMode.wrappedValue.dismiss()
+                                
                                 study.introSurveyComletionHandler?(
                                     parameters
                                 )
-                                
-                                study.saveUserConsentHasBeenGiven(consentTimestamp: Date())
-                            })
+                            }
                             
                         } else {
                             presentationMode.wrappedValue.dismiss()
