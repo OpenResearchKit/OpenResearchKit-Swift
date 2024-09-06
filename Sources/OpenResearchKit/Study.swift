@@ -10,6 +10,11 @@ import UIKit
 import SwiftUI
 
 public struct MidStudySurvey {
+    public init(showAfter: TimeInterval, url: URL) {
+        self.showAfter = showAfter
+        self.url = url
+    }
+    
     let showAfter: TimeInterval
     let url: URL
 }
