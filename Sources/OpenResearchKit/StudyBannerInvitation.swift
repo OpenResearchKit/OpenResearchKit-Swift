@@ -45,6 +45,13 @@ public struct StudyBannerInvitation: View {
                     .bold()
                 Text(study.subtitle)
                     .foregroundColor(.secondary)
+            } else if surveyType == .mid {
+                Text(study.title)
+                    .foregroundColor(.primary)
+                    .font(.headline)
+                    .bold()
+                Text("Please fill out the mid-study survey now to help our scientific progress.")
+                    .foregroundColor(.secondary)
             } else {
                 Text(study.title)
                     .foregroundColor(.primary)

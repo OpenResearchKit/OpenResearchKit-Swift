@@ -221,6 +221,11 @@ public class Study: ObservableObject {
             .environmentObject(self)
     }
     
+    public var midSurveyBannerView: some View {
+        StudyBannerInvitation(surveyType: .mid)
+            .environmentObject(self)
+    }
+    
     public var detailInfosView: some View {
         StudyActiveDetailInfos()
             .environmentObject(self)
