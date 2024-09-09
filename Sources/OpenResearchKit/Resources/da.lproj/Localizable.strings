@@ -1,0 +1,10 @@
+//
+//  Localizable.strings
+//  OpenResearchKit
+//
+//  Created by Frederik Riedel on 09.09.24.
+//
+
+"Post-Study-Questionnaire" = "Spørgeskema efter undersøgelsen";
+
+"We’ll send you a push notification when the study is concluded to fill out the post-questionnaire." = "Vi sender dig en push-meddelelse, når undersøgelsen er afsluttet, så du kan udfylde spørgeskemaet efter undersøgelsen.";
