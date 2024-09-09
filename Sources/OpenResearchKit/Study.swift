@@ -8,7 +8,6 @@
 import Foundation
 import UIKit
 import SwiftUI
-import FredKit
 
 public struct MidStudySurvey {
     public init(showAfter: TimeInterval, url: URL) {
@@ -247,8 +246,11 @@ public class Study: ObservableObject {
         DispatchQueue.main.async {
             self.objectWillChange.send()
             
-            
-            let alert = UIAlertController(title: FredKitLocalizedString(string: "Post-Study-Questionnaire", bundle: Bundle.module), message: FredKitLocalizedString(string: "We’ll send you a push notification when the study is concluded to fill out the post-questionnaire.", bundle: Bundle.module), preferredStyle: .alert)
+            let alert = UIAlertController(
+                title: NSLocalizedString("Post-Study-Questionnaire", bundle: Bundle.module, comment: ""),
+                message: NSLocalizedString("We’ll send you a push notification when the study is concluded to fill out the post-questionnaire.", bundle: Bundle.module, comment: ""),
+                preferredStyle: .alert
+            )
             
             let proceedAction = UIAlertAction(title: "Ok", style: .default) { _ in
                 LocalPushController.shared.askUserForPushPermission { success in
@@ -260,9 +262,9 @@ public class Study: ObservableObject {
                     if let midStudySurvey = self.midStudySurvey {
                         LocalPushController.shared.sendLocalNotification(
                             in: midStudySurvey.showAfter,
-                            title: FredKitLocalizedString(string: "Mid-Study Survey", bundle: Bundle.module),
-                            subtitle: FredKitLocalizedString(string: "Please fill out our short mid-study survey.", bundle: Bundle.module),
-                            body: FredKitLocalizedString(string: "It only takes 3 minutes to complete this survey.", bundle: Bundle.module),
+                            title: NSLocalizedString("Mid-Study Survey", bundle: Bundle.module, comment: ""),
+                            subtitle: NSLocalizedString("Please fill out our short mid-study survey.", bundle: Bundle.module, comment: ""),
+                            body: NSLocalizedString("It only takes 3 minutes to complete this survey.", bundle: Bundle.module, comment: ""),
                             identifier: "mid-study-survey-notification"
                         )
                         
@@ -273,9 +275,9 @@ public class Study: ObservableObject {
                     
                     LocalPushController.shared.sendLocalNotification(
                         in: pushDuration,
-                        title: FredKitLocalizedString(string: "Concluding the study", bundle: Bundle.module),
-                        subtitle: FredKitLocalizedString(string: "Thanks for participating. Please fill out one last survey.", bundle: Bundle.module),
-                        body: FredKitLocalizedString(string: "It only takes 3 minutes to complete this survey.", bundle: Bundle.module),
+                        title: NSLocalizedString("Concluding the study", bundle: Bundle.module, comment: ""),
+                        subtitle: NSLocalizedString("Thanks for participating. Please fill out one last survey.", bundle: Bundle.module, comment: ""),
+                        body: NSLocalizedString("It only takes 3 minutes to complete this survey.", bundle: Bundle.module, comment: ""),
                         identifier: "survey-completion-notification"
                     )
                     
