@@ -24,6 +24,7 @@ public class Study: ObservableObject {
     public init(
         title: String,
         subtitle: String,
+        detailInfos: String? = nil,
         duration: TimeInterval,
         studyIdentifier: String,
         universityLogo: UIImage?,
@@ -53,6 +54,7 @@ public class Study: ObservableObject {
         self.participationIsPossible = participationIsPossible
         self.sharedAppGroupIdentifier = sharedAppGroupIdentifier
         self.introSurveyComletionHandler = introSurveyComletionHandler
+        self.detailInfos = detailInfos
     }
     
     public let title: String
@@ -70,6 +72,7 @@ public class Study: ObservableObject {
     let uploadFrequency: TimeInterval
     let introSurveyComletionHandler: (([String: String]) -> Void)?
     let sharedAppGroupIdentifier: String?
+    let detailInfos: String?
     
     internal var JSONFile: [ [String: Any] ] {
         if let jsonData = try? Data(contentsOf: jsonDataFilePath),

@@ -30,7 +30,11 @@ public struct StudyActiveDetailInfos: View {
             
             Section {
                 if study.isActivelyRunning || isDebug {
-                    Text("You are currently participating in a scientific study to help make this app even better. If you have any questions, please contact us.")
+                    if let detailInfos = study.detailInfos {
+                        Text(detailInfos)
+                    } else {
+                        Text("You are currently participating in a scientific study to help make this app even better. If you have any questions, please contact us.")
+                    }
                 }
                 
                 Button("Contact \(study.contactEmail)") {
