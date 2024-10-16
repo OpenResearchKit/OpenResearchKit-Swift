@@ -44,6 +44,7 @@ struct SurveyWebView: View {
                             }
                             
                         } else {
+                            study.isDismissedByUser = true
                             presentationMode.wrappedValue.dismiss()
                         }
                     } else if surveyType == .completion {
