@@ -33,6 +33,8 @@ struct SurveyWebView: View {
                            
                             if let group = parameters["assignedGroup"] {
                                 study.assignedGroup = group
+                            } else if let group = parameters["groupid"] {
+                                study.assignedGroup = group
                             }
                             
                             study.saveUserConsentHasBeenGiven(consentTimestamp: Date()) {
