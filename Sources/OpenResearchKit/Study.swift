@@ -502,7 +502,7 @@ public class Study: ObservableObject {
             
             return url
         case .mid:
-            return self.midStudySurvey?.url
+            return self.midStudySurvey?.url.appendingQueryItem(name: "uuid", value: self.userIdentifier)
         }
     }
 }
