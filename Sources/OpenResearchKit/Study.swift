@@ -271,7 +271,7 @@ public class Study: ObservableObject {
                             identifier: "mid-study-survey-notification"
                         )
                         
-                        LocalPushController.shared.sendLocalNotification(in: midStudySurvey.showAfter + 3 * 24 * 60 * 60, title: "Survey Completion Still Pending", subtitle: "Reminder: Please fill out our short mid-study survey.", body: "It only takes about 3 minutes.", identifier: "mid-study-survey-notification")
+                        LocalPushController.shared.sendLocalNotification(in: midStudySurvey.showAfter + 3 * 24 * 60 * 60, title: "Survey Completion Still Pending", subtitle: "Reminder: Please fill out our short mid-study survey.", body: "It only takes about 3 minutes.", identifier: "mid-study-survey-notification-reminder")
                     }
                     
                     
@@ -284,7 +284,7 @@ public class Study: ObservableObject {
                         identifier: "survey-completion-notification"
                     )
                     
-                    LocalPushController.shared.sendLocalNotification(in: pushDuration + 3 * 24 * 60 * 60, title: "Survey Completion Still Pending", subtitle: "Thanks for participating. You can complete the exit survey at any time.", body: "It only takes about 3 minutes.", identifier: "survey-completion-notification")
+                    LocalPushController.shared.sendLocalNotification(in: pushDuration + 3 * 24 * 60 * 60, title: "Survey Completion Still Pending", subtitle: "Thanks for participating. You can complete the exit survey at any time.", body: "It only takes about 3 minutes.", identifier: "survey-completion-notification-reminder")
                     
                     completion()
                 }
@@ -370,6 +370,7 @@ public class Study: ObservableObject {
                 self.objectWillChange.send()
                 if newValue {
                     LocalPushController.clearNotifications(with: "survey-completion-notification")
+                    LocalPushController.clearNotifications(with: "survey-completion-notification-reminder")
                 }
             }
         }
@@ -388,6 +389,7 @@ public class Study: ObservableObject {
                 self.objectWillChange.send()
                 if newValue {
                     LocalPushController.clearNotifications(with: "mid-study-survey-notification")
+                    LocalPushController.clearNotifications(with: "mid-study-survey-notification-reminder")
                 }
             }
         }
