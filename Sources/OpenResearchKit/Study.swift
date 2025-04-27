@@ -31,7 +31,7 @@ public class Study: ObservableObject {
         contactEmail: String,
         introductorySurveyURL: URL?,
         midStudySurvey: MidStudySurvey? = nil,
-        concludingSurveyURL: URL,
+        concludingSurveyURL: URL?,
         fileSubmissionServer: URL,
         apiKey: String,
         uploadFrequency: TimeInterval,
@@ -66,7 +66,7 @@ public class Study: ObservableObject {
     public let contactEmail: String
     let introductorySurveyURL: URL?
     let midStudySurvey: MidStudySurvey?
-    let concludingSurveyURL: URL
+    let concludingSurveyURL: URL?
     let fileSubmissionServer: URL
     let apiKey: String
     let uploadFrequency: TimeInterval
@@ -249,48 +249,52 @@ public class Study: ObservableObject {
         DispatchQueue.main.async {
             self.objectWillChange.send()
             
-            let alert = UIAlertController(
-                title: NSLocalizedString("Post-Study-Questionnaire", bundle: Bundle.module, comment: ""),
-                message: NSLocalizedString("We’ll send you a push notification when the study is concluded to fill out the post-questionnaire.", bundle: Bundle.module, comment: ""),
-                preferredStyle: .alert
-            )
-            
-            let proceedAction = UIAlertAction(title: "Ok", style: .default) { _ in
-                LocalPushController.shared.askUserForPushPermission { success in
-                    var pushDuration = self.duration
-                    #if DEBUG
-                    pushDuration = 10
-                    #endif
-                    
-                    if let midStudySurvey = self.midStudySurvey {
+            if self.midStudySurvey != nil || self.concludingSurveyURL != nil {
+                let alert = UIAlertController(
+                    title: NSLocalizedString("Post-Study-Questionnaire", bundle: Bundle.module, comment: ""),
+                    message: NSLocalizedString("We’ll send you a push notification when the study is concluded to fill out the post-questionnaire.", bundle: Bundle.module, comment: ""),
+                    preferredStyle: .alert
+                )
+                
+                let proceedAction = UIAlertAction(title: "Ok", style: .default) { _ in
+                    LocalPushController.shared.askUserForPushPermission { success in
+                        var pushDuration = self.duration
+#if DEBUG
+                        pushDuration = 10
+#endif
+                        
+                        if let midStudySurvey = self.midStudySurvey {
+                            LocalPushController.shared.sendLocalNotification(
+                                in: midStudySurvey.showAfter,
+                                title: NSLocalizedString("Mid-Study Survey", bundle: Bundle.module, comment: ""),
+                                subtitle: NSLocalizedString("Please fill out our short mid-study survey.", bundle: Bundle.module, comment: ""),
+                                body: NSLocalizedString("It only takes 3 minutes to complete this survey.", bundle: Bundle.module, comment: ""),
+                                identifier: "mid-study-survey-notification"
+                            )
+                            
+                            LocalPushController.shared.sendLocalNotification(in: midStudySurvey.showAfter + 3 * 24 * 60 * 60, title: "Survey Completion Still Pending", subtitle: "Reminder: Please fill out our short mid-study survey.", body: "It only takes about 3 minutes.", identifier: "mid-study-survey-notification-reminder")
+                        }
+                        
+                        
+                        
                         LocalPushController.shared.sendLocalNotification(
-                            in: midStudySurvey.showAfter,
-                            title: NSLocalizedString("Mid-Study Survey", bundle: Bundle.module, comment: ""),
-                            subtitle: NSLocalizedString("Please fill out our short mid-study survey.", bundle: Bundle.module, comment: ""),
+                            in: pushDuration,
+                            title: NSLocalizedString("Concluding the study", bundle: Bundle.module, comment: ""),
+                            subtitle: NSLocalizedString("Thanks for participating. Please fill out one last survey.", bundle: Bundle.module, comment: ""),
                             body: NSLocalizedString("It only takes 3 minutes to complete this survey.", bundle: Bundle.module, comment: ""),
-                            identifier: "mid-study-survey-notification"
+                            identifier: "survey-completion-notification"
                         )
                         
-                        LocalPushController.shared.sendLocalNotification(in: midStudySurvey.showAfter + 3 * 24 * 60 * 60, title: "Survey Completion Still Pending", subtitle: "Reminder: Please fill out our short mid-study survey.", body: "It only takes about 3 minutes.", identifier: "mid-study-survey-notification-reminder")
+                        LocalPushController.shared.sendLocalNotification(in: pushDuration + 3 * 24 * 60 * 60, title: "Survey Completion Still Pending", subtitle: "Thanks for participating. You can complete the exit survey at any time.", body: "It only takes about 3 minutes.", identifier: "survey-completion-notification-reminder")
+                        
+                        completion()
                     }
-                    
-                    
-                    
-                    LocalPushController.shared.sendLocalNotification(
-                        in: pushDuration,
-                        title: NSLocalizedString("Concluding the study", bundle: Bundle.module, comment: ""),
-                        subtitle: NSLocalizedString("Thanks for participating. Please fill out one last survey.", bundle: Bundle.module, comment: ""),
-                        body: NSLocalizedString("It only takes 3 minutes to complete this survey.", bundle: Bundle.module, comment: ""),
-                        identifier: "survey-completion-notification"
-                    )
-                    
-                    LocalPushController.shared.sendLocalNotification(in: pushDuration + 3 * 24 * 60 * 60, title: "Survey Completion Still Pending", subtitle: "Thanks for participating. You can complete the exit survey at any time.", body: "It only takes about 3 minutes.", identifier: "survey-completion-notification-reminder")
-                    
-                    completion()
                 }
+                alert.addAction(proceedAction)
+                UIViewController.topViewController()?.present(alert, animated: true)
+            } else {
+                completion()
             }
-            alert.addAction(proceedAction)
-            UIViewController.topViewController()?.present(alert, animated: true)
         }
     }
     
@@ -496,10 +500,10 @@ public class Study: ObservableObject {
         case .introductory:
             return self.introductorySurveyURL?.appendingQueryItem(name: "uuid", value: self.userIdentifier)
         case .completion:
-            let url = self.concludingSurveyURL.appendingQueryItem(name: "uuid", value: self.userIdentifier)
+            let url = self.concludingSurveyURL?.appendingQueryItem(name: "uuid", value: self.userIdentifier)
             
             if let assignedGroup = self.studyUserDefaults["assignedGroup"] as? String {
-                return url.appendingQueryItem(name: "assignedGroup", value: assignedGroup)
+                return url?.appendingQueryItem(name: "assignedGroup", value: assignedGroup)
             }
             
             return url
