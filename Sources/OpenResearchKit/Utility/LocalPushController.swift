@@ -1,6 +1,6 @@
 //
-//  File.swift
-//  
+//  LocalPushController.swift
+//
 //
 //  Created by Frederik Riedel on 08.12.22.
 //
@@ -13,7 +13,14 @@ class LocalPushController {
     
     static let shared = LocalPushController()
     
-    func sendLocalNotification(in timeInterval: TimeInterval? = nil, title: String, subtitle: String, body: String, identifier: String, sound: UNNotificationSound = UNNotificationSound.default) {
+    func sendLocalNotification(
+        in timeInterval: TimeInterval? = nil,
+        title: String,
+        subtitle: String,
+        body: String,
+        identifier: String,
+        sound: UNNotificationSound = UNNotificationSound.default
+    ) {
         
         let notificationContent = UNMutableNotificationContent()
         notificationContent.title = title
@@ -59,17 +66,6 @@ class LocalPushController {
         }
     }
     
-    private func showPushPrompt(completion: @escaping (Bool) -> Void) {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { (success, error) in
-            if let error = error {
-                print("Request Authorization Failed (\(error), \(error.localizedDescription))")
-            }
-            DispatchQueue.main.async {
-                completion(success)
-            }
-        }
-    }
-    
     public func askUserToEnablePushNotificationsForSurveyCompletion(completion: @escaping (Bool) -> Void) {
         DispatchQueue.main.async {
             let alert = UIAlertController(title: "Notification on study completion", message: "We’ll send you a push notification when the survey is completed in order to fill out the survey completion form.", preferredStyle: .alert)
@@ -80,6 +76,17 @@ class LocalPushController {
             alert.addAction(proceed)
             
             UIViewController.topViewController()?.present(alert, animated: true)
+        }
+    }
+    
+    private func showPushPrompt(completion: @escaping (Bool) -> Void) {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { (success, error) in
+            if let error = error {
+                print("Request Authorization Failed (\(error), \(error.localizedDescription))")
+            }
+            DispatchQueue.main.async {
+                completion(success)
+            }
         }
     }
     
@@ -98,9 +105,11 @@ class LocalPushController {
             identifier
         ])
     }
+    
 }
 
 extension UIViewController {
+    
     var wrappedInNavigationController: UINavigationController {
         return UINavigationController(rootViewController: self)
     }
@@ -128,4 +137,5 @@ extension UIViewController {
         
         return base
     }
+    
 }

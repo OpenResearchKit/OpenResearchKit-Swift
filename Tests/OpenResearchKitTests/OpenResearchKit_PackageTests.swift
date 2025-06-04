@@ -1,5 +1,5 @@
 import XCTest
-@testable import OpenResearchKit_Package
+@testable import OpenResearchKit
 
 final class OpenResearchKit_PackageTests: XCTestCase {
     func testExample() {

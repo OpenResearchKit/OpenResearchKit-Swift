@@ -1,6 +1,6 @@
 //
-//  File.swift
-//  
+//  StudyBannerInvitation.swift
+//
 //
 //  Created by Frederik Riedel on 13.01.23.
 //
@@ -93,4 +93,5 @@ struct BigButtonStyle: ButtonStyle {
         .opacity(configuration.isPressed ? 0.6 : 1)
         .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
     }
+    
 }
