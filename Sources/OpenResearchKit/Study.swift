@@ -64,6 +64,8 @@ public class Study: ObservableObject {
     let sharedAppGroupIdentifier: String?
     let detailInfos: String?
     
+    var additionalQueryItems: (SurveyType) -> [URLQueryItem] = { _ in [] }
+    
     internal var JSONFile: [ [String: Any] ] {
         if let jsonData = try? Data(contentsOf: jsonDataFilePath),
            let decoded = try? JSONSerialization.jsonObject(with: jsonData, options: []),
@@ -478,27 +480,41 @@ public class Study: ObservableObject {
         }
         
         let surveyView = SurveyWebView(surveyType: .mid).environmentObject(self)
-        let hostingCOntroller = UIHostingController(rootView: surveyView)
-        hostingCOntroller.modalPresentationStyle = .fullScreen
+        let hostingController = UIHostingController(rootView: surveyView)
+        hostingController.modalPresentationStyle = .fullScreen
         UIApplication.shared.keyWindow?.rootViewController?.dismiss(animated: false, completion: {
-            UIViewController.topViewController()?.present(hostingCOntroller, animated: true)
+            UIViewController.topViewController()?.present(hostingController, animated: true)
         })
     }
     
     func surveyUrl(for surveyType: SurveyType) -> URL? {
+        
+        let additionalQueryItems: [URLQueryItem] = self.additionalQueryItems(surveyType)
+        
         switch surveyType {
+                
         case .introductory:
-            return self.introductorySurveyURL?.appendingQueryItem(name: "uuid", value: self.userIdentifier)
+                
+            return self.introductorySurveyURL?
+                    .appendingQueryItem(name: "uuid", value: self.userIdentifier)
+                    .appendingQueryItems(additionalQueryItems)
+                
         case .completion:
+                
             let url = self.concludingSurveyURL?.appendingQueryItem(name: "uuid", value: self.userIdentifier)
             
             if let assignedGroup = self.studyUserDefaults["assignedGroup"] as? String {
                 return url?.appendingQueryItem(name: "assignedGroup", value: assignedGroup)
             }
             
-            return url
+            return url?.appendingQueryItems(additionalQueryItems)
+                
         case .mid:
-            return self.midStudySurvey?.url.appendingQueryItem(name: "uuid", value: self.userIdentifier)
+            
+            return self.midStudySurvey?.url
+                    .appendingQueryItem(name: "uuid", value: self.userIdentifier)
+                    .appendingQueryItems(additionalQueryItems)
+                
         }
     }
 }
@@ -550,6 +566,16 @@ extension URL {
 
         // Returns the url from new url components
         return urlComponents.url!
+    }
+    
+    func appendingQueryItems(_ queryItems: [URLQueryItem]) -> URL {
+        
+        var urlComponents = URLComponents(string: absoluteString)!
+        
+        urlComponents.queryItems = (urlComponents.queryItems ?? []) + queryItems
+        
+        return urlComponents.url!
+        
     }
     
 }
