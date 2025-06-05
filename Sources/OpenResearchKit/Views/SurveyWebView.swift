@@ -16,14 +16,18 @@ import UIKit
 /// This view prevents users from accessing or sharing custom or personalized survey URLs by rendering
 /// them in a native WebView instead of Safari. It handles the display and dismissal of introductory,
 /// mid, and completion surveys, and processes metadata returned via URL parameters to persist study state.
-struct SurveyWebView: View {
+public struct SurveyWebView: View {
     
     @Environment(\.presentationMode) var presentationMode
     @EnvironmentObject var study: Study
     
     let surveyType: SurveyType
     
-    var body: some View {
+    public init(surveyType: SurveyType) {
+        self.surveyType = surveyType
+    }
+    
+    public var body: some View {
         NavigationView {
             if let surveyUrl = study.surveyUrl(for: surveyType) {
                 ResearchWebView(url: surveyUrl, completion: { (success, parameters) in
