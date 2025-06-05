@@ -28,7 +28,7 @@ public class Study: ObservableObject {
         participationIsPossible: Bool = true,
         sharedAppGroupIdentifier: String? = nil,
         additionalQueryItems: @escaping (SurveyType) -> [URLQueryItem] = { _ in [] },
-        introSurveyComletionHandler: (([String: String]) -> Void)?
+        introSurveyCompletionHandler: (([String: String]) -> Void)?
     ) {
         self.title = title
         self.subtitle = subtitle
@@ -44,7 +44,7 @@ public class Study: ObservableObject {
         self.uploadFrequency = uploadFrequency
         self.participationIsPossible = participationIsPossible
         self.sharedAppGroupIdentifier = sharedAppGroupIdentifier
-        self.introSurveyComletionHandler = introSurveyComletionHandler
+        self.introSurveyCompletionHandler = introSurveyCompletionHandler
         self.detailInfos = detailInfos
         self.additionalQueryItems = additionalQueryItems
     }
@@ -62,7 +62,7 @@ public class Study: ObservableObject {
     let fileSubmissionServer: URL
     let apiKey: String
     let uploadFrequency: TimeInterval
-    let introSurveyComletionHandler: (([String: String]) -> Void)?
+    let introSurveyCompletionHandler: (([String: String]) -> Void)?
     let sharedAppGroupIdentifier: String?
     let detailInfos: String?
     

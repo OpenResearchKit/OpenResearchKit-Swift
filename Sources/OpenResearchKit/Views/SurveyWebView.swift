@@ -41,7 +41,7 @@ struct SurveyWebView: View {
                             study.saveUserConsentHasBeenGiven(consentTimestamp: Date()) {
                                 presentationMode.wrappedValue.dismiss()
                                 
-                                study.introSurveyComletionHandler?(
+                                study.introSurveyCompletionHandler?(
                                     parameters
                                 )
                             }

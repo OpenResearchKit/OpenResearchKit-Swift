@@ -34,7 +34,7 @@ final class OpenResearchKitTests: XCTestCase {
             fileSubmissionServer: URL(string: "https://example.com/upload")!,
             apiKey: "test",
             uploadFrequency: 10 * 60,
-            introSurveyComletionHandler: nil
+            introSurveyCompletionHandler: nil
         )
         
         let url = study.surveyUrl(for: .introductory)
