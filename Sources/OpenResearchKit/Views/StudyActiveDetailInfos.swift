@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  StudyActiveDetailInfos.swift
 //  
 //
 //  Created by Frederik Riedel on 13.01.23.
@@ -123,4 +123,5 @@ public struct StudyActiveDetailInfos: View {
         return false
         #endif
     }
+    
 }
