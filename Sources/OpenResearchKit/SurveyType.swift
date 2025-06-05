@@ -5,7 +5,7 @@
 //  Created by Lennart Fischer on 04.06.25.
 //
 
-enum SurveyType {
+public enum SurveyType {
     
     case introductory, mid, completion
     

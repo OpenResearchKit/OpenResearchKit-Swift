@@ -27,6 +27,7 @@ public class Study: ObservableObject {
         uploadFrequency: TimeInterval,
         participationIsPossible: Bool = true,
         sharedAppGroupIdentifier: String? = nil,
+        additionalQueryItems: @escaping (SurveyType) -> [URLQueryItem] = { _ in [] },
         introSurveyComletionHandler: (([String: String]) -> Void)?
     ) {
         self.title = title
@@ -45,6 +46,7 @@ public class Study: ObservableObject {
         self.sharedAppGroupIdentifier = sharedAppGroupIdentifier
         self.introSurveyComletionHandler = introSurveyComletionHandler
         self.detailInfos = detailInfos
+        self.additionalQueryItems = additionalQueryItems
     }
     
     public let title: String
