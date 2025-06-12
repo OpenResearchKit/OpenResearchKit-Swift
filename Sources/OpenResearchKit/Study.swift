@@ -27,6 +27,7 @@ public class Study: ObservableObject {
         uploadFrequency: TimeInterval,
         participationIsPossible: Bool = true,
         sharedAppGroupIdentifier: String? = nil,
+        isDataDonationStudy: Bool = false,
         additionalQueryItems: @escaping (SurveyType) -> [URLQueryItem] = { _ in [] },
         introSurveyCompletionHandler: (([String: String]) -> Void)?
     ) {
@@ -45,6 +46,7 @@ public class Study: ObservableObject {
         self.participationIsPossible = participationIsPossible
         self.sharedAppGroupIdentifier = sharedAppGroupIdentifier
         self.introSurveyCompletionHandler = introSurveyCompletionHandler
+        self.isDataDonationStudy = isDataDonationStudy
         self.detailInfos = detailInfos
         self.additionalQueryItems = additionalQueryItems
     }
@@ -65,6 +67,7 @@ public class Study: ObservableObject {
     let introSurveyCompletionHandler: (([String: String]) -> Void)?
     let sharedAppGroupIdentifier: String?
     let detailInfos: String?
+    let isDataDonationStudy: Bool
     
     var additionalQueryItems: (SurveyType) -> [URLQueryItem] = { _ in [] }
     
@@ -297,6 +300,18 @@ public class Study: ObservableObject {
     }
     
     public var isActivelyRunning: Bool {
+        
+        // If the study is a data donation study, it has no duration so also the study
+        // end date is not in the future. So we need an additional check that checks if
+        // the study was not terminated by the user yet. Otherwise also the data collection via
+        // `appendNewJSONObjects` would be skipped as the study is not active.
+        if isDataDonationStudy {
+            if self.terminatedByUserDate != nil {
+                return false
+            }
+            return true
+        }
+        
         if let studyEndDate = studyEndDate {
             if studyEndDate.isInFuture {
                 return true
