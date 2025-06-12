@@ -150,6 +150,10 @@ public class Study: ObservableObject {
         }
     }
     
+    public func uploadJSONImmediately() {
+        self.uploadJSON()
+    }
+    
     private func uploadJSON() {
         
         if isCurrentlyUploading {
