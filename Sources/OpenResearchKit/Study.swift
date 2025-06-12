@@ -29,7 +29,7 @@ public class Study: ObservableObject {
         sharedAppGroupIdentifier: String? = nil,
         isDataDonationStudy: Bool = false,
         additionalQueryItems: @escaping (SurveyType) -> [URLQueryItem] = { _ in [] },
-        introSurveyCompletionHandler: (([String: String]) -> Void)?
+        introSurveyCompletionHandler: (([String: String], Study) -> Void)?
     ) {
         self.title = title
         self.subtitle = subtitle
@@ -64,7 +64,7 @@ public class Study: ObservableObject {
     let fileSubmissionServer: URL
     let apiKey: String
     let uploadFrequency: TimeInterval
-    let introSurveyCompletionHandler: (([String: String]) -> Void)?
+    let introSurveyCompletionHandler: (([String: String], Study) -> Void)?
     let sharedAppGroupIdentifier: String?
     let detailInfos: String?
     let isDataDonationStudy: Bool

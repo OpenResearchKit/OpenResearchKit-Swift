@@ -46,7 +46,8 @@ public struct SurveyWebView: View {
                                 presentationMode.wrappedValue.dismiss()
                                 
                                 study.introSurveyCompletionHandler?(
-                                    parameters
+                                    parameters,
+                                    study
                                 )
                             }
                             
