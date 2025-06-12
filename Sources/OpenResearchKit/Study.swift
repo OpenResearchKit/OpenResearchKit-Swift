@@ -299,17 +299,19 @@ public class Study: ObservableObject {
         }
     }
     
+    /// Indicates whether the study is currently active and eligible for data collection.
+    ///
+    /// For data donation studies (which have no fixed duration), the study is considered active
+    /// if the user has given consent and has not explicitly terminated participation.
+    ///
+    /// For regular studies, the study is active if the configured end date lies in the future.
     public var isActivelyRunning: Bool {
         
-        // If the study is a data donation study, it has no duration so also the study
-        // end date is not in the future. So we need an additional check that checks if
-        // the study was not terminated by the user yet. Otherwise also the data collection via
-        // `appendNewJSONObjects` would be skipped as the study is not active.
         if isDataDonationStudy {
-            if self.terminatedByUserDate != nil {
-                return false
+            if hasUserGivenConsent && self.terminatedByUserDate == nil {
+                return true
             }
-            return true
+            return false
         }
         
         if let studyEndDate = studyEndDate {
