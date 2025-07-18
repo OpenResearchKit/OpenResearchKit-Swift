@@ -1,6 +1,6 @@
 //
-//  File.swift
-//  
+//  Study.swift
+//
 //
 //  Created by Frederik Riedel on 18.11.22.
 //
@@ -8,16 +8,6 @@
 import Foundation
 import UIKit
 import SwiftUI
-
-public struct MidStudySurvey {
-    public init(showAfter: TimeInterval, url: URL) {
-        self.showAfter = showAfter
-        self.url = url
-    }
-    
-    let showAfter: TimeInterval
-    let url: URL
-}
 
 public class Study: ObservableObject {
     
@@ -37,7 +27,9 @@ public class Study: ObservableObject {
         uploadFrequency: TimeInterval,
         participationIsPossible: Bool = true,
         sharedAppGroupIdentifier: String? = nil,
-        introSurveyComletionHandler: (([String: String]) -> Void)?
+        isDataDonationStudy: Bool = false,
+        additionalQueryItems: @escaping (SurveyType) -> [URLQueryItem] = { _ in [] },
+        introSurveyCompletionHandler: (([String: String], Study) -> Void)?
     ) {
         self.title = title
         self.subtitle = subtitle
@@ -53,8 +45,10 @@ public class Study: ObservableObject {
         self.uploadFrequency = uploadFrequency
         self.participationIsPossible = participationIsPossible
         self.sharedAppGroupIdentifier = sharedAppGroupIdentifier
-        self.introSurveyComletionHandler = introSurveyComletionHandler
+        self.introSurveyCompletionHandler = introSurveyCompletionHandler
+        self.isDataDonationStudy = isDataDonationStudy
         self.detailInfos = detailInfos
+        self.additionalQueryItems = additionalQueryItems
     }
     
     public let title: String
@@ -70,9 +64,12 @@ public class Study: ObservableObject {
     let fileSubmissionServer: URL
     let apiKey: String
     let uploadFrequency: TimeInterval
-    let introSurveyComletionHandler: (([String: String]) -> Void)?
+    let introSurveyCompletionHandler: (([String: String], Study) -> Void)?
     let sharedAppGroupIdentifier: String?
     let detailInfos: String?
+    let isDataDonationStudy: Bool
+    
+    var additionalQueryItems: (SurveyType) -> [URLQueryItem] = { _ in [] }
     
     internal var JSONFile: [ [String: Any] ] {
         if let jsonData = try? Data(contentsOf: jsonDataFilePath),
@@ -154,6 +151,10 @@ public class Study: ObservableObject {
         if abs(lastSuccessfulUploadDate.timeIntervalSinceNow) > uploadFrequency {
             self.uploadJSON()
         }
+    }
+    
+    public func uploadJSONImmediately() {
+        self.uploadJSON()
     }
     
     private func uploadJSON() {
@@ -298,7 +299,21 @@ public class Study: ObservableObject {
         }
     }
     
+    /// Indicates whether the study is currently active and eligible for data collection.
+    ///
+    /// For data donation studies (which have no fixed duration), the study is considered active
+    /// if the user has given consent and has not explicitly terminated participation.
+    ///
+    /// For regular studies, the study is active if the configured end date lies in the future.
     public var isActivelyRunning: Bool {
+        
+        if isDataDonationStudy {
+            if hasUserGivenConsent && self.terminatedByUserDate == nil {
+                return true
+            }
+            return false
+        }
+        
         if let studyEndDate = studyEndDate {
             if studyEndDate.isInFuture {
                 return true
@@ -488,32 +503,47 @@ public class Study: ObservableObject {
         }
         
         let surveyView = SurveyWebView(surveyType: .mid).environmentObject(self)
-        let hostingCOntroller = UIHostingController(rootView: surveyView)
-        hostingCOntroller.modalPresentationStyle = .fullScreen
+        let hostingController = UIHostingController(rootView: surveyView)
+        hostingController.modalPresentationStyle = .fullScreen
         UIApplication.shared.keyWindow?.rootViewController?.dismiss(animated: false, completion: {
-            UIViewController.topViewController()?.present(hostingCOntroller, animated: true)
+            UIViewController.topViewController()?.present(hostingController, animated: true)
         })
     }
     
     func surveyUrl(for surveyType: SurveyType) -> URL? {
+        
+        let additionalQueryItems: [URLQueryItem] = self.additionalQueryItems(surveyType)
+        
         switch surveyType {
+                
         case .introductory:
-            return self.introductorySurveyURL?.appendingQueryItem(name: "uuid", value: self.userIdentifier)
+                
+            return self.introductorySurveyURL?
+                    .appendingQueryItem(name: "uuid", value: self.userIdentifier)
+                    .appendingQueryItems(additionalQueryItems)
+                
         case .completion:
+                
             let url = self.concludingSurveyURL?.appendingQueryItem(name: "uuid", value: self.userIdentifier)
             
             if let assignedGroup = self.studyUserDefaults["assignedGroup"] as? String {
                 return url?.appendingQueryItem(name: "assignedGroup", value: assignedGroup)
             }
             
-            return url
+            return url?.appendingQueryItems(additionalQueryItems)
+                
         case .mid:
-            return self.midStudySurvey?.url.appendingQueryItem(name: "uuid", value: self.userIdentifier)
+            
+            return self.midStudySurvey?.url
+                    .appendingQueryItem(name: "uuid", value: self.userIdentifier)
+                    .appendingQueryItems(additionalQueryItems)
+                
         }
     }
 }
 
 struct OpenResearchKit {
+    
     static func researchKitDefaults(appGroup: String?) -> [String: [String: Any]] {
         if let appGroup {
             return UserDefaults(suiteName: appGroup)!.dictionary(forKey: "open_research_kit") as? [String: [String: Any]] ?? [:]
@@ -530,89 +560,8 @@ struct OpenResearchKit {
             UserDefaults.standard.set(currentDefaults, forKey: "open_research_kit")
         }
     }
-}
-
-struct MultipartFormDataRequest {
-    private let boundary: String = UUID().uuidString
-    private var httpBody = NSMutableData()
-    let url: URL
-
-    init(url: URL) {
-        self.url = url
-    }
-
-    func addTextField(named name: String, value: String) {
-        httpBody.append(textFormField(named: name, value: value))
-    }
-
-    private func textFormField(named name: String, value: String) -> String {
-        var fieldString = "--\(boundary)\r\n"
-        fieldString += "Content-Disposition: form-data; name=\"\(name)\"\r\n"
-        fieldString += "Content-Type: text/plain; charset=ISO-8859-1\r\n"
-        fieldString += "Content-Transfer-Encoding: 8bit\r\n"
-        fieldString += "\r\n"
-        fieldString += "\(value)\r\n"
-
-        return fieldString
-    }
-
-    func addDataField(named name: String, filename: String, data: Data, mimeType: String) {
-        httpBody.append(dataFormField(named: name, filename: filename, data: data, mimeType: mimeType))
-    }
-
-    private func dataFormField(named name: String, filename: String,
-                               data: Data,
-                               mimeType: String) -> Data {
-        let fieldData = NSMutableData()
-
-        fieldData.append("--\(boundary)\r\n")
-        fieldData.append("Content-Disposition: form-data; name=\"\(name)\"; filename=\"\(filename)\"\r\n")
-        fieldData.append("Content-Type: \(mimeType)\r\n")
-        fieldData.append("\r\n")
-        fieldData.append(data)
-        fieldData.append("\r\n")
-
-        return fieldData as Data
-    }
     
-    func asURLRequest() -> URLRequest {
-        var request = URLRequest(url: url)
-
-        request.httpMethod = "POST"
-        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-
-        httpBody.append("--\(boundary)--")
-        request.httpBody = httpBody as Data
-        return request
-    }
 }
-
-extension NSMutableData {
-  func append(_ string: String) {
-    if let data = string.data(using: .utf8) {
-      self.append(data)
-    }
-  }
-}
-
-extension URLSession {
-    func dataTask(with request: MultipartFormDataRequest,
-                  completionHandler: @escaping (Data?, URLResponse?, Error?) -> Void)
-    -> URLSessionDataTask {
-        return dataTask(with: request.asURLRequest(), completionHandler: completionHandler)
-    }
-}
-
-
-public protocol JSONConvertible {}
-extension String: JSONConvertible {}
-extension Int: JSONConvertible {}
-extension Double: JSONConvertible {}
-extension NSNumber: JSONConvertible {}
-extension NSString: JSONConvertible {}
-extension Bool: JSONConvertible {}
-extension Array<JSONConvertible>: JSONConvertible {}
-extension Dictionary<String, JSONConvertible>: JSONConvertible {}
 
 extension Date {
     var isInFuture: Bool {
@@ -641,4 +590,15 @@ extension URL {
         // Returns the url from new url components
         return urlComponents.url!
     }
+    
+    func appendingQueryItems(_ queryItems: [URLQueryItem]) -> URL {
+        
+        var urlComponents = URLComponents(string: absoluteString)!
+        
+        urlComponents.queryItems = (urlComponents.queryItems ?? []) + queryItems
+        
+        return urlComponents.url!
+        
+    }
+    
 }
