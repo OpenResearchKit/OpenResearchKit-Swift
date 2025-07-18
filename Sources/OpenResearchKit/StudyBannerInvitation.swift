@@ -8,6 +8,7 @@
 import SafariServices
 import SwiftUI
 import UIKit
+import FredKit
 
 public struct StudyBannerInvitation: View {
     
@@ -57,7 +58,7 @@ public struct StudyBannerInvitation: View {
                     .foregroundColor(.primary)
                     .font(.headline)
                     .bold()
-                Text("Thanks a lot for participating in the study, the 6 weeks of participation are now completed. Please fill out one last 3 minute survey!")
+                Text("Thanks a lot for participating in the study, the \(study.duration.humanReadableTimeInterval) of participation are now completed. Please fill out one last 3 minute survey!")
                     .foregroundColor(.secondary)
             }
             
