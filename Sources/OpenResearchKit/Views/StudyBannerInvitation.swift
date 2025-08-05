@@ -32,11 +32,20 @@ public struct StudyBannerInvitation: View {
             }
             
             if let image = study.universityLogo {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFit()
-                    .mask(RoundedRectangle(cornerRadius: 12))
-                    .padding(.vertical)
+                ZStack {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .mask(RoundedRectangle(cornerRadius: 12))
+                        .padding(.vertical)
+                    
+                    if surveyType == .completion {
+                        Color.black.opacity(0.2)
+                        Text("✅")
+                            .font(.largeTitle)
+                            .scaleEffect(2)
+                    }
+                }
             }
             if surveyType == .introductory {
                 Text(study.title)
@@ -52,8 +61,8 @@ public struct StudyBannerInvitation: View {
                     .bold()
                 Text("Please fill out the mid-study survey now to help our scientific progress.")
                     .foregroundColor(.secondary)
-            } else {
-                Text(study.title)
+            } else if surveyType == .completion {
+                Text("Study Completion Survey")
                     .foregroundColor(.primary)
                     .font(.headline)
                     .bold()
