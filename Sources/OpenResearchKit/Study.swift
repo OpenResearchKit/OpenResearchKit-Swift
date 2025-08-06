@@ -11,6 +11,14 @@ import SwiftUI
 
 public class Study: ObservableObject {
     
+    static var allStudies = [Study]()
+    
+    static var currentActiveStudy: Study? {
+        allStudies.first { study in
+            study.hasUserGivenConsent && !study.hasCompletedTerminationSurvey && !study.isDismissedByUser
+        }
+    }
+    
     public init(
         title: String,
         subtitle: String,
@@ -49,6 +57,8 @@ public class Study: ObservableObject {
         self.isDataDonationStudy = isDataDonationStudy
         self.detailInfos = detailInfos
         self.additionalQueryItems = additionalQueryItems
+        
+        Study.allStudies.append(self)
     }
     
     public let title: String
