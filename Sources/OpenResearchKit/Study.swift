@@ -81,43 +81,97 @@ public class Study: ObservableObject {
     
     var additionalQueryItems: (SurveyType) -> [URLQueryItem] = { _ in [] }
     
-    internal var JSONFile: [ [String: Any] ] {
-        if let jsonData = try? Data(contentsOf: jsonDataFilePath),
-           let decoded = try? JSONSerialization.jsonObject(with: jsonData, options: []),
-           let json = decoded as? [ [String: Any] ] {
-            return json
+    public private(set) var userIdentifier: String {
+        
+        get {
+            let studyUserDefaults = self.studyUserDefaults
+            
+            if let localUserIdentifier = studyUserDefaults["localUserIdentifier"] as? String {
+                return localUserIdentifier
+            }
+            
+            let newLocalUserIdentifier = "\(studyIdentifier)-\(UUID().uuidString)"
+            self.userIdentifier = newLocalUserIdentifier
+            return newLocalUserIdentifier
         }
+        
+        set {
+            var studyUserDefaults = self.studyUserDefaults
+            studyUserDefaults["localUserIdentifier"] = newValue
+            self.save(studyUserDefaults: studyUserDefaults)
+            DispatchQueue.main.async {
+                self.objectWillChange.send()
+            }
+        }
+        
+    }
+    
+    public var studyUserDefaults: [String: Any] {
+        OpenResearchKit.researchKitDefaults(appGroup: self.sharedAppGroupIdentifier)[self.studyIdentifier] ?? [:]
+    }
+    
+    func save(studyUserDefaults: [String: Any]) {
+        OpenResearchKit.saveStudyDefaults(defaults: studyUserDefaults, appGroup: self.sharedAppGroupIdentifier, studyIdentifier: self.studyIdentifier)
+    }
+    
+    func surveyUrl(for surveyType: SurveyType) -> URL? {
+        
+        let additionalQueryItems: [URLQueryItem] = self.additionalQueryItems(surveyType)
+        
+        switch surveyType {
+                
+        case .introductory:
+                
+            return self.introductorySurveyURL?
+                    .appendingQueryItem(name: "uuid", value: self.userIdentifier)
+                    .appendingQueryItems(additionalQueryItems)
+                
+        case .completion:
+                
+            let url = self.concludingSurveyURL?.appendingQueryItem(name: "uuid", value: self.userIdentifier)
+            
+            if let assignedGroup = self.studyUserDefaults["assignedGroup"] as? String {
+                return url?.appendingQueryItem(name: "assignedGroup", value: assignedGroup)
+            }
+            
+            return url?.appendingQueryItems(additionalQueryItems)
+                
+        case .mid:
+            
+            return self.midStudySurvey?.url
+                    .appendingQueryItem(name: "uuid", value: self.userIdentifier)
+                    .appendingQueryItems(additionalQueryItems)
+                
+        }
+    }
+}
 
-        return []
-    }
+// MARK: - Accessors -
+
+extension Study {
     
-    public var lastSuccessfulUploadDate: Date? {
-        return studyUserDefaults["lastSuccessfulUploadDate"] as? Date
-    }
-    
-    public func updateUploadDate(newDate: Date = Date()) {
-        var studyUserDefaults = self.studyUserDefaults
-        studyUserDefaults["lastSuccessfulUploadDate"] = newDate
-        self.save(studyUserDefaults: studyUserDefaults)
-        DispatchQueue.main.async {
-            self.objectWillChange.send()
+    /// Indicates whether the study is currently active and eligible for data collection.
+    ///
+    /// For data donation studies (which have no fixed duration), the study is considered active
+    /// if the user has given consent and has not explicitly terminated participation.
+    ///
+    /// For regular studies, the study is active if the configured end date lies in the future.
+    public var isActivelyRunning: Bool {
+        
+        if isDataDonationStudy {
+            if hasUserGivenConsent && self.terminatedByUserDate == nil {
+                return true
+            }
+            return false
         }
-    }
-    
-    public func appendNewJSONObjects(newObjects: [ [String: JSONConvertible] ]) {
-        if isActivelyRunning {
-            // only add data if study is running: user has given consent and study has not yet ended
-            var existingFile = self.JSONFile
-            existingFile.append(contentsOf: newObjects)
-            self.saveAndUploadIfNeccessary(jsonFile: existingFile)
+        
+        if let studyEndDate = studyEndDate {
+            if studyEndDate.isInFuture {
+                return true
+            }
         }
-    }
-    
-    private func saveAndUploadIfNeccessary(jsonFile: [ [String: Any] ]) {
-        if let jsonData = try? JSONSerialization.data(withJSONObject: jsonFile, options: .prettyPrinted) {
-            try? jsonData.write(to: jsonDataFilePath)
-            self.uploadIfNecessary()
-        }
+        
+        return false
     }
     
     public var isDismissedByUser: Bool {
@@ -134,126 +188,158 @@ public class Study: ObservableObject {
         }
     }
     
-    private var isCurrentlyUploading = false
-    public func uploadIfNecessary() {
-        
-        guard let lastSuccessfulUploadDate = self.lastSuccessfulUploadDate else {
-            if isActivelyRunning {
-                self.uploadJSON()
-            }
-            return
-        }
-        
-        if !isActivelyRunning {
-            if let studyEndDate = self.studyEndDate {
-                // study terminated, uploading remaining file
-                if lastSuccessfulUploadDate < studyEndDate {
-                    self.uploadJSON()
-                    return
-                }
-            }
-            
-            // study is not running, dont upload anything
-            return
-        }
-        
-        
-        if abs(lastSuccessfulUploadDate.timeIntervalSinceNow) > uploadFrequency {
-            self.uploadJSON()
-        }
-    }
-    
-    public func uploadJSONImmediately() {
-        self.uploadJSON()
-    }
-    
-    private func uploadJSON() {
-        
-        if isCurrentlyUploading {
-            return
-        }
-        
-        isCurrentlyUploading = true
-        
-        if let data = try? Data(contentsOf: jsonDataFilePath) {
-            
-            let uploadSession = MultipartFormDataRequest(url: self.fileSubmissionServer)
-            uploadSession.addTextField(named: "api_key", value: self.apiKey)
-            uploadSession.addTextField(named: "user_key", value: self.userIdentifier)
-            uploadSession.addDataField(named: "file", filename: self.fileName, data: data, mimeType: "application/octet-stream")
-
-
-            let task = URLSession.shared.dataTask(with: uploadSession) { data, response, error in
-                self.isCurrentlyUploading = false
-                if let data = data {
-                    if let json = try? JSONSerialization.jsonObject(with: data, options: []) as? [String : Any], let result = json["result"] as? [String: Any], let hadSuccess = result["success"] as? String {
-                        print(hadSuccess)
-                        print(json)
-                        if hadSuccess == "true" {
-                            DispatchQueue.main.async {
-                                self.updateUploadDate()
-                            }
-                        }
-                    }
-                }
-            }
-            task.resume()
-            
-        } else {
-            self.isCurrentlyUploading = false
-        }
-
-    }
-    
-    private var documentsDirectory: String {
-        return NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0]
-    }
-    
-    private var fileName: String {
-        "study-\(studyIdentifier)-\(userIdentifier).json"
-    }
-    
-    private var jsonDataFilePath: URL {
-        
-        if let sharedAppGroupIdentifier {
-            let fileManager = FileManager.default
-            let directory = fileManager.containerURL(forSecurityApplicationGroupIdentifier: sharedAppGroupIdentifier)!
-            return directory.appendingPathComponent(fileName)
-        }
-        
-        let readPath = URL(fileURLWithPath: documentsDirectory).appendingPathComponent(fileName)
-        return readPath
-    }
-    
-    public var invitationBannerView: some View {
-        StudyBannerInvitation(surveyType: .introductory)
-            .environmentObject(self)
-    }
-    
-    public var terminationBannerView: some View {
-        StudyBannerInvitation(surveyType: .completion)
-            .environmentObject(self)
-    }
-    
-    public var midSurveyBannerView: some View {
-        StudyBannerInvitation(surveyType: .mid)
-            .environmentObject(self)
-    }
-    
-    public var detailInfosView: some View {
-        StudyActiveDetailInfos()
-            .environmentObject(self)
+    public var userConsentDate: Date? {
+        return studyUserDefaults["userConsentDate"] as? Date
     }
     
     public var hasUserGivenConsent: Bool {
         return userConsentDate != nil
     }
     
-    public var userConsentDate: Date? {
-        return studyUserDefaults["userConsentDate"] as? Date
+    public var hasCompletedTerminationSurvey: Bool {
+        get {
+            return studyUserDefaults["hasCompletedTerminationSurvey"] as? Bool ?? false
+        }
+        
+        set {
+            var studyUserDefaults = self.studyUserDefaults
+            studyUserDefaults["hasCompletedTerminationSurvey"] = newValue
+            self.save(studyUserDefaults: studyUserDefaults)
+            DispatchQueue.main.async {
+                self.objectWillChange.send()
+                if newValue {
+                    LocalPushController.clearNotifications(with: "survey-completion-notification")
+                    LocalPushController.clearNotifications(with: "survey-completion-notification-reminder")
+                }
+            }
+        }
     }
     
-    public func saveUserConsentHasBeenGiven(consentTimestamp: Date, completion: @escaping () -> Void) {
+    public var hasCompletedMidSurvey: Bool {
+        get {
+            return studyUserDefaults["hasCompletedMidSurvey"] as? Bool ?? false
+        }
+        
+        set {
+            var studyUserDefaults = self.studyUserDefaults
+            studyUserDefaults["hasCompletedMidSurvey"] = newValue
+            self.save(studyUserDefaults: studyUserDefaults)
+            DispatchQueue.main.async {
+                self.objectWillChange.send()
+                if newValue {
+                    LocalPushController.clearNotifications(with: "mid-study-survey-notification")
+                    LocalPushController.clearNotifications(with: "mid-study-survey-notification-reminder")
+                }
+            }
+        }
+    }
+    
+    public var shouldDisplayMidSurvey: Bool {
+        
+        if let midStudySurvey, let userConsentDate {
+            let showAfterDate = userConsentDate.addingTimeInterval(midStudySurvey.showAfter)
+            if !showAfterDate.isInFuture && !hasCompletedMidSurvey {
+                return true
+            }
+        }
+        
+        
+        return false
+    }
+    
+    public var shouldDisplayTerminationSurvey: Bool {
+        if let studyEndDate = self.studyEndDate {
+            return !studyEndDate.isInFuture && !hasCompletedTerminationSurvey && !isDismissedByUser
+        }
+        
+        return false
+    }
+    
+    public var assignedGroup: String? {
+        get {
+            if self.isActivelyRunning {
+                return studyUserDefaults["assignedGroup"] as? String
+            }
+            return nil
+        }
+        
+        set {
+            var studyUserDefaults = self.studyUserDefaults
+            studyUserDefaults["assignedGroup"] = newValue
+            self.save(studyUserDefaults: studyUserDefaults)
+            DispatchQueue.main.async {
+                self.objectWillChange.send()
+            }
+        }
+    }
+    
+    public var studyEndDate: Date? {
+        if let terminatedByUserDate = self.terminatedByUserDate {
+            return terminatedByUserDate
+        }
+        
+        return userConsentDate?.addingTimeInterval(duration)
+    }
+    
+    public var shouldDisplayIntroductorySurvey: Bool {
+        
+        if introductorySurveyURL == nil {
+            return false
+        }
+        
+        if !participationIsPossible {
+            return false
+        }
+        return !hasUserGivenConsent && !isDismissedByUser
+    }
+    
+    private var terminatedByUserDate: Date? {
+        get {
+            studyUserDefaults["terminatedByUserDate"] as? Date
+        }
+        
+        set {
+            var studyUserDefaults = self.studyUserDefaults
+            studyUserDefaults["terminatedByUserDate"] = newValue
+            self.save(studyUserDefaults: studyUserDefaults)
+            DispatchQueue.main.async {
+                self.objectWillChange.send()
+            }
+        }
+    }
+    
+}
+
+// MARK: - Actions -
+
+extension Study {
+    
+    public func showCompletionSurvey() {
+        let surveyView = SurveyWebView(surveyType: .completion).environmentObject(self)
+        let hostingCOntroller = UIHostingController(rootView: surveyView)
+        hostingCOntroller.modalPresentationStyle = .fullScreen
+        UIApplication.shared.keyWindow?.rootViewController?.dismiss(animated: false, completion: {
+            UIViewController.topViewController()?.present(hostingCOntroller, animated: true)
+        })
+    }
+    
+    public func showMidStudySurvey() {
+        guard let midStudySurvey else {
+            return
+        }
+        
+        let surveyView = SurveyWebView(surveyType: .mid).environmentObject(self)
+        let hostingController = UIHostingController(rootView: surveyView)
+        hostingController.modalPresentationStyle = .fullScreen
+        UIApplication.shared.keyWindow?.rootViewController?.dismiss(animated: false, completion: {
+            UIViewController.topViewController()?.present(hostingController, animated: true)
+        })
+    }
+    
+    public func saveUserConsentHasBeenGiven(
+        consentTimestamp: Date,
+        completion: @escaping () -> Void
+    ) {
         var studyUserDefaults = self.studyUserDefaults
         studyUserDefaults["userConsentDate"] = consentTimestamp
         self.save(studyUserDefaults: studyUserDefaults)
@@ -309,28 +395,15 @@ public class Study: ObservableObject {
         }
     }
     
-    /// Indicates whether the study is currently active and eligible for data collection.
-    ///
-    /// For data donation studies (which have no fixed duration), the study is considered active
-    /// if the user has given consent and has not explicitly terminated participation.
-    ///
-    /// For regular studies, the study is active if the configured end date lies in the future.
-    public var isActivelyRunning: Bool {
-        
-        if isDataDonationStudy {
-            if hasUserGivenConsent && self.terminatedByUserDate == nil {
-                return true
-            }
-            return false
+    public func manuallyGiveUserConsent(
+        timeStamp: Date = Date(),
+        userId: String?,
+        completion: @escaping () -> Void
+    ) {
+        self.saveUserConsentHasBeenGiven(consentTimestamp: timeStamp, completion: completion)
+        if let userId {
+            self.userIdentifier = userId
         }
-        
-        if let studyEndDate = studyEndDate {
-            if studyEndDate.isInFuture {
-                return true
-            }
-        }
-        
-        return false
     }
     
     public func terminateParticipationImmediately() {
@@ -345,211 +418,161 @@ public class Study: ObservableObject {
         self.uploadIfNecessary()
     }
     
-    var terminatedByUserDate: Date? {
-        get {
-            studyUserDefaults["terminatedByUserDate"] as? Date
+}
+
+// MARK: - Views -
+
+extension Study {
+    
+    public var invitationBannerView: some View {
+        StudyBannerInvitation(surveyType: .introductory)
+            .environmentObject(self)
+    }
+    
+    public var terminationBannerView: some View {
+        StudyBannerInvitation(surveyType: .completion)
+            .environmentObject(self)
+    }
+    
+    public var midSurveyBannerView: some View {
+        StudyBannerInvitation(surveyType: .mid)
+            .environmentObject(self)
+    }
+    
+    public var detailInfosView: some View {
+        StudyActiveDetailInfos()
+            .environmentObject(self)
+    }
+    
+}
+
+// MARK: - Storage -
+
+extension Study {
+    
+    private var documentsDirectory: String {
+        return NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0]
+    }
+    
+    private var fileName: String {
+        "study-\(studyIdentifier)-\(userIdentifier).json"
+    }
+    
+    private var jsonDataFilePath: URL {
+        
+        if let sharedAppGroupIdentifier {
+            let fileManager = FileManager.default
+            let directory = fileManager.containerURL(forSecurityApplicationGroupIdentifier: sharedAppGroupIdentifier)!
+            return directory.appendingPathComponent(fileName)
         }
         
-        set {
-            var studyUserDefaults = self.studyUserDefaults
-            studyUserDefaults["terminatedByUserDate"] = newValue
-            self.save(studyUserDefaults: studyUserDefaults)
-            DispatchQueue.main.async {
-                self.objectWillChange.send()
+        let readPath = URL(fileURLWithPath: documentsDirectory).appendingPathComponent(fileName)
+        return readPath
+    }
+    
+    internal var JSONFile: [ [String: Any] ] {
+        if let jsonData = try? Data(contentsOf: jsonDataFilePath),
+           let decoded = try? JSONSerialization.jsonObject(with: jsonData, options: []),
+           let json = decoded as? [ [String: Any] ] {
+            return json
+        }
+        
+        return []
+    }
+    
+    public func appendNewJSONObjects(newObjects: [ [String: JSONConvertible] ]) {
+        if isActivelyRunning {
+            // only add data if study is running: user has given consent and study has not yet ended
+            var existingFile = self.JSONFile
+            existingFile.append(contentsOf: newObjects)
+            self.saveAndUploadIfNeccessary(jsonFile: existingFile)
+        }
+    }
+    
+    private func saveAndUploadIfNeccessary(jsonFile: [ [String: Any] ]) {
+        if let jsonData = try? JSONSerialization.data(withJSONObject: jsonFile, options: .prettyPrinted) {
+            try? jsonData.write(to: jsonDataFilePath)
+            self.uploadIfNecessary()
+        }
+    }
+    
+}
+
+// MARK: - Upload -
+
+extension Study {
+    
+    public var lastSuccessfulUploadDate: Date? {
+        return studyUserDefaults["lastSuccessfulUploadDate"] as? Date
+    }
+    
+    public func updateUploadDate(newDate: Date = Date()) {
+        var studyUserDefaults = self.studyUserDefaults
+        studyUserDefaults["lastSuccessfulUploadDate"] = newDate
+        self.save(studyUserDefaults: studyUserDefaults)
+        DispatchQueue.main.async {
+            self.objectWillChange.send()
+        }
+    }
+    
+    public func uploadIfNecessary() {
+        
+        guard let lastSuccessfulUploadDate = self.lastSuccessfulUploadDate else {
+            if isActivelyRunning {
+                self.uploadJSON()
             }
-        }
-    }
-    
-    public var assignedGroup: String? {
-        get {
-            if self.isActivelyRunning {
-                return studyUserDefaults["assignedGroup"] as? String
-            }
-            return nil
-        }
-        
-        set {
-            var studyUserDefaults = self.studyUserDefaults
-            studyUserDefaults["assignedGroup"] = newValue
-            self.save(studyUserDefaults: studyUserDefaults)
-            DispatchQueue.main.async {
-                self.objectWillChange.send()
-            }
-        }
-    }
-    
-    public var studyEndDate: Date? {
-        if let terminatedByUserDate = self.terminatedByUserDate {
-            return terminatedByUserDate
-        }
-        
-        return userConsentDate?.addingTimeInterval(duration)
-    }
-    
-    public var hasCompletedTerminationSurvey: Bool {
-        get {
-            return studyUserDefaults["hasCompletedTerminationSurvey"] as? Bool ?? false
-        }
-        
-        set {
-            var studyUserDefaults = self.studyUserDefaults
-            studyUserDefaults["hasCompletedTerminationSurvey"] = newValue
-            self.save(studyUserDefaults: studyUserDefaults)
-            DispatchQueue.main.async {
-                self.objectWillChange.send()
-                if newValue {
-                    LocalPushController.clearNotifications(with: "survey-completion-notification")
-                    LocalPushController.clearNotifications(with: "survey-completion-notification-reminder")
-                }
-            }
-        }
-    }
-    
-    public var hasCompletedMidSurvey: Bool {
-        get {
-            return studyUserDefaults["hasCompletedMidSurvey"] as? Bool ?? false
-        }
-        
-        set {
-            var studyUserDefaults = self.studyUserDefaults
-            studyUserDefaults["hasCompletedMidSurvey"] = newValue
-            self.save(studyUserDefaults: studyUserDefaults)
-            DispatchQueue.main.async {
-                self.objectWillChange.send()
-                if newValue {
-                    LocalPushController.clearNotifications(with: "mid-study-survey-notification")
-                    LocalPushController.clearNotifications(with: "mid-study-survey-notification-reminder")
-                }
-            }
-        }
-    }
-    
-    public var shouldDisplayIntroductorySurvey: Bool {
-        
-        if introductorySurveyURL == nil {
-            return false
-        }
-        
-        if !participationIsPossible {
-            return false
-        }
-        return !hasUserGivenConsent && !isDismissedByUser
-    }
-    
-    public func manuallyGiveUserConsent(timeStamp: Date = Date(), userId: String?, completion: @escaping () -> Void) {
-        self.saveUserConsentHasBeenGiven(consentTimestamp: timeStamp, completion: completion)
-        if let userId {
-            self.userIdentifier = userId
-        }
-    }
-    
-    public var shouldDisplayMidSurvey: Bool {
-        
-        if let midStudySurvey, let userConsentDate {
-            let showAfterDate = userConsentDate.addingTimeInterval(midStudySurvey.showAfter)
-            if !showAfterDate.isInFuture && !hasCompletedMidSurvey {
-                return true
-            }
-        }
-        
-        
-        return false
-    }
-    
-    public var shouldDisplayTerminationSurvey: Bool {
-        if let studyEndDate = self.studyEndDate {
-            return !studyEndDate.isInFuture && !hasCompletedTerminationSurvey && !isDismissedByUser
-        }
-        
-        return false
-    }
-    
-    public private(set) var userIdentifier: String {
-        get {
-            var studyUserDefaults = self.studyUserDefaults
-            
-            if let localUserIdentifier = studyUserDefaults["localUserIdentifier"] as? String {
-                return localUserIdentifier
-            }
-            
-            let newLocalUserIdentifier = "\(studyIdentifier)-\(UUID().uuidString)"
-            self.userIdentifier = newLocalUserIdentifier
-            return newLocalUserIdentifier
-        }
-        
-        set {
-            var studyUserDefaults = self.studyUserDefaults
-            studyUserDefaults["localUserIdentifier"] = newValue
-            self.save(studyUserDefaults: studyUserDefaults)
-            DispatchQueue.main.async {
-                self.objectWillChange.send()
-            }
-        }
-    }
-    
-    
-    
-    
-    public var studyUserDefaults: [String: Any] {
-        OpenResearchKit.researchKitDefaults(appGroup: self.sharedAppGroupIdentifier)[self.studyIdentifier] ?? [:]
-    }
-    
-    func save(studyUserDefaults: [String: Any]) {
-        OpenResearchKit.saveStudyDefaults(defaults: studyUserDefaults, appGroup: self.sharedAppGroupIdentifier, studyIdentifier: self.studyIdentifier)
-    }
-    
-    public func showCompletionSurvey() {
-        let surveyView = SurveyWebView(surveyType: .completion).environmentObject(self)
-        let hostingCOntroller = UIHostingController(rootView: surveyView)
-        hostingCOntroller.modalPresentationStyle = .fullScreen
-        UIApplication.shared.keyWindow?.rootViewController?.dismiss(animated: false, completion: {
-            UIViewController.topViewController()?.present(hostingCOntroller, animated: true)
-        })
-    }
-    
-    public func showMidStudySurvey() {
-        guard let midStudySurvey else {
             return
         }
         
-        let surveyView = SurveyWebView(surveyType: .mid).environmentObject(self)
-        let hostingController = UIHostingController(rootView: surveyView)
-        hostingController.modalPresentationStyle = .fullScreen
-        UIApplication.shared.keyWindow?.rootViewController?.dismiss(animated: false, completion: {
-            UIViewController.topViewController()?.present(hostingController, animated: true)
-        })
-    }
-    
-    func surveyUrl(for surveyType: SurveyType) -> URL? {
-        
-        let additionalQueryItems: [URLQueryItem] = self.additionalQueryItems(surveyType)
-        
-        switch surveyType {
-                
-        case .introductory:
-                
-            return self.introductorySurveyURL?
-                    .appendingQueryItem(name: "uuid", value: self.userIdentifier)
-                    .appendingQueryItems(additionalQueryItems)
-                
-        case .completion:
-                
-            let url = self.concludingSurveyURL?.appendingQueryItem(name: "uuid", value: self.userIdentifier)
-            
-            if let assignedGroup = self.studyUserDefaults["assignedGroup"] as? String {
-                return url?.appendingQueryItem(name: "assignedGroup", value: assignedGroup)
+        if !isActivelyRunning {
+            if let studyEndDate = self.studyEndDate {
+                // study terminated, uploading remaining file
+                if lastSuccessfulUploadDate < studyEndDate {
+                    self.uploadJSON()
+                    return
+                }
             }
             
-            return url?.appendingQueryItems(additionalQueryItems)
-                
-        case .mid:
-            
-            return self.midStudySurvey?.url
-                    .appendingQueryItem(name: "uuid", value: self.userIdentifier)
-                    .appendingQueryItems(additionalQueryItems)
-                
+            // study is not running, dont upload anything
+            return
+        }
+        
+        
+        if abs(lastSuccessfulUploadDate.timeIntervalSinceNow) > uploadFrequency {
+            self.uploadJSON()
         }
     }
+    
+    public func uploadJSONImmediately() {
+        self.uploadJSON()
+    }
+    
+    private func uploadJSON() {
+        
+        StudyDataUploader.shared.uploadJSON(
+            filePath: jsonDataFilePath,
+            fileSubmissionServer: fileSubmissionServer,
+            apiKey: apiKey,
+            userIdentifier: userIdentifier,
+            fileName: fileName
+        ) { (result: Result<Void, any Error>) in
+            
+            switch result {
+                    
+                case .success(_):
+                    DispatchQueue.main.async {
+                        self.updateUploadDate()
+                    }
+                    
+                case .failure(let error):
+                    print(error)
+                    
+            }
+            
+        }
+        
+    }
+    
 }
 
 struct OpenResearchKit {
@@ -579,36 +602,4 @@ extension Date {
     }
 }
 
-extension URL {
 
-    func appendingQueryItem(name: String, value: String?) -> URL {
-
-        var urlComponents = URLComponents(string: absoluteString)!
-
-        // Create array of existing query items
-        var queryItems: [URLQueryItem] = urlComponents.queryItems ??  []
-
-        // Create query item
-        let queryItem = URLQueryItem(name: name, value: value)
-
-        // Append the new query item in the existing query items array
-        queryItems.append(queryItem)
-
-        // Append updated query items array in the url component object
-        urlComponents.queryItems = queryItems
-
-        // Returns the url from new url components
-        return urlComponents.url!
-    }
-    
-    func appendingQueryItems(_ queryItems: [URLQueryItem]) -> URL {
-        
-        var urlComponents = URLComponents(string: absoluteString)!
-        
-        urlComponents.queryItems = (urlComponents.queryItems ?? []) + queryItems
-        
-        return urlComponents.url!
-        
-    }
-    
-}
