@@ -15,6 +15,23 @@ public class StudyDataUploader {
     
     public func uploadJSON(
         filePath: URL,
+        uploadConfiguration: UploadConfiguration,
+        userIdentifier: String,
+        fileName: String,
+        completion: @escaping (Result<Void, Error>) -> Void
+    ) {
+        self.uploadJSON(
+            filePath: filePath,
+            fileSubmissionServer: uploadConfiguration.fileSubmissionServer,
+            apiKey: uploadConfiguration.apiKey,
+            userIdentifier: userIdentifier,
+            fileName: fileName,
+            completion: completion
+        )
+    }
+    
+    public func uploadJSON(
+        filePath: URL,
         fileSubmissionServer: URL,
         apiKey: String,
         userIdentifier: String,

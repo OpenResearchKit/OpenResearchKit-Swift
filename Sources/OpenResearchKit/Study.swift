@@ -9,6 +9,14 @@ import Foundation
 import UIKit
 import SwiftUI
 
+public struct UploadConfiguration {
+    
+    public let fileSubmissionServer: URL
+    public let uploadFrequency: TimeInterval
+    public let apiKey: String
+    
+}
+
 public class Study: ObservableObject {
     
     static var allStudies = [Study]()
@@ -20,13 +28,8 @@ public class Study: ObservableObject {
     }
     
     public init(
-        title: String,
-        subtitle: String,
-        detailInfos: String? = nil,
-        duration: TimeInterval,
         studyIdentifier: String,
-        universityLogo: UIImage?,
-        contactEmail: String,
+        studyInformation: StudyInformation,
         introductorySurveyURL: URL?,
         midStudySurvey: MidStudySurvey? = nil,
         concludingSurveyURL: URL?,
@@ -39,44 +42,39 @@ public class Study: ObservableObject {
         additionalQueryItems: @escaping (SurveyType) -> [URLQueryItem] = { _ in [] },
         introSurveyCompletionHandler: (([String: String], Study) -> Void)?
     ) {
-        self.title = title
-        self.subtitle = subtitle
-        self.duration = duration
+        self.studyInformation = studyInformation
+        
+        self.uploadConfiguration = UploadConfiguration(
+            fileSubmissionServer: fileSubmissionServer,
+            uploadFrequency: uploadFrequency,
+            apiKey: apiKey
+        )
+        
         self.studyIdentifier = studyIdentifier
-        self.universityLogo = universityLogo
-        self.contactEmail = contactEmail
         self.introductorySurveyURL = introductorySurveyURL
         self.midStudySurvey = midStudySurvey
         self.concludingSurveyURL = concludingSurveyURL
-        self.fileSubmissionServer = fileSubmissionServer
-        self.apiKey = apiKey
-        self.uploadFrequency = uploadFrequency
         self.participationIsPossible = participationIsPossible
         self.sharedAppGroupIdentifier = sharedAppGroupIdentifier
         self.introSurveyCompletionHandler = introSurveyCompletionHandler
         self.isDataDonationStudy = isDataDonationStudy
-        self.detailInfos = detailInfos
         self.additionalQueryItems = additionalQueryItems
         
         Study.allStudies.append(self)
     }
     
-    public let title: String
-    let subtitle: String
+    public let studyInformation: StudyInformation
+    public let uploadConfiguration: UploadConfiguration
+    
     public var participationIsPossible: Bool
-    public let duration: TimeInterval
     public let studyIdentifier: String
-    public let universityLogo: UIImage?
-    public let contactEmail: String
+    
     let introductorySurveyURL: URL?
     let midStudySurvey: MidStudySurvey?
     let concludingSurveyURL: URL?
-    let fileSubmissionServer: URL
-    let apiKey: String
-    let uploadFrequency: TimeInterval
+    
     let introSurveyCompletionHandler: (([String: String], Study) -> Void)?
     let sharedAppGroupIdentifier: String?
-    let detailInfos: String?
     let isDataDonationStudy: Bool
     
     var additionalQueryItems: (SurveyType) -> [URLQueryItem] = { _ in [] }
@@ -278,7 +276,7 @@ extension Study {
             return terminatedByUserDate
         }
         
-        return userConsentDate?.addingTimeInterval(duration)
+        return userConsentDate?.addingTimeInterval(studyInformation.duration ?? 0)
     }
     
     public var shouldDisplayIntroductorySurvey: Bool {
@@ -355,7 +353,7 @@ extension Study {
                 
                 let proceedAction = UIAlertAction(title: "Ok", style: .default) { _ in
                     LocalPushController.shared.askUserForPushPermission { success in
-                        var pushDuration = self.duration
+                        var pushDuration = self.studyInformation.duration ?? 0
 #if DEBUG
                         pushDuration = 10
 #endif
@@ -538,7 +536,7 @@ extension Study {
         }
         
         
-        if abs(lastSuccessfulUploadDate.timeIntervalSinceNow) > uploadFrequency {
+        if abs(lastSuccessfulUploadDate.timeIntervalSinceNow) > uploadConfiguration.uploadFrequency {
             self.uploadJSON()
         }
     }
@@ -551,8 +549,7 @@ extension Study {
         
         StudyDataUploader.shared.uploadJSON(
             filePath: jsonDataFilePath,
-            fileSubmissionServer: fileSubmissionServer,
-            apiKey: apiKey,
+            uploadConfiguration: uploadConfiguration,
             userIdentifier: userIdentifier,
             fileName: fileName
         ) { (result: Result<Void, any Error>) in

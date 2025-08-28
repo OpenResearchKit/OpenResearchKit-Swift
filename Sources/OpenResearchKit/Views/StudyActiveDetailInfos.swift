@@ -20,7 +20,7 @@ public struct StudyActiveDetailInfos: View {
     public var body: some View {
         List {
             
-            if let image = study.universityLogo {
+            if let image = study.studyInformation.image {
                 Section {
                     Image(uiImage: image)
                         .resizable()
@@ -30,16 +30,16 @@ public struct StudyActiveDetailInfos: View {
             
             Section {
                 if study.isActivelyRunning || isDebug {
-                    if let detailInfos = study.detailInfos {
+                    if let detailInfos = study.studyInformation.detailInfos {
                         Text(detailInfos)
                     } else {
                         Text("You are currently participating in a scientific study to help make this app even better. If you have any questions, please contact us.")
                     }
                 }
                 
-                Button("Contact \(study.contactEmail)") {
+                Button("Contact \(study.studyInformation.contactEmail)") {
                     let email = "mailto:"
-                    let emailformatted = email + study.contactEmail
+                    let emailformatted = email + study.studyInformation.contactEmail
                     guard let url = URL(string: emailformatted) else { return }
                     UIApplication.shared.open(url)
                 }
@@ -109,7 +109,7 @@ public struct StudyActiveDetailInfos: View {
             }
             
         }
-        .navigationBarTitle(study.title)
+        .navigationBarTitle(study.studyInformation.title)
         .onAppear {
             self.lastUploadDate = study.lastSuccessfulUploadDate
             self.studyData = study.JSONFile
