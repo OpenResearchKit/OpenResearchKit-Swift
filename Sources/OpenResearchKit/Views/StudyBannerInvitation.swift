@@ -38,14 +38,26 @@ public struct StudyBannerInvitation: View {
     
 }
 
-struct DefaultStudyView: View {
+public struct DefaultStudyView: View {
     
-    var studyMetadata: StudyInformation
-    var surveyType: SurveyType
-    var dismissStudy: () -> Void = { }
-    var primaryAction: () -> Void = { }
+    public var studyMetadata: StudyInformation
+    public var surveyType: SurveyType
+    public var dismissStudy: () -> Void = { }
+    public var primaryAction: () -> Void = { }
     
-    var body: some View {
+    public init(
+        studyMetadata: StudyInformation,
+        surveyType: SurveyType,
+        dismissStudy: @escaping () -> Void,
+        primaryAction: @escaping () -> Void
+    ) {
+        self.studyMetadata = studyMetadata
+        self.surveyType = surveyType
+        self.dismissStudy = dismissStudy
+        self.primaryAction = primaryAction
+    }
+    
+    public var body: some View {
         
         VStack(alignment: .leading, spacing: 2) {
             
@@ -53,15 +65,9 @@ struct DefaultStudyView: View {
                 
                 Spacer()
                 
-                Button {
+                DismissButton(action: {
                     dismissStudy()
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .resizable()
-                        .frame(width: 24, height: 24)
-                        .foregroundColor(.secondary)
-                        .opacity(0.75)
-                }
+                })
                 
             }
             
@@ -128,7 +134,7 @@ struct DefaultStudyView: View {
             Button(surveyType == .introductory ? "Learn more" : "Complete") {
                 primaryAction()
             }
-            .buttonStyle(BigButtonStyle(backgroundColor: Color.accentColor.opacity(0.22), textColor: Color.accentColor))
+            .buttonStyle(BigRoundedButtonStyle(backgroundColor: Color.accentColor.opacity(0.22), textColor: Color.accentColor))
             .padding(.vertical)
         }
         
@@ -153,17 +159,17 @@ struct DefaultStudyView: View {
             duration: 60 * 60 * 24 * 7,
             detailInfos: nil
         ),
+        uploadConfiguration: UploadConfiguration(
+            fileSubmissionServer: URL(string: "https://example.org")!,
+            uploadFrequency: 60 * 60 * 24,
+            apiKey: "some-api-key"
+        ),
         introductorySurveyURL: URL(
             string: "https://oslopsych.az1.qualtrics.com/jfe/form/SV_3woeKVMUpQsUBwy"
         )!,
         concludingSurveyURL: URL(
             string: "https://oslopsych.az1.qualtrics.com/jfe/form/SV_73335RGCTBsrl7E"
         )!,
-        fileSubmissionServer: URL(
-            string: "https://mknztlfet6msiped4d5iuixssy0iekda.lambda-url.eu-central-1.on.aws"
-        )!,
-        apiKey: "0c549544-a6ba-4f57-b8bc-76d84dd5dae5",
-        uploadFrequency: 7 * 60 * 60 * 24,
         participationIsPossible: false,
         introSurveyCompletionHandler: { parameters, study in
             // not necessary

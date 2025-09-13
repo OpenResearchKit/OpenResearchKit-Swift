@@ -1,5 +1,5 @@
 //
-//  BigButtonStyle.swift
+//  BigRoundedButtonStyle.swift
 //  OpenResearchKit
 //
 //  Created by Lennart Fischer on 25.08.25.
@@ -10,12 +10,17 @@ import SafariServices
 import SwiftUI
 import UIKit
 
-struct BigButtonStyle: ButtonStyle {
+public struct BigRoundedButtonStyle: ButtonStyle {
     
     let backgroundColor: Color
     let textColor: Color
     
-    func makeBody(configuration: Configuration) -> some View {
+    public init(backgroundColor: Color, textColor: Color) {
+        self.backgroundColor = backgroundColor
+        self.textColor = textColor
+    }
+    
+    public func makeBody(configuration: Configuration) -> some View {
         
         HStack {
             Spacer()
@@ -40,7 +45,7 @@ struct BigButtonStyle: ButtonStyle {
         Text("Example Button")
     }
     .buttonStyle(
-        BigButtonStyle(
+        BigRoundedButtonStyle(
             backgroundColor: Color.blue,
             textColor: Color.white
         )

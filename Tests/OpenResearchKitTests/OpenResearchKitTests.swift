@@ -1,6 +1,16 @@
 import XCTest
 @testable import OpenResearchKit
 
+extension UploadConfiguration {
+    
+    static let dummy: UploadConfiguration = .init(
+        fileSubmissionServer: URL(string: "https://example.org/upload")!,
+        uploadFrequency: 60 * 60 * 24,
+        apiKey: ""
+    )
+    
+}
+
 final class OpenResearchKitTests: XCTestCase {
     
     func testAppendQueryItems() {
@@ -23,17 +33,17 @@ final class OpenResearchKitTests: XCTestCase {
     func testStudyBuildsSurveyUrl() {
         
         let study = Study(
-            title: "",
-            subtitle: "",
-            duration: 10,
             studyIdentifier: "test",
-            universityLogo: nil,
-            contactEmail: "test@example.com",
+            studyInformation: StudyInformation(
+                title: "",
+                subtitle: "",
+                contactEmail: "test@example.com",
+                image: nil,
+                duration: 10,
+            ),
+            uploadConfiguration: .dummy,
             introductorySurveyURL: URL(string: "https://example.com/intro"),
             concludingSurveyURL: URL(string: "https://example.com/conclusion"),
-            fileSubmissionServer: URL(string: "https://example.com/upload")!,
-            apiKey: "test",
-            uploadFrequency: 10 * 60,
             introSurveyCompletionHandler: nil
         )
         

@@ -8,16 +8,9 @@
 import Foundation
 import UIKit
 import SwiftUI
+import OSLog
 
-public struct UploadConfiguration {
-    
-    public let fileSubmissionServer: URL
-    public let uploadFrequency: TimeInterval
-    public let apiKey: String
-    
-}
-
-public class Study: ObservableObject {
+open class Study: ObservableObject {
     
     static var allStudies = [Study]()
     
@@ -30,27 +23,21 @@ public class Study: ObservableObject {
     public init(
         studyIdentifier: String,
         studyInformation: StudyInformation,
+        uploadConfiguration: UploadConfiguration,
         introductorySurveyURL: URL?,
         midStudySurvey: MidStudySurvey? = nil,
         concludingSurveyURL: URL?,
-        fileSubmissionServer: URL,
-        apiKey: String,
-        uploadFrequency: TimeInterval,
         participationIsPossible: Bool = true,
         sharedAppGroupIdentifier: String? = nil,
         isDataDonationStudy: Bool = false,
         additionalQueryItems: @escaping (SurveyType) -> [URLQueryItem] = { _ in [] },
         introSurveyCompletionHandler: (([String: String], Study) -> Void)?
     ) {
-        self.studyInformation = studyInformation
-        
-        self.uploadConfiguration = UploadConfiguration(
-            fileSubmissionServer: fileSubmissionServer,
-            uploadFrequency: uploadFrequency,
-            apiKey: apiKey
-        )
-        
         self.studyIdentifier = studyIdentifier
+        self.studyInformation = studyInformation
+        self.uploadConfiguration = uploadConfiguration
+        
+        
         self.introductorySurveyURL = introductorySurveyURL
         self.midStudySurvey = midStudySurvey
         self.concludingSurveyURL = concludingSurveyURL
@@ -142,6 +129,167 @@ public class Study: ObservableObject {
                 
         }
     }
+    
+    // MARK: - Views -
+    
+    open var invitationBannerView: AnyView {
+        StudyBannerInvitation(surveyType: .introductory)
+            .environmentObject(self)
+            .toAnyView()
+    }
+    
+    public var terminationBannerView: some View {
+        StudyBannerInvitation(surveyType: .completion)
+            .environmentObject(self)
+    }
+    
+    public var midSurveyBannerView: some View {
+        StudyBannerInvitation(surveyType: .mid)
+            .environmentObject(self)
+    }
+    
+    public var detailInfosView: some View {
+        StudyActiveDetailInfos()
+            .environmentObject(self)
+    }
+    
+    // MARK: - Actions -
+    
+    public func showCompletionSurvey() {
+        let surveyView = SurveyWebView(surveyType: .completion).environmentObject(self)
+        let hostingCOntroller = UIHostingController(rootView: surveyView)
+        hostingCOntroller.modalPresentationStyle = .fullScreen
+        UIApplication.shared.keyWindow?.rootViewController?.dismiss(animated: false, completion: {
+            UIViewController.topViewController()?.present(hostingCOntroller, animated: true)
+        })
+    }
+    
+    public func showMidStudySurvey() {
+        guard let midStudySurvey else {
+            return
+        }
+        
+        let surveyView = SurveyWebView(surveyType: .mid).environmentObject(self)
+        let hostingController = UIHostingController(rootView: surveyView)
+        hostingController.modalPresentationStyle = .fullScreen
+        UIApplication.shared.keyWindow?.rootViewController?.dismiss(animated: false, completion: {
+            UIViewController.topViewController()?.present(hostingController, animated: true)
+        })
+    }
+    
+    public func saveUserConsentHasBeenGiven(
+        consentTimestamp: Date,
+        completion: @escaping () -> Void
+    ) {
+        var studyUserDefaults = self.studyUserDefaults
+        studyUserDefaults["userConsentDate"] = consentTimestamp
+        self.save(studyUserDefaults: studyUserDefaults)
+        DispatchQueue.main.async {
+            self.objectWillChange.send()
+            
+            if self.midStudySurvey != nil || self.concludingSurveyURL != nil {
+                let alert = UIAlertController(
+                    title: NSLocalizedString("Post-Study-Questionnaire", bundle: Bundle.module, comment: ""),
+                    message: NSLocalizedString("We’ll send you a push notification when the study is concluded to fill out the post-questionnaire.", bundle: Bundle.module, comment: ""),
+                    preferredStyle: .alert
+                )
+                
+                let proceedAction = UIAlertAction(title: "Ok", style: .default) { _ in
+                    LocalPushController.shared.askUserForPushPermission { success in
+                        var pushDuration = self.studyInformation.duration ?? 0
+#if DEBUG
+                        pushDuration = 10
+#endif
+                        
+                        if let midStudySurvey = self.midStudySurvey {
+                            LocalPushController.shared.sendLocalNotification(
+                                in: midStudySurvey.showAfter,
+                                title: NSLocalizedString("Mid-Study Survey", bundle: Bundle.module, comment: ""),
+                                subtitle: NSLocalizedString("Please fill out our short mid-study survey.", bundle: Bundle.module, comment: ""),
+                                body: NSLocalizedString("It only takes 3 minutes to complete this survey.", bundle: Bundle.module, comment: ""),
+                                identifier: "mid-study-survey-notification"
+                            )
+                            
+                            LocalPushController.shared.sendLocalNotification(in: midStudySurvey.showAfter + 3 * 24 * 60 * 60, title: "Survey Completion Still Pending", subtitle: "Reminder: Please fill out our short mid-study survey.", body: "It only takes about 3 minutes.", identifier: "mid-study-survey-notification-reminder")
+                        }
+                        
+                        
+                        
+                        LocalPushController.shared.sendLocalNotification(
+                            in: pushDuration,
+                            title: NSLocalizedString("Concluding the study", bundle: Bundle.module, comment: ""),
+                            subtitle: NSLocalizedString("Thanks for participating. Please fill out one last survey.", bundle: Bundle.module, comment: ""),
+                            body: NSLocalizedString("It only takes 3 minutes to complete this survey.", bundle: Bundle.module, comment: ""),
+                            identifier: "survey-completion-notification"
+                        )
+                        
+                        LocalPushController.shared.sendLocalNotification(in: pushDuration + 3 * 24 * 60 * 60, title: "Survey Completion Still Pending", subtitle: "Thanks for participating. You can complete the exit survey at any time.", body: "It only takes about 3 minutes.", identifier: "survey-completion-notification-reminder")
+                        
+                        completion()
+                    }
+                }
+                alert.addAction(proceedAction)
+                UIViewController.topViewController()?.present(alert, animated: true)
+            } else {
+                completion()
+            }
+        }
+    }
+    
+    public func manuallyGiveUserConsent(
+        timeStamp: Date = Date(),
+        userId: String?,
+        completion: @escaping () -> Void
+    ) {
+        self.saveUserConsentHasBeenGiven(consentTimestamp: timeStamp, completion: completion)
+        if let userId {
+            self.userIdentifier = userId
+        }
+    }
+    
+    public func terminateParticipationImmediately() {
+        let terminationDate = Date()
+        self.appendNewJSONObjects(newObjects: [
+            [
+                "terminationReason": "terminatedByUser",
+                "timestamp": terminationDate.timeIntervalSince1970
+            ]
+        ])
+        self.terminatedByUserDate = terminationDate
+        self.uploadIfNecessary()
+    }
+    
+    /// Resets the UUID of the study 
+    open func reset() {
+        let newLocalUserIdentifier = "\(studyIdentifier)-\(UUID().uuidString)"
+        self.userIdentifier = newLocalUserIdentifier
+    }
+    
+    // MARK: - Improved File Handling -
+    
+    public func studyContainer() -> URL {
+        
+        let fileManager = FileManager.default
+        let documentDirectoryURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let studyDirectoryURL = documentDirectoryURL
+            .appendingPathComponent("OpenResearchKit/Studies", isDirectory: true)
+            .appendingPathComponent(studyIdentifier, isDirectory: true)
+        
+        // Ensure the directory exists
+        do {
+            try fileManager.createDirectory(
+                at: studyDirectoryURL,
+                withIntermediateDirectories: true,
+                attributes: nil
+            )
+        } catch {
+            Logger.research.error("Failed to create study directory: \(error)")
+        }
+        
+        return studyDirectoryURL
+        
+    }
+    
 }
 
 // MARK: - Accessors -
@@ -304,142 +452,6 @@ extension Study {
                 self.objectWillChange.send()
             }
         }
-    }
-    
-}
-
-// MARK: - Actions -
-
-extension Study {
-    
-    public func showCompletionSurvey() {
-        let surveyView = SurveyWebView(surveyType: .completion).environmentObject(self)
-        let hostingCOntroller = UIHostingController(rootView: surveyView)
-        hostingCOntroller.modalPresentationStyle = .fullScreen
-        UIApplication.shared.keyWindow?.rootViewController?.dismiss(animated: false, completion: {
-            UIViewController.topViewController()?.present(hostingCOntroller, animated: true)
-        })
-    }
-    
-    public func showMidStudySurvey() {
-        guard let midStudySurvey else {
-            return
-        }
-        
-        let surveyView = SurveyWebView(surveyType: .mid).environmentObject(self)
-        let hostingController = UIHostingController(rootView: surveyView)
-        hostingController.modalPresentationStyle = .fullScreen
-        UIApplication.shared.keyWindow?.rootViewController?.dismiss(animated: false, completion: {
-            UIViewController.topViewController()?.present(hostingController, animated: true)
-        })
-    }
-    
-    public func saveUserConsentHasBeenGiven(
-        consentTimestamp: Date,
-        completion: @escaping () -> Void
-    ) {
-        var studyUserDefaults = self.studyUserDefaults
-        studyUserDefaults["userConsentDate"] = consentTimestamp
-        self.save(studyUserDefaults: studyUserDefaults)
-        DispatchQueue.main.async {
-            self.objectWillChange.send()
-            
-            if self.midStudySurvey != nil || self.concludingSurveyURL != nil {
-                let alert = UIAlertController(
-                    title: NSLocalizedString("Post-Study-Questionnaire", bundle: Bundle.module, comment: ""),
-                    message: NSLocalizedString("We’ll send you a push notification when the study is concluded to fill out the post-questionnaire.", bundle: Bundle.module, comment: ""),
-                    preferredStyle: .alert
-                )
-                
-                let proceedAction = UIAlertAction(title: "Ok", style: .default) { _ in
-                    LocalPushController.shared.askUserForPushPermission { success in
-                        var pushDuration = self.studyInformation.duration ?? 0
-#if DEBUG
-                        pushDuration = 10
-#endif
-                        
-                        if let midStudySurvey = self.midStudySurvey {
-                            LocalPushController.shared.sendLocalNotification(
-                                in: midStudySurvey.showAfter,
-                                title: NSLocalizedString("Mid-Study Survey", bundle: Bundle.module, comment: ""),
-                                subtitle: NSLocalizedString("Please fill out our short mid-study survey.", bundle: Bundle.module, comment: ""),
-                                body: NSLocalizedString("It only takes 3 minutes to complete this survey.", bundle: Bundle.module, comment: ""),
-                                identifier: "mid-study-survey-notification"
-                            )
-                            
-                            LocalPushController.shared.sendLocalNotification(in: midStudySurvey.showAfter + 3 * 24 * 60 * 60, title: "Survey Completion Still Pending", subtitle: "Reminder: Please fill out our short mid-study survey.", body: "It only takes about 3 minutes.", identifier: "mid-study-survey-notification-reminder")
-                        }
-                        
-                        
-                        
-                        LocalPushController.shared.sendLocalNotification(
-                            in: pushDuration,
-                            title: NSLocalizedString("Concluding the study", bundle: Bundle.module, comment: ""),
-                            subtitle: NSLocalizedString("Thanks for participating. Please fill out one last survey.", bundle: Bundle.module, comment: ""),
-                            body: NSLocalizedString("It only takes 3 minutes to complete this survey.", bundle: Bundle.module, comment: ""),
-                            identifier: "survey-completion-notification"
-                        )
-                        
-                        LocalPushController.shared.sendLocalNotification(in: pushDuration + 3 * 24 * 60 * 60, title: "Survey Completion Still Pending", subtitle: "Thanks for participating. You can complete the exit survey at any time.", body: "It only takes about 3 minutes.", identifier: "survey-completion-notification-reminder")
-                        
-                        completion()
-                    }
-                }
-                alert.addAction(proceedAction)
-                UIViewController.topViewController()?.present(alert, animated: true)
-            } else {
-                completion()
-            }
-        }
-    }
-    
-    public func manuallyGiveUserConsent(
-        timeStamp: Date = Date(),
-        userId: String?,
-        completion: @escaping () -> Void
-    ) {
-        self.saveUserConsentHasBeenGiven(consentTimestamp: timeStamp, completion: completion)
-        if let userId {
-            self.userIdentifier = userId
-        }
-    }
-    
-    public func terminateParticipationImmediately() {
-        let terminationDate = Date()
-        self.appendNewJSONObjects(newObjects: [
-            [
-                "terminationReason": "terminatedByUser",
-                "timestamp": terminationDate.timeIntervalSince1970
-            ]
-        ])
-        self.terminatedByUserDate = terminationDate
-        self.uploadIfNecessary()
-    }
-    
-}
-
-// MARK: - Views -
-
-extension Study {
-    
-    public var invitationBannerView: some View {
-        StudyBannerInvitation(surveyType: .introductory)
-            .environmentObject(self)
-    }
-    
-    public var terminationBannerView: some View {
-        StudyBannerInvitation(surveyType: .completion)
-            .environmentObject(self)
-    }
-    
-    public var midSurveyBannerView: some View {
-        StudyBannerInvitation(surveyType: .mid)
-            .environmentObject(self)
-    }
-    
-    public var detailInfosView: some View {
-        StudyActiveDetailInfos()
-            .environmentObject(self)
     }
     
 }

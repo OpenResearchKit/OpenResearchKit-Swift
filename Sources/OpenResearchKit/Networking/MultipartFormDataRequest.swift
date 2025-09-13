@@ -27,6 +27,18 @@ struct MultipartFormDataRequest {
         self.url = url
     }
 
+    public static func withConfiguration(
+        uploadConfiguration: UploadConfiguration,
+        userIdentifier: String
+    ) -> MultipartFormDataRequest {
+        let request = MultipartFormDataRequest(
+            url: uploadConfiguration.fileSubmissionServer
+        )
+        request.addTextField(named: "api_key", value: uploadConfiguration.apiKey)
+        request.addTextField(named: "user_key", value: userIdentifier)
+        return request
+    }
+    
     func addTextField(named name: String, value: String) {
         httpBody.append(textFormField(named: name, value: value))
     }
@@ -93,6 +105,12 @@ extension URLSession {
         completionHandler: @escaping (Data?, URLResponse?, Error?) -> Void
     ) -> URLSessionDataTask {
         return dataTask(with: request.asURLRequest(), completionHandler: completionHandler)
+    }
+    
+    func data(
+        with request: MultipartFormDataRequest
+    ) async throws -> (Data, URLResponse) {
+        return try await data(for: request.asURLRequest())
     }
     
 }
