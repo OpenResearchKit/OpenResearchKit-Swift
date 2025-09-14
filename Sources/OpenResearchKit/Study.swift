@@ -42,6 +42,7 @@ open class Study: ObservableObject {
         static let HasCompletedTerminationSurvey = "hasCompletedTerminationSurvey"
         static let AssignedGroup = "assignedGroup"
         static let LastSuccessfulUploadDate = "lastSuccessfulUploadDate"
+        static let LocalUserIdentifier = "localUserIdentifier"
     }
     
     public init(
@@ -93,9 +94,7 @@ open class Study: ObservableObject {
     public private(set) var userIdentifier: String {
         
         get {
-            let studyUserDefaults = self.studyUserDefaults
-            
-            if let localUserIdentifier = studyUserDefaults["localUserIdentifier"] as? String {
+            if let localUserIdentifier = store.get(Keys.LocalUserIdentifier, type: String.self) {
                 return localUserIdentifier
             }
             
@@ -105,9 +104,8 @@ open class Study: ObservableObject {
         }
         
         set {
-            var studyUserDefaults = self.studyUserDefaults
-            studyUserDefaults["localUserIdentifier"] = newValue
-            self.save(studyUserDefaults: studyUserDefaults)
+            store.update(Keys.LocalUserIdentifier, value: newValue)
+            
             DispatchQueue.main.async {
                 self.objectWillChange.send()
             }
@@ -131,7 +129,7 @@ open class Study: ObservableObject {
                 
             let url = self.concludingSurveyURL?.appendingQueryItem(name: "uuid", value: self.userIdentifier)
             
-            if let assignedGroup = self.studyUserDefaults[Keys.AssignedGroup] as? String {
+            if let assignedGroup = self.assignedGroup {
                 return url?.appendingQueryItem(name: Keys.AssignedGroup, value: assignedGroup)
             }
             
@@ -160,16 +158,16 @@ open class Study: ObservableObject {
     
     // MARK: - Study User Defaults -
     
+    private lazy var store: StudyKeyValueStore = {
+        StudyKeyValueStore(studyIdentifier: self.studyIdentifier, appGroup: self.sharedAppGroupIdentifier)
+    }()
+    
     public var studyUserDefaults: [String: Any] {
-        OpenResearchKit.researchKitDefaults(appGroup: self.sharedAppGroupIdentifier)[self.studyIdentifier] ?? [:]
+        return store.values()
     }
     
     func save(studyUserDefaults: [String: Any]) {
-        OpenResearchKit.saveStudyDefaults(
-            defaults: studyUserDefaults,
-            appGroup: self.sharedAppGroupIdentifier,
-            studyIdentifier: self.studyIdentifier
-        )
+        store.saveValues(studyUserDefaults)
     }
     
     // MARK: - Views -
@@ -225,10 +223,7 @@ open class Study: ObservableObject {
         completion: @escaping () -> Void
     ) {
         
-        var studyUserDefaults = self.studyUserDefaults
-        studyUserDefaults[Keys.UserConsentDate] = consentTimestamp
-        
-        self.save(studyUserDefaults: studyUserDefaults)
+        store.update(Keys.UserConsentDate, value: consentTimestamp)
         
         DispatchQueue.main.async {
             self.objectWillChange.send()
@@ -388,12 +383,11 @@ extension Study {
     
     public var isDismissedByUser: Bool {
         get {
-            studyUserDefaults[Keys.IsDismissedByUser] as? Bool ?? false
+            store.get(Keys.IsDismissedByUser, type: Bool.self) ?? false
         }
         set {
-            var studyUserDefaults = self.studyUserDefaults
-            studyUserDefaults[Keys.IsDismissedByUser] = newValue
-            self.save(studyUserDefaults: studyUserDefaults)
+            store.update(Keys.IsDismissedByUser, value: newValue)
+            
             DispatchQueue.main.async {
                 self.objectWillChange.send()
             }
@@ -401,7 +395,7 @@ extension Study {
     }
     
     public var userConsentDate: Date? {
-        return studyUserDefaults["userConsentDate"] as? Date
+        store.get(Keys.UserConsentDate, type: Date.self)
     }
     
     public var hasUserGivenConsent: Bool {
@@ -410,13 +404,13 @@ extension Study {
     
     public var hasCompletedTerminationSurvey: Bool {
         get {
-            return studyUserDefaults[Keys.HasCompletedTerminationSurvey] as? Bool ?? false
+            return store.get(Keys.HasCompletedTerminationSurvey, type: Bool.self) ?? false
         }
         
         set {
-            var studyUserDefaults = self.studyUserDefaults
-            studyUserDefaults[Keys.HasCompletedTerminationSurvey] = newValue
-            self.save(studyUserDefaults: studyUserDefaults)
+            
+            store.update(Keys.HasCompletedTerminationSurvey, value: newValue)
+            
             DispatchQueue.main.async {
                 self.objectWillChange.send()
                 if newValue {
@@ -429,13 +423,12 @@ extension Study {
     
     public var hasCompletedMidSurvey: Bool {
         get {
-            return studyUserDefaults[Keys.HasCompletedMidSurvey] as? Bool ?? false
+            return store.get(Keys.HasCompletedMidSurvey, type: Bool.self) ?? false
         }
         
         set {
-            var studyUserDefaults = self.studyUserDefaults
-            studyUserDefaults[Keys.HasCompletedMidSurvey] = newValue
-            self.save(studyUserDefaults: studyUserDefaults)
+            store.update(Keys.HasCompletedMidSurvey, value: newValue)
+            
             DispatchQueue.main.async {
                 self.objectWillChange.send()
                 if newValue {
@@ -470,15 +463,14 @@ extension Study {
     public var assignedGroup: String? {
         get {
             if self.isActivelyRunning {
-                return studyUserDefaults[Keys.AssignedGroup] as? String
+                return store.get(Keys.AssignedGroup, type: String.self)
             }
             return nil
         }
         
         set {
-            var studyUserDefaults = self.studyUserDefaults
-            studyUserDefaults[Keys.AssignedGroup] = newValue
-            self.save(studyUserDefaults: studyUserDefaults)
+            store.update(Keys.AssignedGroup, value: newValue)
+            
             DispatchQueue.main.async {
                 self.objectWillChange.send()
             }
@@ -507,13 +499,12 @@ extension Study {
     
     private var terminatedByUserDate: Date? {
         get {
-            studyUserDefaults[Keys.TerminatedByUserDate] as? Date
+            store.get(Keys.TerminatedByUserDate, type: Date.self)
         }
         
         set {
-            var studyUserDefaults = self.studyUserDefaults
-            studyUserDefaults[Keys.TerminatedByUserDate] = newValue
-            self.save(studyUserDefaults: studyUserDefaults)
+            store.update(Keys.TerminatedByUserDate, value: newValue)
+            
             DispatchQueue.main.async {
                 self.objectWillChange.send()
             }
@@ -579,13 +570,15 @@ extension Study {
 extension Study {
     
     public var lastSuccessfulUploadDate: Date? {
-        return studyUserDefaults[Keys.LastSuccessfulUploadDate] as? Date
+        return store.get(Keys.LastSuccessfulUploadDate, type: Date.self)
     }
     
     public func updateUploadDate(newDate: Date = Date()) {
-        var studyUserDefaults = self.studyUserDefaults
-        studyUserDefaults[Keys.LastSuccessfulUploadDate] = newDate
-        self.save(studyUserDefaults: studyUserDefaults)
+        
+        store.updateValues { values in
+            values[Keys.LastSuccessfulUploadDate] = newDate
+        }
+        
         DispatchQueue.main.async {
             self.objectWillChange.send()
         }
