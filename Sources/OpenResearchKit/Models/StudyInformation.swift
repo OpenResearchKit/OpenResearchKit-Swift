@@ -19,7 +19,14 @@ public struct StudyInformation {
     public let duration: TimeInterval?
     public let detailInfos: String?
     
-    public init(title: String, subtitle: String, contactEmail: String, image: UIImage?, duration: TimeInterval?, detailInfos: String? = nil) {
+    public init(
+        title: String,
+        subtitle: String,
+        contactEmail: String,
+        image: UIImage?,
+        duration: TimeInterval?,
+        detailInfos: String? = nil
+    ) {
         self.title = title
         self.subtitle = subtitle
         self.contactEmail = contactEmail

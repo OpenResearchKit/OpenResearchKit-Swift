@@ -10,6 +10,20 @@ import UIKit
 import SwiftUI
 import OSLog
 
+public enum StudyDirectoryType: String {
+    
+    /// Used for uploading the data in that directory
+    case upload = "upload"
+    
+    /// Used for keeping a local files for a study meant to be altered during runtime
+    case working = "working"
+    
+    var directoryName: String {
+        return self.rawValue
+    }
+    
+}
+
 open class Study: ObservableObject {
     
     static var allStudies = [Study]()
@@ -18,6 +32,16 @@ open class Study: ObservableObject {
         allStudies.first { study in
             study.hasUserGivenConsent && !study.hasCompletedTerminationSurvey && !study.isDismissedByUser
         }
+    }
+    
+    struct Keys {
+        static let UserConsentDate = "userConsentDate"
+        static let HasCompletedMidSurvey = "hasCompletedMidSurvey"
+        static let IsDismissedByUser = "isDismissedByUser"
+        static let TerminatedByUserDate = "terminatedByUserDate"
+        static let HasCompletedTerminationSurvey = "hasCompletedTerminationSurvey"
+        static let AssignedGroup = "assignedGroup"
+        static let LastSuccessfulUploadDate = "lastSuccessfulUploadDate"
     }
     
     public init(
@@ -91,14 +115,6 @@ open class Study: ObservableObject {
         
     }
     
-    public var studyUserDefaults: [String: Any] {
-        OpenResearchKit.researchKitDefaults(appGroup: self.sharedAppGroupIdentifier)[self.studyIdentifier] ?? [:]
-    }
-    
-    func save(studyUserDefaults: [String: Any]) {
-        OpenResearchKit.saveStudyDefaults(defaults: studyUserDefaults, appGroup: self.sharedAppGroupIdentifier, studyIdentifier: self.studyIdentifier)
-    }
-    
     func surveyUrl(for surveyType: SurveyType) -> URL? {
         
         let additionalQueryItems: [URLQueryItem] = self.additionalQueryItems(surveyType)
@@ -115,8 +131,8 @@ open class Study: ObservableObject {
                 
             let url = self.concludingSurveyURL?.appendingQueryItem(name: "uuid", value: self.userIdentifier)
             
-            if let assignedGroup = self.studyUserDefaults["assignedGroup"] as? String {
-                return url?.appendingQueryItem(name: "assignedGroup", value: assignedGroup)
+            if let assignedGroup = self.studyUserDefaults[Keys.AssignedGroup] as? String {
+                return url?.appendingQueryItem(name: Keys.AssignedGroup, value: assignedGroup)
             }
             
             return url?.appendingQueryItems(additionalQueryItems)
@@ -130,6 +146,32 @@ open class Study: ObservableObject {
         }
     }
     
+    open func currentStatus() async throws -> StudyStatus {
+        
+        if isActivelyRunning {
+            return .successStyle(text: "Active")
+        } else if hasCompletedTerminationSurvey {
+            return .mutedStyle(text: "Completed")
+        } else {
+            return .mutedStyle(text: "Available")
+        }
+            
+    }
+    
+    // MARK: - Study User Defaults -
+    
+    public var studyUserDefaults: [String: Any] {
+        OpenResearchKit.researchKitDefaults(appGroup: self.sharedAppGroupIdentifier)[self.studyIdentifier] ?? [:]
+    }
+    
+    func save(studyUserDefaults: [String: Any]) {
+        OpenResearchKit.saveStudyDefaults(
+            defaults: studyUserDefaults,
+            appGroup: self.sharedAppGroupIdentifier,
+            studyIdentifier: self.studyIdentifier
+        )
+    }
+    
     // MARK: - Views -
     
     open var invitationBannerView: AnyView {
@@ -138,19 +180,20 @@ open class Study: ObservableObject {
             .toAnyView()
     }
     
-    public var terminationBannerView: some View {
+    open var terminationBannerView: AnyView {
         StudyBannerInvitation(surveyType: .completion)
             .environmentObject(self)
+            .toAnyView()
     }
     
-    public var midSurveyBannerView: some View {
+    open var midSurveyBannerView: AnyView {
         StudyBannerInvitation(surveyType: .mid)
             .environmentObject(self)
+            .toAnyView()
     }
     
     public var detailInfosView: some View {
-        StudyActiveDetailInfos()
-            .environmentObject(self)
+        StudyDetailInfoScreen(study: self)
     }
     
     // MARK: - Actions -
@@ -165,7 +208,7 @@ open class Study: ObservableObject {
     }
     
     public func showMidStudySurvey() {
-        guard let midStudySurvey else {
+        guard midStudySurvey != nil else {
             return
         }
         
@@ -181,9 +224,12 @@ open class Study: ObservableObject {
         consentTimestamp: Date,
         completion: @escaping () -> Void
     ) {
+        
         var studyUserDefaults = self.studyUserDefaults
-        studyUserDefaults["userConsentDate"] = consentTimestamp
+        studyUserDefaults[Keys.UserConsentDate] = consentTimestamp
+        
         self.save(studyUserDefaults: studyUserDefaults)
+        
         DispatchQueue.main.async {
             self.objectWillChange.send()
             
@@ -259,21 +305,41 @@ open class Study: ObservableObject {
         self.uploadIfNecessary()
     }
     
-    /// Resets the UUID of the study 
-    open func reset() {
+    /// Resets the UUID of the study and clears the study data directories.
+    open func reset() throws {
+        
+        // Reset study identifier
         let newLocalUserIdentifier = "\(studyIdentifier)-\(UUID().uuidString)"
         self.userIdentifier = newLocalUserIdentifier
+        
+        // Reset state variables
+        self.assignedGroup = nil
+        self.terminatedByUserDate = nil
+        self.hasCompletedTerminationSurvey = false
+        self.hasCompletedMidSurvey = false
+        self.isDismissedByUser = false
+        
+//        self.studyUserDefaults[Keys.UserConsentDate] = nil
+//        
+//        self.studyEndDate = nil
+        
+        
+        // Delete all files
+        try StudyFileManager.shared.deleteAllFiles(study: self, type: .working)
+        try StudyFileManager.shared.deleteAllFiles(study: self, type: .upload)
+        
     }
     
-    // MARK: - Improved File Handling -
+    // MARK: - File Handling -
     
-    public func studyContainer() -> URL {
+    public func studyDirectory(type: StudyDirectoryType = .working) -> URL {
         
         let fileManager = FileManager.default
         let documentDirectoryURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
         let studyDirectoryURL = documentDirectoryURL
             .appendingPathComponent("OpenResearchKit/Studies", isDirectory: true)
             .appendingPathComponent(studyIdentifier, isDirectory: true)
+            .appendingPathComponent(type.directoryName, isDirectory: true)
         
         // Ensure the directory exists
         do {
@@ -322,11 +388,11 @@ extension Study {
     
     public var isDismissedByUser: Bool {
         get {
-            studyUserDefaults["isDismissedByUser"] as? Bool ?? false
+            studyUserDefaults[Keys.IsDismissedByUser] as? Bool ?? false
         }
         set {
             var studyUserDefaults = self.studyUserDefaults
-            studyUserDefaults["isDismissedByUser"] = newValue
+            studyUserDefaults[Keys.IsDismissedByUser] = newValue
             self.save(studyUserDefaults: studyUserDefaults)
             DispatchQueue.main.async {
                 self.objectWillChange.send()
@@ -344,12 +410,12 @@ extension Study {
     
     public var hasCompletedTerminationSurvey: Bool {
         get {
-            return studyUserDefaults["hasCompletedTerminationSurvey"] as? Bool ?? false
+            return studyUserDefaults[Keys.HasCompletedTerminationSurvey] as? Bool ?? false
         }
         
         set {
             var studyUserDefaults = self.studyUserDefaults
-            studyUserDefaults["hasCompletedTerminationSurvey"] = newValue
+            studyUserDefaults[Keys.HasCompletedTerminationSurvey] = newValue
             self.save(studyUserDefaults: studyUserDefaults)
             DispatchQueue.main.async {
                 self.objectWillChange.send()
@@ -363,12 +429,12 @@ extension Study {
     
     public var hasCompletedMidSurvey: Bool {
         get {
-            return studyUserDefaults["hasCompletedMidSurvey"] as? Bool ?? false
+            return studyUserDefaults[Keys.HasCompletedMidSurvey] as? Bool ?? false
         }
         
         set {
             var studyUserDefaults = self.studyUserDefaults
-            studyUserDefaults["hasCompletedMidSurvey"] = newValue
+            studyUserDefaults[Keys.HasCompletedMidSurvey] = newValue
             self.save(studyUserDefaults: studyUserDefaults)
             DispatchQueue.main.async {
                 self.objectWillChange.send()
@@ -404,14 +470,14 @@ extension Study {
     public var assignedGroup: String? {
         get {
             if self.isActivelyRunning {
-                return studyUserDefaults["assignedGroup"] as? String
+                return studyUserDefaults[Keys.AssignedGroup] as? String
             }
             return nil
         }
         
         set {
             var studyUserDefaults = self.studyUserDefaults
-            studyUserDefaults["assignedGroup"] = newValue
+            studyUserDefaults[Keys.AssignedGroup] = newValue
             self.save(studyUserDefaults: studyUserDefaults)
             DispatchQueue.main.async {
                 self.objectWillChange.send()
@@ -441,12 +507,12 @@ extension Study {
     
     private var terminatedByUserDate: Date? {
         get {
-            studyUserDefaults["terminatedByUserDate"] as? Date
+            studyUserDefaults[Keys.TerminatedByUserDate] as? Date
         }
         
         set {
             var studyUserDefaults = self.studyUserDefaults
-            studyUserDefaults["terminatedByUserDate"] = newValue
+            studyUserDefaults[Keys.TerminatedByUserDate] = newValue
             self.save(studyUserDefaults: studyUserDefaults)
             DispatchQueue.main.async {
                 self.objectWillChange.send()
@@ -480,7 +546,7 @@ extension Study {
         return readPath
     }
     
-    internal var JSONFile: [ [String: Any] ] {
+    internal var JSONFile: [[String: Any]] {
         if let jsonData = try? Data(contentsOf: jsonDataFilePath),
            let decoded = try? JSONSerialization.jsonObject(with: jsonData, options: []),
            let json = decoded as? [ [String: Any] ] {
@@ -513,12 +579,12 @@ extension Study {
 extension Study {
     
     public var lastSuccessfulUploadDate: Date? {
-        return studyUserDefaults["lastSuccessfulUploadDate"] as? Date
+        return studyUserDefaults[Keys.LastSuccessfulUploadDate] as? Date
     }
     
     public func updateUploadDate(newDate: Date = Date()) {
         var studyUserDefaults = self.studyUserDefaults
-        studyUserDefaults["lastSuccessfulUploadDate"] = newDate
+        studyUserDefaults[Keys.LastSuccessfulUploadDate] = newDate
         self.save(studyUserDefaults: studyUserDefaults)
         DispatchQueue.main.async {
             self.objectWillChange.send()
@@ -583,32 +649,3 @@ extension Study {
     }
     
 }
-
-struct OpenResearchKit {
-    
-    static func researchKitDefaults(appGroup: String?) -> [String: [String: Any]] {
-        if let appGroup {
-            return UserDefaults(suiteName: appGroup)!.dictionary(forKey: "open_research_kit") as? [String: [String: Any]] ?? [:]
-        }
-        return UserDefaults.standard.dictionary(forKey: "open_research_kit") as? [String: [String: Any]] ?? [:]
-    }
-    
-    static func saveStudyDefaults(defaults: [String: Any], appGroup: String?, studyIdentifier: String) {
-        var currentDefaults = researchKitDefaults(appGroup: appGroup)
-        currentDefaults[studyIdentifier] = defaults
-        if let appGroup {
-            UserDefaults(suiteName: appGroup)!.set(currentDefaults, forKey: "open_research_kit")
-        } else {
-            UserDefaults.standard.set(currentDefaults, forKey: "open_research_kit")
-        }
-    }
-    
-}
-
-extension Date {
-    var isInFuture: Bool {
-        return self.timeIntervalSinceNow > 0
-    }
-}
-
-

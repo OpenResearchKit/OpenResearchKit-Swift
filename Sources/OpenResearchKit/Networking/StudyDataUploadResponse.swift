@@ -11,10 +11,10 @@ struct StudyDataUploadResponse: Codable {
         let success: Bool
     }
     
-    let results: Results
+    let result: Results
     
     enum CodingKeys: String, CodingKey {
-        case results = "results"
+        case result = "result"
     }
     
 }

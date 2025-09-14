@@ -69,10 +69,11 @@ final class StudyTests: XCTestCase {
         let expectedDir = try documentsDirectory()
             .appendingPathComponent("OpenResearchKit/Studies", isDirectory: true)
             .appendingPathComponent(studyID, isDirectory: true)
+            .appendingPathComponent("working", isDirectory: true)
         removeItemIfExists(expectedDir)
         
         // Act
-        let url = study.studyContainer()
+        let url = study.studyDirectory()
         
         // Assert: path correctness
         XCTAssertEqual(url, expectedDir)
@@ -88,8 +89,8 @@ final class StudyTests: XCTestCase {
         let studyID = "Idempotent-\(UUID().uuidString)"
         let study = Dummy.makeStudy(id: studyID)
         
-        let first = study.studyContainer()
-        let second = study.studyContainer()
+        let first = study.studyDirectory()
+        let second = study.studyDirectory()
         
         XCTAssertEqual(first, second)
         

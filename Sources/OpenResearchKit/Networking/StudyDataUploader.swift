@@ -116,7 +116,7 @@ public class StudyDataUploader {
             
             let uploadResponse = try JSONDecoder().decode(StudyDataUploadResponse.self, from: data)
             
-            if !uploadResponse.results.success {
+            if !uploadResponse.result.success {
                 throw UploadError.serverRejected("Upload not successful")
             }
             
