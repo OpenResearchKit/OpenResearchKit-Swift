@@ -39,7 +39,6 @@ final class StudyTests: XCTestCase {
                 midStudySurvey: nil,
                 concludingSurveyURL: nil,
                 participationIsPossible: true,
-                isDataDonationStudy: false,
                 additionalQueryItems: { _ in [] },
                 introSurveyCompletionHandler: nil
             )

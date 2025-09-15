@@ -56,8 +56,13 @@ public struct SurveyWebView: View {
                             presentationMode.wrappedValue.dismiss()
                         }
                     } else if surveyType == .completion {
+                        
                         presentationMode.wrappedValue.dismiss()
-                        study.hasCompletedTerminationSurvey = true
+                        
+                        if let study = study as? (any HasTerminationSurvey) {
+                            study.hasCompletedTerminationSurvey = true
+                        }
+                        
                     } else if surveyType == .mid {
                         presentationMode.wrappedValue.dismiss()
                         study.hasCompletedMidSurvey = true
@@ -78,16 +83,4 @@ public struct SurveyWebView: View {
         }
     }
     
-}
-
-
-extension URL {
-    public var queryParameters: [String: String]? {
-        guard
-            let components = URLComponents(url: self, resolvingAgainstBaseURL: true),
-            let queryItems = components.queryItems else { return nil }
-        return queryItems.reduce(into: [String: String]()) { (result, item) in
-            result[item.name] = item.value
-        }
-    }
 }

@@ -110,7 +110,7 @@ public struct StudyRow: View {
 
 #Preview {
     
-    let active = Study(
+    let active = DataDonationStudy(
         studyIdentifier: "stanford-health-2025",
         studyInformation: StudyInformation(
             title: "Stanford study on mental & physical health",
@@ -132,7 +132,6 @@ public struct StudyRow: View {
         midStudySurvey: nil,
         concludingSurveyURL: nil,
         participationIsPossible: true,
-        isDataDonationStudy: true,
         introSurveyCompletionHandler: { _, _ in
             
         }

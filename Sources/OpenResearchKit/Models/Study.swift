@@ -10,39 +10,24 @@ import UIKit
 import SwiftUI
 import OSLog
 
-public enum StudyDirectoryType: String {
-    
-    /// Used for uploading the data in that directory
-    case upload = "upload"
-    
-    /// Used for keeping a local files for a study meant to be altered during runtime
-    case working = "working"
-    
-    var directoryName: String {
-        return self.rawValue
-    }
-    
-}
-
-open class Study: ObservableObject {
+open class Study: ObservableObject, HasAssignedGroups, GeneralStudy {
     
     static var allStudies = [Study]()
     
     public static var currentActiveStudy: Study? {
+        
         allStudies.first { study in
-            study.hasUserGivenConsent && !study.hasCompletedTerminationSurvey && !study.isDismissedByUser
+            
+            let consentedNotDismissed = study.hasUserGivenConsent && !study.isDismissedByUser
+            
+            if let study = study as? (any HasTerminationSurvey) {
+                return !study.hasCompletedTerminationSurvey && consentedNotDismissed
+            }
+            
+            return consentedNotDismissed
+            
         }
-    }
-    
-    struct Keys {
-        static let UserConsentDate = "userConsentDate"
-        static let HasCompletedMidSurvey = "hasCompletedMidSurvey"
-        static let IsDismissedByUser = "isDismissedByUser"
-        static let TerminatedByUserDate = "terminatedByUserDate"
-        static let HasCompletedTerminationSurvey = "hasCompletedTerminationSurvey"
-        static let AssignedGroup = "assignedGroup"
-        static let LastSuccessfulUploadDate = "lastSuccessfulUploadDate"
-        static let LocalUserIdentifier = "localUserIdentifier"
+        
     }
     
     public init(
@@ -54,7 +39,6 @@ open class Study: ObservableObject {
         concludingSurveyURL: URL?,
         participationIsPossible: Bool = true,
         sharedAppGroupIdentifier: String? = nil,
-        isDataDonationStudy: Bool = false,
         additionalQueryItems: @escaping (SurveyType) -> [URLQueryItem] = { _ in [] },
         introSurveyCompletionHandler: (([String: String], Study) -> Void)?
     ) {
@@ -69,7 +53,6 @@ open class Study: ObservableObject {
         self.participationIsPossible = participationIsPossible
         self.sharedAppGroupIdentifier = sharedAppGroupIdentifier
         self.introSurveyCompletionHandler = introSurveyCompletionHandler
-        self.isDataDonationStudy = isDataDonationStudy
         self.additionalQueryItems = additionalQueryItems
         
         Study.allStudies.append(self)
@@ -87,9 +70,12 @@ open class Study: ObservableObject {
     
     let introSurveyCompletionHandler: (([String: String], Study) -> Void)?
     let sharedAppGroupIdentifier: String?
-    let isDataDonationStudy: Bool
     
     var additionalQueryItems: (SurveyType) -> [URLQueryItem] = { _ in [] }
+    
+    public lazy var store: StudyKeyValueStore = {
+        StudyKeyValueStore(studyIdentifier: self.studyIdentifier, appGroup: self.sharedAppGroupIdentifier)
+    }()
     
     public private(set) var userIdentifier: String {
         
@@ -105,10 +91,7 @@ open class Study: ObservableObject {
         
         set {
             store.update(Keys.LocalUserIdentifier, value: newValue)
-            
-            DispatchQueue.main.async {
-                self.objectWillChange.send()
-            }
+            publishChangesOnMain()
         }
         
     }
@@ -128,7 +111,7 @@ open class Study: ObservableObject {
         case .completion:
                 
             let url = self.concludingSurveyURL?.appendingQueryItem(name: "uuid", value: self.userIdentifier)
-            
+                
             if let assignedGroup = self.assignedGroup {
                 return url?.appendingQueryItem(name: Keys.AssignedGroup, value: assignedGroup)
             }
@@ -148,26 +131,14 @@ open class Study: ObservableObject {
         
         if isActivelyRunning {
             return .successStyle(text: "Active")
-        } else if hasCompletedTerminationSurvey {
-            return .mutedStyle(text: "Completed")
-        } else {
+        }
+//        else if isDi {
+//            return .mutedStyle(text: "Completed")
+//        }
+        else {
             return .mutedStyle(text: "Available")
         }
             
-    }
-    
-    // MARK: - Study User Defaults -
-    
-    private lazy var store: StudyKeyValueStore = {
-        StudyKeyValueStore(studyIdentifier: self.studyIdentifier, appGroup: self.sharedAppGroupIdentifier)
-    }()
-    
-    public var studyUserDefaults: [String: Any] {
-        return store.values()
-    }
-    
-    func save(studyUserDefaults: [String: Any]) {
-        store.saveValues(studyUserDefaults)
     }
     
     // MARK: - Views -
@@ -178,45 +149,15 @@ open class Study: ObservableObject {
             .toAnyView()
     }
     
-    open var terminationBannerView: AnyView {
-        StudyBannerInvitation(surveyType: .completion)
-            .environmentObject(self)
-            .toAnyView()
-    }
+    // MARK: - UI Actions -
     
-    open var midSurveyBannerView: AnyView {
-        StudyBannerInvitation(surveyType: .mid)
-            .environmentObject(self)
-            .toAnyView()
-    }
-    
-    public var detailInfosView: some View {
-        StudyDetailInfoScreen(study: self)
+    public func showCompletionSurvey() {
+        
+        showView(SurveyWebView(surveyType: .completion).environmentObject(self))
+        
     }
     
     // MARK: - Actions -
-    
-    public func showCompletionSurvey() {
-        let surveyView = SurveyWebView(surveyType: .completion).environmentObject(self)
-        let hostingCOntroller = UIHostingController(rootView: surveyView)
-        hostingCOntroller.modalPresentationStyle = .fullScreen
-        UIApplication.shared.keyWindow?.rootViewController?.dismiss(animated: false, completion: {
-            UIViewController.topViewController()?.present(hostingCOntroller, animated: true)
-        })
-    }
-    
-    public func showMidStudySurvey() {
-        guard midStudySurvey != nil else {
-            return
-        }
-        
-        let surveyView = SurveyWebView(surveyType: .mid).environmentObject(self)
-        let hostingController = UIHostingController(rootView: surveyView)
-        hostingController.modalPresentationStyle = .fullScreen
-        UIApplication.shared.keyWindow?.rootViewController?.dismiss(animated: false, completion: {
-            UIViewController.topViewController()?.present(hostingController, animated: true)
-        })
-    }
     
     public func saveUserConsentHasBeenGiven(
         consentTimestamp: Date,
@@ -225,9 +166,7 @@ open class Study: ObservableObject {
         
         store.update(Keys.UserConsentDate, value: consentTimestamp)
         
-        DispatchQueue.main.async {
-            self.objectWillChange.send()
-            
+        publishChangesOnMain {
             if self.midStudySurvey != nil || self.concludingSurveyURL != nil {
                 let alert = UIAlertController(
                     title: NSLocalizedString("Post-Study-Questionnaire", bundle: Bundle.module, comment: ""),
@@ -275,6 +214,7 @@ open class Study: ObservableObject {
                 completion()
             }
         }
+        
     }
     
     public func manuallyGiveUserConsent(
@@ -300,24 +240,10 @@ open class Study: ObservableObject {
         self.uploadIfNecessary()
     }
     
-    /// Resets the UUID of the study and clears the study data directories.
     open func reset() throws {
         
-        // Reset study identifier
-        let newLocalUserIdentifier = "\(studyIdentifier)-\(UUID().uuidString)"
-        self.userIdentifier = newLocalUserIdentifier
-        
-        // Reset state variables
-        self.assignedGroup = nil
-        self.terminatedByUserDate = nil
-        self.hasCompletedTerminationSurvey = false
-        self.hasCompletedMidSurvey = false
-        self.isDismissedByUser = false
-        
-//        self.studyUserDefaults[Keys.UserConsentDate] = nil
-//        
-//        self.studyEndDate = nil
-        
+        // Reset state variables (e.g. study identifier, all dates, etc.)
+        self.store.deleteAllValues()
         
         // Delete all files
         try StudyFileManager.shared.deleteAllFiles(study: self, type: .working)
@@ -325,9 +251,9 @@ open class Study: ObservableObject {
         
     }
     
-    // MARK: - File Handling -
+    // MARK: - File Handling / Upload -
     
-    public func studyDirectory(type: StudyDirectoryType = .working) -> URL {
+    public func studyDirectory(type: StudyDataDirectoryType = .working) -> URL {
         
         let fileManager = FileManager.default
         let documentDirectoryURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
@@ -351,138 +277,53 @@ open class Study: ObservableObject {
         
     }
     
-}
-
-// MARK: - Accessors -
-
-extension Study {
+    open func uploadIfNecessary() {
+        
+        guard let lastSuccessfulUploadDate = self.lastSuccessfulUploadDate else {
+            if isActivelyRunning {
+                self.uploadJSON()
+            }
+            return
+        }
+        
+        if !isActivelyRunning {
+            // todo
+            // study is not running, dont upload anything
+            return
+        }
+        
+        if abs(lastSuccessfulUploadDate.timeIntervalSinceNow) > uploadConfiguration.uploadFrequency {
+            self.uploadJSON()
+        }
+        
+    }
+    
+    // MARK: - Accessors -
     
     /// Indicates whether the study is currently active and eligible for data collection.
     ///
-    /// For data donation studies (which have no fixed duration), the study is considered active
-    /// if the user has given consent and has not explicitly terminated participation.
-    ///
-    /// For regular studies, the study is active if the configured end date lies in the future.
-    public var isActivelyRunning: Bool {
+    /// For long-term studies, the study is active if the configured end date lies in the future.
+    open var isActivelyRunning: Bool {
         
-        if isDataDonationStudy {
-            if hasUserGivenConsent && self.terminatedByUserDate == nil {
-                return true
-            }
-            return false
-        }
-        
-        if let studyEndDate = studyEndDate {
-            if studyEndDate.isInFuture {
-                return true
-            }
-        }
+        // todo
         
         return false
+        
     }
     
-    public var isDismissedByUser: Bool {
+}
+
+extension Study {
+    
+    internal var terminatedByUserDate: Date? {
         get {
-            store.get(Keys.IsDismissedByUser, type: Bool.self) ?? false
-        }
-        set {
-            store.update(Keys.IsDismissedByUser, value: newValue)
-            
-            DispatchQueue.main.async {
-                self.objectWillChange.send()
-            }
-        }
-    }
-    
-    public var userConsentDate: Date? {
-        store.get(Keys.UserConsentDate, type: Date.self)
-    }
-    
-    public var hasUserGivenConsent: Bool {
-        return userConsentDate != nil
-    }
-    
-    public var hasCompletedTerminationSurvey: Bool {
-        get {
-            return store.get(Keys.HasCompletedTerminationSurvey, type: Bool.self) ?? false
+            store.get(Keys.TerminatedByUserDate, type: Date.self)
         }
         
         set {
-            
-            store.update(Keys.HasCompletedTerminationSurvey, value: newValue)
-            
-            DispatchQueue.main.async {
-                self.objectWillChange.send()
-                if newValue {
-                    LocalPushController.clearNotifications(with: "survey-completion-notification")
-                    LocalPushController.clearNotifications(with: "survey-completion-notification-reminder")
-                }
-            }
+            store.update(Keys.TerminatedByUserDate, value: newValue)
+            publishChangesOnMain()
         }
-    }
-    
-    public var hasCompletedMidSurvey: Bool {
-        get {
-            return store.get(Keys.HasCompletedMidSurvey, type: Bool.self) ?? false
-        }
-        
-        set {
-            store.update(Keys.HasCompletedMidSurvey, value: newValue)
-            
-            DispatchQueue.main.async {
-                self.objectWillChange.send()
-                if newValue {
-                    LocalPushController.clearNotifications(with: "mid-study-survey-notification")
-                    LocalPushController.clearNotifications(with: "mid-study-survey-notification-reminder")
-                }
-            }
-        }
-    }
-    
-    public var shouldDisplayMidSurvey: Bool {
-        
-        if let midStudySurvey, let userConsentDate {
-            let showAfterDate = userConsentDate.addingTimeInterval(midStudySurvey.showAfter)
-            if !showAfterDate.isInFuture && !hasCompletedMidSurvey {
-                return true
-            }
-        }
-        
-        
-        return false
-    }
-    
-    public var shouldDisplayTerminationSurvey: Bool {
-        if let studyEndDate = self.studyEndDate {
-            return !studyEndDate.isInFuture && !hasCompletedTerminationSurvey && !isDismissedByUser
-        }
-        
-        return false
-    }
-    
-    public var assignedGroup: String? {
-        get {
-            if self.isActivelyRunning {
-                return store.get(Keys.AssignedGroup, type: String.self)
-            }
-            return nil
-        }
-        
-        set {
-            store.update(Keys.AssignedGroup, value: newValue)
-            
-            DispatchQueue.main.async {
-                self.objectWillChange.send()
-            }
-        }
-    }
-    
-    public var studyEndDate: Date? {
-        if let terminatedByUserDate = self.terminatedByUserDate {
-            return terminatedByUserDate
-        }
-        
-        return userConsentDate?.addingTimeInterval(studyInformation.duration ?? 0)
     }
     
     public var shouldDisplayIntroductorySurvey: Bool {
@@ -494,21 +335,34 @@ extension Study {
         if !participationIsPossible {
             return false
         }
+        
         return !hasUserGivenConsent && !isDismissedByUser
+        
     }
     
-    private var terminatedByUserDate: Date? {
-        get {
-            store.get(Keys.TerminatedByUserDate, type: Date.self)
+    public func publishChangesOnMain(completion: @escaping () -> Void = {}) {
+        DispatchQueue.main.async {
+            self.objectWillChange.send()
+            completion()
         }
-        
-        set {
-            store.update(Keys.TerminatedByUserDate, value: newValue)
-            
-            DispatchQueue.main.async {
-                self.objectWillChange.send()
-            }
-        }
+    }
+    
+    public func publishChangesOnMain() {
+        self.publishChangesOnMain(completion: {})
+    }
+    
+}
+
+extension Study: HasMidSurvey {
+    
+    func getMidSurvey() -> MidStudySurvey {
+        return self.midStudySurvey! // todo
+    }
+    
+    var midSurveyBannerView: AnyView {
+        StudyBannerInvitation(surveyType: .mid)
+            .environmentObject(self)
+            .toAnyView()
     }
     
 }
@@ -575,48 +429,12 @@ extension Study {
     
     public func updateUploadDate(newDate: Date = Date()) {
         
-        store.updateValues { values in
-            values[Keys.LastSuccessfulUploadDate] = newDate
-        }
+        store.update(Keys.LastSuccessfulUploadDate, value: newDate)
+        publishChangesOnMain()
         
-        DispatchQueue.main.async {
-            self.objectWillChange.send()
-        }
     }
     
-    public func uploadIfNecessary() {
-        
-        guard let lastSuccessfulUploadDate = self.lastSuccessfulUploadDate else {
-            if isActivelyRunning {
-                self.uploadJSON()
-            }
-            return
-        }
-        
-        if !isActivelyRunning {
-            if let studyEndDate = self.studyEndDate {
-                // study terminated, uploading remaining file
-                if lastSuccessfulUploadDate < studyEndDate {
-                    self.uploadJSON()
-                    return
-                }
-            }
-            
-            // study is not running, dont upload anything
-            return
-        }
-        
-        
-        if abs(lastSuccessfulUploadDate.timeIntervalSinceNow) > uploadConfiguration.uploadFrequency {
-            self.uploadJSON()
-        }
-    }
-    
-    public func uploadJSONImmediately() {
-        self.uploadJSON()
-    }
-    
-    private func uploadJSON() {
+    internal func uploadJSON() {
         
         StudyDataUploader.shared.uploadJSON(
             filePath: jsonDataFilePath,
@@ -639,6 +457,23 @@ extension Study {
             
         }
         
+    }
+    
+}
+
+// MARK: - Keys -
+
+extension Study {
+    
+    struct Keys {
+        static let UserConsentDate = "userConsentDate"
+        static let HasCompletedMidSurvey = "hasCompletedMidSurvey"
+        static let IsDismissedByUser = "isDismissedByUser"
+        static let TerminatedByUserDate = "terminatedByUserDate"
+        static let HasCompletedTerminationSurvey = "hasCompletedTerminationSurvey"
+        static let AssignedGroup = "assignedGroup"
+        static let LastSuccessfulUploadDate = "lastSuccessfulUploadDate"
+        static let LocalUserIdentifier = "localUserIdentifier"
     }
     
 }

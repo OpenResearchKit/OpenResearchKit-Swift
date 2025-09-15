@@ -32,7 +32,7 @@ public class StudyFileManager {
     private let fileManager: FileManager = .default
     
     /// Deletes all files present in the study directory (either the `upload` or the `working` directory).
-    public func deleteAllFiles(study: Study, type: StudyDirectoryType) throws {
+    public func deleteAllFiles(study: Study, type: StudyDataDirectoryType) throws {
         
         Logger.research.info("Removing all files in the directory '\(type.directoryName)' for study \(study.studyIdentifier).")
         
