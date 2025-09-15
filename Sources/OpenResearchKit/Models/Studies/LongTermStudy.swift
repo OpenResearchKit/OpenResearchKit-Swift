@@ -48,6 +48,32 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
         return try await super.currentDisplayStatus()
     }
     
+    public override var isActive: Bool {
+        
+        if wasTerminatedBeforeCompletion {
+            return false
+        }
+        
+        let studyConsentedAndNotDismissed = hasUserGivenConsent && !isDismissedByUser
+        let conclusionSurveyNotFinishedOrActiveStudyPeriod = !finishedConclusionSurveyOrNotNeeded || isActiveStudyPeriod
+        let isActive = studyConsentedAndNotDismissed && conclusionSurveyNotFinishedOrActiveStudyPeriod
+        
+        return isActive
+        
+    }
+    
+    internal var finishedConclusionSurveyOrNotNeeded: Bool {
+        
+        let needsConclusionSurveyParticipation = self.concludingSurveyURL != nil
+        
+        if needsConclusionSurveyParticipation {
+            return hasCompletedTerminationSurvey
+        } else {
+            return true
+        }
+        
+    }
+    
     // MARK: - Data Handling -
     
     /// Appends data to the main study file if the user consented into taking part in the study and when the

@@ -119,6 +119,18 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
             
     }
     
+    public var isActive: Bool {
+        
+        let consentedNotDismissed = self.hasUserGivenConsent // && !self.isDismissedByUser
+        
+        if let study = self as? (any HasTerminationSurvey) {
+            return !study.hasCompletedTerminationSurvey && consentedNotDismissed
+        }
+        
+        return consentedNotDismissed
+        
+    }
+    
     // MARK: - Persistence -
     
     public lazy var store: StudyKeyValueStore = {
@@ -128,11 +140,13 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
     // MARK: - Actions -
     
     public func saveUserConsentHasBeenGiven(
-        consentTimestamp: Date,
+        consentTimestamp: Date? = nil,
         completion: @escaping () -> Void
     ) {
         
-        store.update(Keys.UserConsentDate, value: consentTimestamp)
+        let timestamp = consentTimestamp ?? dateGenerator.generate()
+        
+        store.update(Keys.UserConsentDate, value: timestamp)
         
         publishChangesOnMain {
             self.prepareLocalNotifications {
@@ -143,11 +157,14 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
     }
     
     public func manuallyGiveUserConsent(
-        timeStamp: Date = Date(),
+        timeStamp: Date? = nil,
         userId: String?,
         completion: @escaping () -> Void
     ) {
-        self.saveUserConsentHasBeenGiven(consentTimestamp: timeStamp, completion: {
+        
+        let consentTimestamp = timeStamp ?? dateGenerator.generate()
+        
+        self.saveUserConsentHasBeenGiven(consentTimestamp: consentTimestamp, completion: {
             if let userId {
                 self.userIdentifier = userId
             }
@@ -179,6 +196,8 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
         self.uploadIfNecessary()
     }
     
+    public internal(set) var dateGenerator: any DateGenerator = DefaultDateGenerator()
+    
 }
 
 extension Study {
@@ -199,20 +218,12 @@ extension Study {
 
 extension Study {
     
-    static var allStudies = [Study]()
+    public static var allStudies = [Study]()
     
     public static var currentActiveStudy: Study? {
         
         allStudies.first { study in
-            
-            let consentedNotDismissed = study.hasUserGivenConsent && !study.isDismissedByUser
-            
-            if let study = study as? (any HasTerminationSurvey) {
-                return !study.hasCompletedTerminationSurvey && consentedNotDismissed
-            }
-            
-            return consentedNotDismissed
-            
+            return study.isActive
         }
         
     }

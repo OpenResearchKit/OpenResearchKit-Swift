@@ -45,7 +45,9 @@ extension HasMidSurvey {
         
         if let userConsentDate {
             let showAfterDate = userConsentDate.addingTimeInterval(midSurvey.showAfter)
-            if !showAfterDate.isInFuture && !hasCompletedMidSurvey {
+            let now = dateGenerator.generate()
+            
+            if showAfterDate < now && !hasCompletedMidSurvey {
                 return true
             }
         }

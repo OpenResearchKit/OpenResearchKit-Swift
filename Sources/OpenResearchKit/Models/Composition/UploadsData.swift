@@ -146,7 +146,9 @@ extension UploadsStudyData {
         
     }
     
-    private func updateUploadDate(newDate: Date = Date()) {
+    internal func updateUploadDate(newDate: Date? = nil) {
+        
+        let date = newDate ?? dateGenerator.generate()
         
         store.update(Study.Keys.LastSuccessfulUploadDate, value: newDate)
         publishChangesOnMain()

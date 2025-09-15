@@ -97,6 +97,11 @@ class LocalPushController {
     }
     
     static func clearNotifications(with identifier: String) {
+        
+        if Bundle.main.isRunningUnitTests {
+            return
+        }
+        
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [
             identifier
         ])

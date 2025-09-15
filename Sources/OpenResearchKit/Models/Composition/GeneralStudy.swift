@@ -26,6 +26,9 @@ public protocol GeneralStudy: AnyObject, ObservableObject {
     
     var participationIsPossible: Bool { get }
     
+    /// If a study returns being active, it is the primary study presented in the app.
+    var isActive: Bool { get }
+    
     func showView<Content>(_ view: Content) where Content : View
     
     /// Resets the UUID of the study and clears the study data directories.
@@ -38,6 +41,10 @@ public protocol GeneralStudy: AnyObject, ObservableObject {
     
     /// Should trigger the `objectWillChange` publisher of the `ObservableObject`.
     func publishChangesOnMain(completion: @escaping () -> Void)
+    
+    // MARK: - Used for testing
+    
+    var dateGenerator: DateGenerator { get }
     
 }
 
@@ -84,7 +91,7 @@ extension GeneralStudy {
     /// Terminates the study participation immediately by saving the termination date and
     /// giving a callback to the `didTerminateParticipation(terminationDate: )` function of the study.
     public func terminateParticipationImmediately() {
-        let terminationDate = Date()
+        let terminationDate = dateGenerator.generate()
         self.terminationBeforeCompletionDate = terminationDate
         self.didTerminateParticipation(terminationDate: terminationDate)
     }

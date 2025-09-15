@@ -42,7 +42,9 @@ extension HasTerminationSurvey {
     
     public var shouldDisplayTerminationSurvey: Bool {
         if let intendedStudyEndDate {
-            return !intendedStudyEndDate.isInFuture && !hasCompletedTerminationSurvey && !isDismissedByUser
+            let now = dateGenerator.generate()
+            let intendedStudyNotInFuture = intendedStudyEndDate < now
+            return intendedStudyNotInFuture && !hasCompletedTerminationSurvey && !isDismissedByUser
         }
         return false
     }

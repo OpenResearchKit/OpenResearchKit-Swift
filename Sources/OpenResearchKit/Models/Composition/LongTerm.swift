@@ -33,7 +33,9 @@ extension LongTerm {
     public var isActiveStudyPeriod: Bool {
         
         if let studyEndDate = intendedStudyEndDate {
-            if studyEndDate.isInFuture && !wasTerminatedBeforeCompletion {
+            let now = dateGenerator.generate()
+            let studyEndInFuture = studyEndDate > now
+            if studyEndInFuture && !wasTerminatedBeforeCompletion {
                 return true
             }
         }

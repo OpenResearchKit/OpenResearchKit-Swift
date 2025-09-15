@@ -42,7 +42,7 @@ public struct SurveyWebView: View {
                                 study.assignedGroup = group
                             }
                             
-                            study.saveUserConsentHasBeenGiven(consentTimestamp: Date()) {
+                            study.saveUserConsentHasBeenGiven() {
                                 presentationMode.wrappedValue.dismiss()
                                 
                                 study.introSurveyCompletionHandler?(

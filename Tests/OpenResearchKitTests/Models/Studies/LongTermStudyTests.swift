@@ -23,19 +23,18 @@ final class LongTermStudyTests: XCTestCase {
     // MARK: - Tests
     
     func testStudyInitialization() {
-        let study = createTestStudy()
+        let study = createLongTermStudy()
         
         XCTAssertEqual(study.studyInformation.title, "Test Study")
         XCTAssertEqual(study.studyInformation.subtitle, "Test Subtitle")
-        XCTAssertEqual(study.duration, 18000)
-        XCTAssertEqual(study.studyIdentifier, "test")
+        XCTAssertEqual(study.duration, 10)
         XCTAssertEqual(study.studyInformation.contactEmail, "test@example.com")
         XCTAssertEqual(study.uploadConfiguration.apiKey, "test")
         XCTAssertEqual(study.uploadConfiguration.uploadFrequency, 60)
     }
     
     func testEmptyAdditionalQueryItems() {
-        let study = createTestStudy()
+        let study = createLongTermStudy()
         
         study.additionalQueryItems = { _ in [] }
         
@@ -47,7 +46,7 @@ final class LongTermStudyTests: XCTestCase {
     }
     
     func testStudyBuildsCompletionSurveyUrl() {
-        let study = createTestStudy()
+        let study = createLongTermStudy()
         
         let url = study.surveyUrl(for: .completion)
         
@@ -58,8 +57,7 @@ final class LongTermStudyTests: XCTestCase {
     
     func testStudyBuildsMidSurveyUrl() {
         
-        let midSurvey = MidStudySurvey(showAfter: 3600, url: URL(string: "https://example.com/mid")!)
-        let study = createTestStudy(midStudySurvey: midSurvey)
+        let study = createLongTermMidStudy()
         
         let url = study.surveyUrl(for: .mid)
         
@@ -69,7 +67,7 @@ final class LongTermStudyTests: XCTestCase {
     }
     
     func testStudyAdditionalQueryItems() {
-        let study = createTestStudy()
+        let study = createLongTermStudy()
         
         study.additionalQueryItems = { _ in
             return [URLQueryItem(name: "version", value: "1.0")]
@@ -82,19 +80,18 @@ final class LongTermStudyTests: XCTestCase {
     }
     
     func testStudyUserIdentifierGeneration() {
-        let study = createTestStudy()
+        let study = createLongTermStudy()
         
         let userIdentifier = study.userIdentifier
         
         XCTAssertFalse(userIdentifier.isEmpty)
-        XCTAssertTrue(userIdentifier.contains("test"))  // Contains study identifier
     }
     
     func testStudyJSONFileHandling() {
-        let study = createTestStudy()
+        let study = createLongTermStudy()
         
         try? study.reset()
-        study.saveUserConsentHasBeenGiven(consentTimestamp: Date(), completion: {})
+        study.saveUserConsentHasBeenGiven(completion: {})
         
         let initialJSONFile = study.JSONFile
         XCTAssertTrue(initialJSONFile.isEmpty)
@@ -111,7 +108,7 @@ final class LongTermStudyTests: XCTestCase {
     }
     
     func testStudyUploadDateHandling() {
-        let study = createTestStudy()
+        let study = createLongTermStudy()
         
         try? study.reset()
         
@@ -126,48 +123,130 @@ final class LongTermStudyTests: XCTestCase {
             accuracy: 1.0)
     }
     
+    func testFinishedConclusionSurveyOrNotNeeded() {
+        
+        let study1 = createLongTermStudy(concludingSurvey: nil)
+        
+        // Concluding survey not needed
+        XCTAssertTrue(study1.finishedConclusionSurveyOrNotNeeded)
+        
+        let study2 = createLongTermStudy(concludingSurvey: URL(string: "https://example.org")!)
+        
+        // Concluding survey needed but not finished
+        XCTAssertFalse(study2.finishedConclusionSurveyOrNotNeeded)
+        
+        study2.hasCompletedTerminationSurvey = true
+        
+        // Concluding survey needed and now finished
+        XCTAssertTrue(study2.finishedConclusionSurveyOrNotNeeded)
+        
+    }
+    
+    func testIsActiveLongTermWithConclusionSurveyRegularFlow() {
+        
+        let dateGenerator = TimeTraveler()
+        let study = createLongTermStudy()
+        study.dateGenerator = dateGenerator
+        
+        XCTAssertFalse(study.isActive)
+        
+        study.saveUserConsentHasBeenGiven(completion: {})
+        
+        XCTAssertTrue(study.isActive)
+        
+        dateGenerator.travel(by: 20)
+        
+        study.hasCompletedTerminationSurvey = true
+        
+        XCTAssertFalse(study.isActive)
+        
+    }
+    
+    func testIsActiveLongTermWithConclusionEarlyTerminate() {
+        
+        let dateGenerator = TimeTraveler()
+        let study = createLongTermStudy(duration: 10)
+        study.dateGenerator = dateGenerator
+        
+        XCTAssertFalse(study.isActive)
+        
+        study.saveUserConsentHasBeenGiven(completion: {})
+        
+        dateGenerator.travel(by: 5)
+        XCTAssertTrue(study.isActive)
+        
+        dateGenerator.travel(by: 20)
+        
+        // Should be true as the user still needs to do the termination survey
+        XCTAssertTrue(study.isActive)
+        
+        study.terminateParticipationImmediately()
+        
+        XCTAssertFalse(study.isActive)
+        
+    }
+    
     // MARK: - Test helpers
     
-    private func createTestStudy(midStudySurvey: MidStudySurvey? = nil) -> LongTermStudy {
+    private let uploadConfiguration = UploadConfiguration(
+        fileSubmissionServer: URL(string: "https://example.com/upload")!,
+        uploadFrequency: 60,
+        apiKey: "test"
+    )
+    
+    private func createLongTermMidStudy(
+        introductorySurvey: URL? = URL(string: "https://example.com/intro")!,
+        concludingSurvey: URL? = URL(string: "https://example.com/conclusion")!,
+        duration: TimeInterval = 10
+    ) -> LongTermWithMidSurveyStudy {
         
-        let uploadConfiguration = UploadConfiguration(
-            fileSubmissionServer: URL(string: "https://example.com/upload")!,
-            uploadFrequency: 60,
-            apiKey: "test"
+        let study = LongTermWithMidSurveyStudy(
+            studyIdentifier: "test",
+            studyInformation: .init(
+                title: "Test Study",
+                subtitle: "Test Subtitle",
+                contactEmail: "test@example.com",
+                image: nil
+            ),
+            uploadConfiguration: uploadConfiguration,
+            duration: duration,
+            introductorySurveyURL: introductorySurvey!,
+            midStudySurvey: .init(showAfter: 50 * 60, url: URL(string: "https://example.com/mid")!),
+            concludingSurveyURL: concludingSurvey!,
+            introSurveyCompletionHandler: nil
         )
         
-        if let midStudySurvey {
-            return LongTermWithMidSurveyStudy(
-                studyIdentifier: "test",
-                studyInformation: .init(
-                    title: "Test Study",
-                    subtitle: "Test Subtitle",
-                    contactEmail: "test@example.com",
-                    image: nil
-                ),
-                uploadConfiguration: uploadConfiguration,
-                duration: 10,
-                introductorySurveyURL: URL(string: "https://example.com/intro")!,
-                midStudySurvey: midStudySurvey,
-                concludingSurveyURL: URL(string: "https://example.com/conclusion")!,
-                introSurveyCompletionHandler: nil
-            )
-        } else {
-            return LongTermStudy(
-                studyIdentifier: "test",
-                studyInformation: .init(
-                    title: "Test Study",
-                    subtitle: "Test Subtitle",
-                    contactEmail: "test@example.com",
-                    image: nil
-                ),
-                uploadConfiguration: uploadConfiguration,
-                duration: 60 * 60 * 5,
-                introductorySurveyURL: URL(string: "https://example.com/intro")!,
-                concludingSurveyURL: URL(string: "https://example.com/conclusion")!,
-                introSurveyCompletionHandler: nil
-            )
-        }
+        try? study.reset()
+        
+        return study
+        
+    }
+    
+    private func createLongTermStudy(
+        introductorySurvey: URL? = URL(string: "https://example.com/intro")!,
+        concludingSurvey: URL? = URL(string: "https://example.com/conclusion")!,
+        duration: TimeInterval = 10
+    ) -> LongTermStudy {
+        
+        let study = LongTermStudy(
+            studyIdentifier: UUID().uuidString,
+            studyInformation: .init(
+                title: "Test Study",
+                subtitle: "Test Subtitle",
+                contactEmail: "test@example.com",
+                image: nil
+            ),
+            uploadConfiguration: uploadConfiguration,
+            duration: duration,
+            introductorySurveyURL: introductorySurvey,
+            concludingSurveyURL: concludingSurvey,
+            introSurveyCompletionHandler: nil
+        )
+        
+        try? study.reset()
+        
+        return study
+        
     }
     
 }

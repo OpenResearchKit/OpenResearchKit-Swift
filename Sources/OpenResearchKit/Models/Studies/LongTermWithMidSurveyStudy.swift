@@ -64,6 +64,12 @@ open class LongTermWithMidSurveyStudy: LongTermStudy, HasMidSurvey {
         
     }
     
+    public override var isActive: Bool {
+        
+        return super.isActive && hasCompletedMidSurvey
+        
+    }
+    
     // MARK: - HasMidSurvey -
     
     func getMidSurvey() -> MidStudySurvey {
