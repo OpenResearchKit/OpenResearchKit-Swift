@@ -129,8 +129,6 @@ public struct StudyRow: View {
             apiKey: ""
         ),
         introductorySurveyURL: URL(string: "https://one-sec.app/placeholder-survey"),
-        midStudySurvey: nil,
-        concludingSurveyURL: nil,
         participationIsPossible: true,
         introSurveyCompletionHandler: { _, _ in
             

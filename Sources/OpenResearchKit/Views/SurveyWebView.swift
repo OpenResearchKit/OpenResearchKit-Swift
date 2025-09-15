@@ -64,8 +64,13 @@ public struct SurveyWebView: View {
                         }
                         
                     } else if surveyType == .mid {
+                        
                         presentationMode.wrappedValue.dismiss()
-                        study.hasCompletedMidSurvey = true
+                        
+                        if let study = study as? (any HasMidSurvey) {
+                            study.hasCompletedMidSurvey = true
+                        }
+                        
                     }
                 })
                 .navigationTitle("Survey")

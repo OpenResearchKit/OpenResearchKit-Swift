@@ -145,7 +145,7 @@ public struct DefaultStudyView: View {
 
 #Preview {
     
-    let study = Study(
+    let study = DataDonationStudy(
         studyIdentifier: "empty",
         studyInformation: StudyInformation.init(
             title: "Study Inactive",
@@ -156,7 +156,7 @@ public struct DefaultStudyView: View {
                 in: .module,
                 with: nil
             )!,
-            duration: 60 * 60 * 24 * 7,
+            duration: nil,
             detailInfos: nil
         ),
         uploadConfiguration: UploadConfiguration(
@@ -166,9 +166,6 @@ public struct DefaultStudyView: View {
         ),
         introductorySurveyURL: URL(
             string: "https://oslopsych.az1.qualtrics.com/jfe/form/SV_3woeKVMUpQsUBwy"
-        )!,
-        concludingSurveyURL: URL(
-            string: "https://oslopsych.az1.qualtrics.com/jfe/form/SV_73335RGCTBsrl7E"
         )!,
         participationIsPossible: false,
         introSurveyCompletionHandler: { parameters, study in

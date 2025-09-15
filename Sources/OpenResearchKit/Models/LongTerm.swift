@@ -9,7 +9,7 @@ import Foundation
 
 public protocol LongTerm: AnyObject, GeneralStudy {
     
-    var duration: TimeInterval { get set }
+    var duration: TimeInterval { get }
     
     /// Returns the end of the study if the user already started the study, `nil` otherwise.
     var studyEndDate: Date? { get }

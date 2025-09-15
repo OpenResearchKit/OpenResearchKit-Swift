@@ -35,8 +35,6 @@ open class Study: ObservableObject, HasAssignedGroups, GeneralStudy {
         studyInformation: StudyInformation,
         uploadConfiguration: UploadConfiguration,
         introductorySurveyURL: URL?,
-        midStudySurvey: MidStudySurvey? = nil,
-        concludingSurveyURL: URL?,
         participationIsPossible: Bool = true,
         sharedAppGroupIdentifier: String? = nil,
         additionalQueryItems: @escaping (SurveyType) -> [URLQueryItem] = { _ in [] },
@@ -48,8 +46,6 @@ open class Study: ObservableObject, HasAssignedGroups, GeneralStudy {
         
         
         self.introductorySurveyURL = introductorySurveyURL
-        self.midStudySurvey = midStudySurvey
-        self.concludingSurveyURL = concludingSurveyURL
         self.participationIsPossible = participationIsPossible
         self.sharedAppGroupIdentifier = sharedAppGroupIdentifier
         self.introSurveyCompletionHandler = introSurveyCompletionHandler
@@ -65,8 +61,6 @@ open class Study: ObservableObject, HasAssignedGroups, GeneralStudy {
     public let studyIdentifier: String
     
     let introductorySurveyURL: URL?
-    let midStudySurvey: MidStudySurvey?
-    let concludingSurveyURL: URL?
     
     let introSurveyCompletionHandler: (([String: String], Study) -> Void)?
     let sharedAppGroupIdentifier: String?
@@ -110,19 +104,29 @@ open class Study: ObservableObject, HasAssignedGroups, GeneralStudy {
                 
         case .completion:
                 
-            let url = self.concludingSurveyURL?.appendingQueryItem(name: "uuid", value: self.userIdentifier)
+            if let study = self as? LongTermStudy {
                 
-            if let assignedGroup = self.assignedGroup {
-                return url?.appendingQueryItem(name: Keys.AssignedGroup, value: assignedGroup)
+                let url = study.concludingSurveyURL.appendingQueryItem(name: "uuid", value: self.userIdentifier)
+                
+                if let assignedGroup = self.assignedGroup {
+                    return url.appendingQueryItem(name: Keys.AssignedGroup, value: assignedGroup)
+                }
+                
+                return url.appendingQueryItems(additionalQueryItems)
+                
+            } else {
+                return nil
             }
-            
-            return url?.appendingQueryItems(additionalQueryItems)
                 
         case .mid:
             
-            return self.midStudySurvey?.url
+            if let study = self as? (any HasMidSurvey) {
+                return study.getMidSurvey().url
                     .appendingQueryItem(name: "uuid", value: self.userIdentifier)
                     .appendingQueryItems(additionalQueryItems)
+            } else {
+                return nil
+            }
                 
         }
     }
@@ -167,52 +171,7 @@ open class Study: ObservableObject, HasAssignedGroups, GeneralStudy {
         store.update(Keys.UserConsentDate, value: consentTimestamp)
         
         publishChangesOnMain {
-            if self.midStudySurvey != nil || self.concludingSurveyURL != nil {
-                let alert = UIAlertController(
-                    title: NSLocalizedString("Post-Study-Questionnaire", bundle: Bundle.module, comment: ""),
-                    message: NSLocalizedString("We’ll send you a push notification when the study is concluded to fill out the post-questionnaire.", bundle: Bundle.module, comment: ""),
-                    preferredStyle: .alert
-                )
-                
-                let proceedAction = UIAlertAction(title: "Ok", style: .default) { _ in
-                    LocalPushController.shared.askUserForPushPermission { success in
-                        var pushDuration = self.studyInformation.duration ?? 0
-#if DEBUG
-                        pushDuration = 10
-#endif
-                        
-                        if let midStudySurvey = self.midStudySurvey {
-                            LocalPushController.shared.sendLocalNotification(
-                                in: midStudySurvey.showAfter,
-                                title: NSLocalizedString("Mid-Study Survey", bundle: Bundle.module, comment: ""),
-                                subtitle: NSLocalizedString("Please fill out our short mid-study survey.", bundle: Bundle.module, comment: ""),
-                                body: NSLocalizedString("It only takes 3 minutes to complete this survey.", bundle: Bundle.module, comment: ""),
-                                identifier: "mid-study-survey-notification"
-                            )
-                            
-                            LocalPushController.shared.sendLocalNotification(in: midStudySurvey.showAfter + 3 * 24 * 60 * 60, title: "Survey Completion Still Pending", subtitle: "Reminder: Please fill out our short mid-study survey.", body: "It only takes about 3 minutes.", identifier: "mid-study-survey-notification-reminder")
-                        }
-                        
-                        
-                        
-                        LocalPushController.shared.sendLocalNotification(
-                            in: pushDuration,
-                            title: NSLocalizedString("Concluding the study", bundle: Bundle.module, comment: ""),
-                            subtitle: NSLocalizedString("Thanks for participating. Please fill out one last survey.", bundle: Bundle.module, comment: ""),
-                            body: NSLocalizedString("It only takes 3 minutes to complete this survey.", bundle: Bundle.module, comment: ""),
-                            identifier: "survey-completion-notification"
-                        )
-                        
-                        LocalPushController.shared.sendLocalNotification(in: pushDuration + 3 * 24 * 60 * 60, title: "Survey Completion Still Pending", subtitle: "Thanks for participating. You can complete the exit survey at any time.", body: "It only takes about 3 minutes.", identifier: "survey-completion-notification-reminder")
-                        
-                        completion()
-                    }
-                }
-                alert.addAction(proceedAction)
-                UIViewController.topViewController()?.present(alert, animated: true)
-            } else {
-                completion()
-            }
+            self.prepareLocalNotifications()
         }
         
     }
@@ -248,6 +207,49 @@ open class Study: ObservableObject, HasAssignedGroups, GeneralStudy {
         // Delete all files
         try StudyFileManager.shared.deleteAllFiles(study: self, type: .working)
         try StudyFileManager.shared.deleteAllFiles(study: self, type: .upload)
+        
+    }
+    
+    // MARK: - Notifications -
+    
+    open func shouldHaveNotifications() -> Bool {
+        return false
+    }
+    
+    internal func prepareLocalNotifications(completion: @escaping () -> Void = {}) {
+        
+        if shouldHaveNotifications() {
+            
+            let alert = UIAlertController(
+                title: NSLocalizedString("Post-Study-Questionnaire", bundle: Bundle.module, comment: ""),
+                message: NSLocalizedString("We’ll send you a push notification when the study is concluded to fill out the post-questionnaire.", bundle: Bundle.module, comment: ""),
+                preferredStyle: .alert
+            )
+            
+            let proceedAction = UIAlertAction(title: "Ok", style: .default) { _ in
+                LocalPushController.shared.askUserForPushPermission { success in
+                    
+                    // todo: does it make sense to also register them when no push permission was given?
+                    
+                    self.registerNotifications()
+                    
+                    completion()
+                    
+                }
+            }
+            
+            alert.addAction(proceedAction)
+            
+            UIViewController.topViewController()?.present(alert, animated: true)
+            
+        } else {
+            completion()
+        }
+        
+    }
+    
+    /// Place to register study related notifications. It is called after the user consented to take part in the study and if they
+    open func registerNotifications() {
         
     }
     
@@ -349,20 +351,6 @@ extension Study {
     
     public func publishChangesOnMain() {
         self.publishChangesOnMain(completion: {})
-    }
-    
-}
-
-extension Study: HasMidSurvey {
-    
-    func getMidSurvey() -> MidStudySurvey {
-        return self.midStudySurvey! // todo
-    }
-    
-    var midSurveyBannerView: AnyView {
-        StudyBannerInvitation(surveyType: .mid)
-            .environmentObject(self)
-            .toAnyView()
     }
     
 }
