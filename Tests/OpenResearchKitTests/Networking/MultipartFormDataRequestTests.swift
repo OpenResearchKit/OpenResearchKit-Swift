@@ -140,4 +140,44 @@ final class MultipartFormDataRequestTests: XCTestCase {
             ?? false)
     }
     
+    func testCompleteMultipartFormDataWorkflow() {
+        let url = URL(string: "https://example.com/upload")!
+        let request = MultipartFormDataRequest(url: url)
+        
+        // Add various field types
+        request.addTextField(named: "api_key", value: "test_key")
+        request.addTextField(named: "user_id", value: "user123")
+        
+        let jsonData = try! JSONSerialization.data(withJSONObject: [
+            "timestamp": Date().timeIntervalSince1970,
+            "data": ["key1": "value1", "key2": "value2"],
+        ])
+        
+        request.addDataField(
+            named: "file",
+            filename: "data.json",
+            data: jsonData,
+            mimeType: "application/json"
+        )
+        
+        let urlRequest = request.asURLRequest()
+        
+        // Verify all components are present
+        XCTAssertEqual(urlRequest.url, url)
+        XCTAssertEqual(urlRequest.httpMethod, "POST")
+        XCTAssertNotNil(urlRequest.httpBody)
+        
+        let contentType = urlRequest.value(forHTTPHeaderField: "Content-Type")!
+        XCTAssertTrue(contentType.contains("multipart/form-data"))
+        XCTAssertTrue(contentType.contains("boundary="))
+        
+        let bodyString = String(data: urlRequest.httpBody!, encoding: .utf8)!
+        XCTAssertTrue(bodyString.contains("api_key"))
+        XCTAssertTrue(bodyString.contains("test_key"))
+        XCTAssertTrue(bodyString.contains("user_id"))
+        XCTAssertTrue(bodyString.contains("user123"))
+        XCTAssertTrue(bodyString.contains("data.json"))
+        XCTAssertTrue(bodyString.contains("application/json"))
+    }
+    
 }

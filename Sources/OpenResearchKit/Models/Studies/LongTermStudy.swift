@@ -55,6 +55,16 @@ open class LongTermStudy: Study, LongTerm {
         return false
     }
     
+    // MARK: - Data Handling -
+    
+    open override func appendNewJSONObjects(newObjects: [[String : any JSONConvertible]]) {
+        
+        if isActivelyRunning {
+            super.appendNewJSONObjects(newObjects: newObjects)
+        }
+        
+    }
+    
     // MARK: - Uploading -
     
     open override func uploadIfNecessary() {

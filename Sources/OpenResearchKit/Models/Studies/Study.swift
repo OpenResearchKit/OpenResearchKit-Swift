@@ -30,6 +30,15 @@ open class Study: ObservableObject, HasAssignedGroups, GeneralStudy {
         
     }
     
+    public let studyIdentifier: String
+    public let studyInformation: StudyInformation
+    public let uploadConfiguration: UploadConfiguration
+    public let introductorySurveyURL: URL?
+    public var participationIsPossible: Bool
+    public let sharedAppGroupIdentifier: String?
+    public var additionalQueryItems: (SurveyType) -> [URLQueryItem] = { _ in [] }
+    public let introSurveyCompletionHandler: (([String: String], Study) -> Void)?
+    
     public init(
         studyIdentifier: String,
         studyInformation: StudyInformation,
@@ -53,19 +62,6 @@ open class Study: ObservableObject, HasAssignedGroups, GeneralStudy {
         
         Study.allStudies.append(self)
     }
-    
-    public let studyInformation: StudyInformation
-    public let uploadConfiguration: UploadConfiguration
-    
-    public var participationIsPossible: Bool
-    public let studyIdentifier: String
-    
-    let introductorySurveyURL: URL?
-    
-    let introSurveyCompletionHandler: (([String: String], Study) -> Void)?
-    let sharedAppGroupIdentifier: String?
-    
-    var additionalQueryItems: (SurveyType) -> [URLQueryItem] = { _ in [] }
     
     public lazy var store: StudyKeyValueStore = {
         StudyKeyValueStore(studyIdentifier: self.studyIdentifier, appGroup: self.sharedAppGroupIdentifier)
@@ -305,6 +301,17 @@ open class Study: ObservableObject, HasAssignedGroups, GeneralStudy {
         
     }
     
+    open func appendNewJSONObjects(newObjects: [[String: JSONConvertible]]) {
+        
+        if hasUserGivenConsent {
+            // only add data if study is running: user has given consent and study has not yet ended
+            var existingFile = self.JSONFile
+            existingFile.append(contentsOf: newObjects)
+            self.saveAndUploadIfNeccessary(jsonFile: existingFile)
+        }
+        
+    }
+    
     // MARK: - Accessors -
     
     /// Indicates whether the study is currently active and eligible for data collection.
@@ -392,15 +399,6 @@ extension Study {
         }
         
         return []
-    }
-    
-    public func appendNewJSONObjects(newObjects: [ [String: JSONConvertible] ]) {
-        if isActivelyRunning {
-            // only add data if study is running: user has given consent and study has not yet ended
-            var existingFile = self.JSONFile
-            existingFile.append(contentsOf: newObjects)
-            self.saveAndUploadIfNeccessary(jsonFile: existingFile)
-        }
     }
     
     private func saveAndUploadIfNeccessary(jsonFile: [ [String: Any] ]) {

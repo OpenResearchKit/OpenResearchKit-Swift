@@ -1,5 +1,5 @@
 //
-//  StudyStateTests.swift
+//  StudyTests.swift
 //  OpenResearchKit-Swift
 //
 //  Created by Lennart Fischer on 12.09.25.
@@ -9,7 +9,8 @@ import XCTest
 
 @testable import OpenResearchKit
 
-final class StudyStateTests: XCTestCase {
+/// General study tests for code shared between different study types.
+final class StudyTests: XCTestCase {
 
     private var study: Study!
     private let studyID = "TestStudy-\(UUID().uuidString)"
@@ -75,9 +76,7 @@ final class StudyStateTests: XCTestCase {
 
         let newStudyInstance = Dummy.makeStudy(id: studyID)
 
-        XCTAssertEqual(
-            newStudyInstance.userIdentifier, initialUserID,
-            "New instance should load the persisted user ID.")
+        XCTAssertEqual(newStudyInstance.userIdentifier, initialUserID, "New instance should load the persisted user ID.")
     }
 
     func test_userConsent_isSavedAndReflected() {
@@ -170,13 +169,10 @@ final class StudyStateTests: XCTestCase {
         try study.reset()
 
         XCTAssertFalse(study.hasUserGivenConsent, "Consent should be cleared after reset.")
-        XCTAssertFalse(
-            fileManager.fileExists(atPath: dummyFileURL.path),
-            "Files in working directory should be deleted.")
+        XCTAssertFalse(fileManager.fileExists(atPath: dummyFileURL.path), "Files in working directory should be deleted.")
 
         let newUserID = study.userIdentifier
-        XCTAssertNotEqual(
-            initialUserID, newUserID, "A new user ID should be generated after a reset.")
+        XCTAssertNotEqual(initialUserID, newUserID, "A new user ID should be generated after a reset.")
     }
 
 }
