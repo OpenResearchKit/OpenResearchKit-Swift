@@ -39,6 +39,11 @@ open class LongTermStudy: Study, LongTerm {
         )
     }
     
+    public var studyEndDate: Date? {
+        return userConsentDate?.addingTimeInterval(duration)
+    }
+    
+    /// A long-term study is actively running if the study end date is in the future.
     open override var isActivelyRunning: Bool {
         
         if let studyEndDate = studyEndDate {
@@ -49,6 +54,8 @@ open class LongTermStudy: Study, LongTerm {
         
         return false
     }
+    
+    // MARK: - Uploading -
     
     open override func uploadIfNecessary() {
         
@@ -77,10 +84,6 @@ open class LongTermStudy: Study, LongTerm {
             self.uploadJSON()
         }
         
-    }
-    
-    public var studyEndDate: Date? {
-        return userConsentDate?.addingTimeInterval(duration)
     }
     
     // MARK: - Notification Handling -
