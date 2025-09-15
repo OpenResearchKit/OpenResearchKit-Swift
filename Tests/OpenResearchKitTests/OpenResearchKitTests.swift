@@ -32,7 +32,7 @@ final class OpenResearchKitTests: XCTestCase {
     
     func testStudyBuildsSurveyUrl() {
         
-        let study = Study(
+        let study = DataDonationStudy(
             studyIdentifier: "test",
             studyInformation: StudyInformation(
                 title: "",
@@ -43,7 +43,6 @@ final class OpenResearchKitTests: XCTestCase {
             ),
             uploadConfiguration: .dummy,
             introductorySurveyURL: URL(string: "https://example.com/intro"),
-            concludingSurveyURL: URL(string: "https://example.com/conclusion"),
             introSurveyCompletionHandler: nil
         )
         

@@ -31,13 +31,11 @@ final class StudyTests: XCTestCase {
                 apiKey: "TEST_API_KEY"
             )
             
-            return Study(
+            return DataDonationStudy(
                 studyIdentifier: id,
                 studyInformation: info,
                 uploadConfiguration: uploadConfig,
                 introductorySurveyURL: nil,
-                midStudySurvey: nil,
-                concludingSurveyURL: nil,
                 participationIsPossible: true,
                 additionalQueryItems: { _ in [] },
                 introSurveyCompletionHandler: nil

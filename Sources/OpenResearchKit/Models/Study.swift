@@ -171,7 +171,9 @@ open class Study: ObservableObject, HasAssignedGroups, GeneralStudy {
         store.update(Keys.UserConsentDate, value: consentTimestamp)
         
         publishChangesOnMain {
-            self.prepareLocalNotifications()
+            self.prepareLocalNotifications {
+                completion()
+            }
         }
         
     }
@@ -181,10 +183,13 @@ open class Study: ObservableObject, HasAssignedGroups, GeneralStudy {
         userId: String?,
         completion: @escaping () -> Void
     ) {
-        self.saveUserConsentHasBeenGiven(consentTimestamp: timeStamp, completion: completion)
-        if let userId {
-            self.userIdentifier = userId
-        }
+        self.saveUserConsentHasBeenGiven(consentTimestamp: timeStamp, completion: {
+            if let userId {
+                self.userIdentifier = userId
+            }
+            completion()
+        })
+        
     }
     
     public func terminateParticipationImmediately() {
