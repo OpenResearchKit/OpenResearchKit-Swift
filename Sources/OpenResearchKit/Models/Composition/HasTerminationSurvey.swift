@@ -36,6 +36,7 @@ extension HasTerminationSurvey {
                     LocalPushController.clearNotifications(with: "survey-completion-notification-reminder")
                 }
             }
+            
         }
     }
     

@@ -19,6 +19,7 @@ public struct StudyBannerInvitation: View {
         
         DefaultStudyView(
             studyMetadata: study.studyInformation,
+            studyDuration: studyDuration,
             surveyType: surveyType,
             dismissStudy: {
                 study.isDismissedByUser = true
@@ -36,17 +37,29 @@ public struct StudyBannerInvitation: View {
         
     }
     
+    var studyDuration: TimeInterval? {
+        
+        if let study = study as? (any LongTerm) {
+            return study.duration
+        }
+        
+        return nil
+        
+    }
+    
 }
 
 public struct DefaultStudyView: View {
     
     public var studyMetadata: StudyInformation
+    public var studyDuration: TimeInterval?
     public var surveyType: SurveyType
     public var dismissStudy: () -> Void = { }
     public var primaryAction: () -> Void = { }
     
     public init(
         studyMetadata: StudyInformation,
+        studyDuration: TimeInterval?,
         surveyType: SurveyType,
         dismissStudy: @escaping () -> Void,
         primaryAction: @escaping () -> Void
@@ -115,7 +128,7 @@ public struct DefaultStudyView: View {
                     .font(.headline)
                     .bold()
                 
-                if let duration = studyMetadata.duration {
+                if let duration = studyDuration {
                     
                     let studyDurationWeekCount = Int(duration / 604800.0)
                     
@@ -156,7 +169,6 @@ public struct DefaultStudyView: View {
                 in: .module,
                 with: nil
             )!,
-            duration: nil,
             detailInfos: nil
         ),
         uploadConfiguration: UploadConfiguration(

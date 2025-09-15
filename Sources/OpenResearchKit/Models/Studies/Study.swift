@@ -179,20 +179,6 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
         self.uploadIfNecessary()
     }
     
-    public func shouldUpload() -> Bool {
-        
-        guard let lastSuccessfulUploadDate else {
-            return false
-        }
-        
-        if abs(lastSuccessfulUploadDate.timeIntervalSinceNow) > uploadConfiguration.uploadFrequency {
-            return true
-        }
-        
-        return false
-        
-    }
-    
 }
 
 extension Study {
@@ -209,6 +195,7 @@ extension Study {
     }
     
 }
+
 
 extension Study {
     

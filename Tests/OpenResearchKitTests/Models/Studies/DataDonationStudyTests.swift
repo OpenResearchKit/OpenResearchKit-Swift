@@ -18,8 +18,7 @@ class DataDonationStudyTests: XCTestCase {
                 title: "",
                 subtitle: "",
                 contactEmail: "test@example.com",
-                image: nil,
-                duration: 10,
+                image: nil
             ),
             uploadConfiguration: .dummy,
             introductorySurveyURL: URL(string: "https://example.com/intro"),
@@ -91,8 +90,7 @@ class DataDonationStudyTests: XCTestCase {
                 title: "Dummy",
                 subtitle: "",
                 contactEmail: "",
-                image: nil,
-                duration: 60 * 60
+                image: nil
             )
             
             let uploadConfig = UploadConfiguration(

@@ -27,7 +27,7 @@ final class LongTermStudyTests: XCTestCase {
         
         XCTAssertEqual(study.studyInformation.title, "Test Study")
         XCTAssertEqual(study.studyInformation.subtitle, "Test Subtitle")
-        XCTAssertEqual(study.studyInformation.duration, 18000)
+        XCTAssertEqual(study.duration, 18000)
         XCTAssertEqual(study.studyIdentifier, "test")
         XCTAssertEqual(study.studyInformation.contactEmail, "test@example.com")
         XCTAssertEqual(study.uploadConfiguration.apiKey, "test")
@@ -128,7 +128,7 @@ final class LongTermStudyTests: XCTestCase {
     
     // MARK: - Test helpers
     
-    private func createTestStudy(midStudySurvey: MidStudySurvey? = nil) -> Study {
+    private func createTestStudy(midStudySurvey: MidStudySurvey? = nil) -> LongTermStudy {
         
         let uploadConfiguration = UploadConfiguration(
             fileSubmissionServer: URL(string: "https://example.com/upload")!,
@@ -143,8 +143,7 @@ final class LongTermStudyTests: XCTestCase {
                     title: "Test Study",
                     subtitle: "Test Subtitle",
                     contactEmail: "test@example.com",
-                    image: nil,
-                    duration: 10
+                    image: nil
                 ),
                 uploadConfiguration: uploadConfiguration,
                 duration: 10,
@@ -160,8 +159,7 @@ final class LongTermStudyTests: XCTestCase {
                     title: "Test Study",
                     subtitle: "Test Subtitle",
                     contactEmail: "test@example.com",
-                    image: nil,
-                    duration: 60 * 60 * 5
+                    image: nil
                 ),
                 uploadConfiguration: uploadConfiguration,
                 duration: 60 * 60 * 5,

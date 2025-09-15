@@ -20,13 +20,11 @@ public protocol GeneralStudy: AnyObject, ObservableObject {
     
     var userConsentDate: Date? { get }
     
+    /// If a study is dismissed by the user, it won't be shown again in the recommended studies.
+    /// However, it will still be shown in the list in the settings.
     var isDismissedByUser: Bool { get set }
     
     var participationIsPossible: Bool { get }
-    
-    func publishChangesOnMain()
-    
-    func publishChangesOnMain(completion: @escaping () -> Void)
     
     func showView<Content>(_ view: Content) where Content : View
     
@@ -34,6 +32,12 @@ public protocol GeneralStudy: AnyObject, ObservableObject {
     func reset() throws
     
     func didTerminateParticipation(terminationDate: Date)
+    
+    /// Should trigger the `objectWillChange` publisher of the `ObservableObject`.
+    func publishChangesOnMain()
+    
+    /// Should trigger the `objectWillChange` publisher of the `ObservableObject`.
+    func publishChangesOnMain(completion: @escaping () -> Void)
     
 }
 
@@ -47,8 +51,6 @@ extension GeneralStudy {
         return userConsentDate != nil
     }
     
-    /// If a study is dismissed by the user, it won't be shown again in the recommended studies.
-    /// However, it will still be shown in the list in the settings.
     public var isDismissedByUser: Bool {
         get {
             store.get(Study.Keys.IsDismissedByUser, type: Bool.self) ?? false

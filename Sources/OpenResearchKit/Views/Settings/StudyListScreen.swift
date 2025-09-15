@@ -121,7 +121,6 @@ public struct StudyRow: View {
                 in: .module,
                 with: nil
             ),
-            duration: 0,
         ),
         uploadConfiguration: .init(
             fileSubmissionServer: URL(string: "https://example.org")!,

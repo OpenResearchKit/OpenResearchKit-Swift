@@ -41,8 +41,7 @@ final class StudyTests: XCTestCase {
                 title: "Dummy",
                 subtitle: "",
                 contactEmail: "",
-                image: nil,
-                duration: 60 * 60
+                image: nil
             )
 
             let uploadConfig = UploadConfiguration(

@@ -47,22 +47,22 @@ extension UploadsStudyData {
         
     }
     
-    internal var fileName: String {
-        "study-\(studyIdentifier)-\(userIdentifier).json"
-    }
-    
-    internal var baseDirectory: URL {
+    public func appendNewJSONObjects(newObjects: [[String: JSONConvertible]]) {
         
-        if let sharedAppGroupIdentifier {
-            let fileManager = FileManager.default
-            return fileManager.containerURL(forSecurityApplicationGroupIdentifier: sharedAppGroupIdentifier)!
+        if hasUserGivenConsent {
+            // only add data if study is running: user has given consent and study has not yet ended
+            var existingFile = self.JSONFile
+            existingFile.append(contentsOf: newObjects)
+            self.saveAndUploadIfNeccessary(jsonFile: existingFile)
         }
         
-        return URL(fileURLWithPath: NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0])
     }
     
-    internal var jsonDataFilePath: URL {
-        return baseDirectory.appendingPathComponent(fileName)
+    private func saveAndUploadIfNeccessary(jsonFile: [ [String: Any] ]) {
+        if let jsonData = try? JSONSerialization.data(withJSONObject: jsonFile, options: .prettyPrinted) {
+            try? jsonData.write(to: jsonDataFilePath)
+            self.uploadIfNecessary()
+        }
     }
     
     internal var JSONFile: [[String: Any]] {
@@ -75,24 +75,50 @@ extension UploadsStudyData {
         return []
     }
     
-    internal func saveAndUploadIfNeccessary(jsonFile: [ [String: Any] ]) {
-        if let jsonData = try? JSONSerialization.data(withJSONObject: jsonFile, options: .prettyPrinted) {
-            try? jsonData.write(to: jsonDataFilePath)
-            self.uploadIfNecessary()
+    private var mainFileName: String {
+        "study-\(studyIdentifier)-\(userIdentifier).json"
+    }
+    
+    private var jsonDataFilePath: URL {
+        return baseDirectory.appendingPathComponent(mainFileName)
+    }
+    
+    private var baseDirectory: URL {
+        
+        if let sharedAppGroupIdentifier {
+            let fileManager = FileManager.default
+            return fileManager.containerURL(forSecurityApplicationGroupIdentifier: sharedAppGroupIdentifier)!
         }
+        
+        return URL(fileURLWithPath: NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0])
     }
     
     // MARK: - Upload
     
-    public var lastSuccessfulUploadDate: Date? {
-        return store.get(Study.Keys.LastSuccessfulUploadDate, type: Date.self)
+    public func shouldUpload() -> Bool {
+        
+        guard let lastSuccessfulUploadDate else {
+            return true
+        }
+        
+        if abs(lastSuccessfulUploadDate.timeIntervalSinceNow) > uploadConfiguration.uploadFrequency {
+            return true
+        }
+        
+        return false
+        
     }
     
-    public func updateUploadDate(newDate: Date = Date()) {
+    public func uploadIfNecessary() {
         
-        store.update(Study.Keys.LastSuccessfulUploadDate, value: newDate)
-        publishChangesOnMain()
+        if shouldUpload() {
+            self.uploadJSON()
+        }
         
+    }
+    
+    public var lastSuccessfulUploadDate: Date? {
+        return store.get(Study.Keys.LastSuccessfulUploadDate, type: Date.self)
     }
     
     internal func uploadJSON() {
@@ -101,7 +127,7 @@ extension UploadsStudyData {
             filePath: jsonDataFilePath,
             uploadConfiguration: uploadConfiguration,
             userIdentifier: userIdentifier,
-            fileName: fileName
+            fileName: mainFileName
         ) { (result: Result<Void, any Error>) in
             
             switch result {
@@ -120,22 +146,10 @@ extension UploadsStudyData {
         
     }
     
-    public func appendNewJSONObjects(newObjects: [[String: JSONConvertible]]) {
+    private func updateUploadDate(newDate: Date = Date()) {
         
-        if hasUserGivenConsent {
-            // only add data if study is running: user has given consent and study has not yet ended
-            var existingFile = self.JSONFile
-            existingFile.append(contentsOf: newObjects)
-            self.saveAndUploadIfNeccessary(jsonFile: existingFile)
-        }
-        
-    }
-    
-    public func uploadIfNecessary() {
-        
-        if shouldUpload() {
-            self.uploadJSON()
-        }
+        store.update(Study.Keys.LastSuccessfulUploadDate, value: newDate)
+        publishChangesOnMain()
         
     }
     

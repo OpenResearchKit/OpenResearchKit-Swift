@@ -63,7 +63,7 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
     
     // MARK: - Uploading -
     
-    public override func shouldUpload() -> Bool {
+    open func shouldUpload() -> Bool {
         
         guard let lastSuccessfulUploadDate = self.lastSuccessfulUploadDate else {
             if isActiveStudyPeriod {
