@@ -123,13 +123,18 @@ public struct StudyDetailInfoScreen: View {
                 
             }
             
-            if study.isActivelyRunning || Bundle.main.isInDebugMode {
-                if let detailInfos = study.studyInformation.detailInfos {
-                    Text(detailInfos)
-                } else {
-                    Text("You are currently participating in a scientific study to help make this app even better. If you have any questions, please contact us.")
+            if let study = study as? LongTermStudy {
+                
+                if study.isActiveStudyPeriod || Bundle.main.isInDebugMode {
+                    if let detailInfos = study.studyInformation.detailInfos {
+                        Text(detailInfos)
+                    } else {
+                        Text("You are currently participating in a scientific study to help make this app even better. If you have any questions, please contact us.")
+                    }
                 }
+                
             }
+            
         }
         
     }

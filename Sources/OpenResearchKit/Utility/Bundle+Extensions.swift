@@ -27,5 +27,9 @@ extension Bundle {
 #endif
     }
     
+    var isRunningUnitTests: Bool {
+        ProcessInfo.processInfo.processName == "xctest"
+    }
+    
 }
 

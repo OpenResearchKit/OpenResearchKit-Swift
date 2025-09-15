@@ -7,18 +7,18 @@
 
 import Foundation
 
-open class LongTermStudy: Study, LongTerm {
+open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
     
     public let duration: TimeInterval
-    public let concludingSurveyURL: URL
+    public let concludingSurveyURL: URL?
     
     public init(
         studyIdentifier: String,
         studyInformation: StudyInformation,
         uploadConfiguration: UploadConfiguration,
         duration: TimeInterval,
-        introductorySurveyURL: URL,
-        concludingSurveyURL: URL,
+        introductorySurveyURL: URL?,
+        concludingSurveyURL: URL?,
         participationIsPossible: Bool = true,
         sharedAppGroupIdentifier: String? = nil,
         additionalQueryItems: @escaping (SurveyType) -> [URLQueryItem] = { _ in [] },
@@ -39,27 +39,23 @@ open class LongTermStudy: Study, LongTerm {
         )
     }
     
-    public var studyEndDate: Date? {
-        return userConsentDate?.addingTimeInterval(duration)
-    }
-    
-    /// A long-term study is actively running if the study end date is in the future.
-    open override var isActivelyRunning: Bool {
+    open override func currentDisplayStatus() async throws -> StudyStatus {
         
-        if let studyEndDate = studyEndDate {
-            if studyEndDate.isInFuture {
-                return true
-            }
+        if isActiveStudyPeriod {
+            return .successStyle(text: "Running")
         }
         
-        return false
+        return try await super.currentDisplayStatus()
     }
     
     // MARK: - Data Handling -
     
-    open override func appendNewJSONObjects(newObjects: [[String : any JSONConvertible]]) {
+    /// Appends data to the main study file if the user consented into taking part in the study and when the
+    /// study period is actively running (from date of consent till the end of the configured duration.
+    /// - Parameter newObjects: data to be added to the main study file
+    open func appendNewJSONObjects(newObjects: [[String : any JSONConvertible]]) {
         
-        if isActivelyRunning {
+        if isActiveStudyPeriod {
             super.appendNewJSONObjects(newObjects: newObjects)
         }
         
@@ -67,46 +63,46 @@ open class LongTermStudy: Study, LongTerm {
     
     // MARK: - Uploading -
     
-    open override func uploadIfNecessary() {
+    public override func shouldUpload() -> Bool {
         
         guard let lastSuccessfulUploadDate = self.lastSuccessfulUploadDate else {
-            if isActivelyRunning {
-                self.uploadJSON()
+            if isActiveStudyPeriod {
+                return true
             }
-            return
+            return false
         }
         
-        if !isActivelyRunning {
-            if let studyEndDate = self.studyEndDate {
+        if !isActiveStudyPeriod {
+            if let intendedStudyEndDate = self.intendedStudyEndDate {
                 // study terminated, uploading remaining file
-                if lastSuccessfulUploadDate < studyEndDate {
-                    self.uploadJSON()
-                    return
+                if lastSuccessfulUploadDate < intendedStudyEndDate {
+                    return true
                 }
             }
             
             // study is not running, dont upload anything
-            return
+            return false
         }
-        
         
         if abs(lastSuccessfulUploadDate.timeIntervalSinceNow) > uploadConfiguration.uploadFrequency {
-            self.uploadJSON()
+            return true
         }
+        
+        return false
         
     }
     
     // MARK: - Notification Handling -
     
-    open override func shouldHaveNotifications() -> Bool {
+    open func shouldHaveNotifications() -> Bool {
         return true
     }
     
-    open override func registerNotifications() {
+    open func registerNotifications() {
         
         super.registerNotifications()
         
-        var pushDuration = self.studyInformation.duration ?? 0
+        var pushDuration = self.duration
 #if DEBUG
         pushDuration = 10
 #endif

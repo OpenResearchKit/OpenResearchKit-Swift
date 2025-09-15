@@ -19,7 +19,7 @@ final class StudyTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        study = Dummy.makeStudy(id: studyID)
+        study = LongTermDummy.makeStudy(id: studyID)
     }
 
     override func tearDown() {
@@ -30,10 +30,11 @@ final class StudyTests: XCTestCase {
 
     // MARK: - Test helpers
 
-    private struct Dummy {
+    private struct LongTermDummy {
+        
         static func makeStudy(
             id: String = UUID().uuidString,
-            introURL: URL? = URL(string: "https://example.com/intro")
+            introURL: URL? = URL(string: "https://example.com/intro")!
         ) -> Study {
 
             let info = StudyInformation(
@@ -49,17 +50,20 @@ final class StudyTests: XCTestCase {
                 uploadFrequency: 3600,
                 apiKey: "TEST_API_KEY"
             )
-
-            return Study(
+            
+            return LongTermStudy(
                 studyIdentifier: id,
                 studyInformation: info,
                 uploadConfiguration: uploadConfig,
+                duration: 60 * 60,
                 introductorySurveyURL: introURL,
+                concludingSurveyURL: introURL,
                 participationIsPossible: true,
                 additionalQueryItems: { _ in [URLQueryItem(name: "test", value: "true")] },
                 introSurveyCompletionHandler: nil
             )
         }
+        
     }
 
     // MARK: - Tests
@@ -74,7 +78,7 @@ final class StudyTests: XCTestCase {
 
         XCTAssertEqual(initialUserID, subsequentUserID, "User ID should be stable across accesses.")
 
-        let newStudyInstance = Dummy.makeStudy(id: studyID)
+        let newStudyInstance = LongTermDummy.makeStudy(id: studyID)
 
         XCTAssertEqual(newStudyInstance.userIdentifier, initialUserID, "New instance should load the persisted user ID.")
     }
@@ -84,11 +88,12 @@ final class StudyTests: XCTestCase {
         XCTAssertFalse(study.hasUserGivenConsent, "Study should not have consent initially.")
 
         let consentDate = Date()
-        let expectation = XCTestExpectation(
-            description: "Save user consent completion handler called.")
+        let expectation = XCTestExpectation(description: "Save user consent completion handler called.")
+        
         study.saveUserConsentHasBeenGiven(consentTimestamp: consentDate) {
             expectation.fulfill()
         }
+        
         wait(for: [expectation], timeout: 1.0)
 
         XCTAssertTrue(study.hasUserGivenConsent, "Study should have consent after saving.")
@@ -128,7 +133,7 @@ final class StudyTests: XCTestCase {
 
     func test_shouldDisplayIntroductorySurvey_isFalseWithoutURL() {
         
-        let studyWithoutURL = Dummy.makeStudy(id: "no-url-study", introURL: nil)
+        let studyWithoutURL = LongTermDummy.makeStudy(id: "no-url-study", introURL: nil)
 
         XCTAssertFalse(studyWithoutURL.shouldDisplayIntroductorySurvey, "Should not display intro survey if the URL is nil.")
         

@@ -12,9 +12,11 @@ public protocol HasTerminationSurvey: AnyObject, LongTerm, GeneralStudy {
     
     var hasCompletedTerminationSurvey: Bool { get set }
     
-    var shouldDisplayTerminationSurvey: Bool { get set }
+    var shouldDisplayTerminationSurvey: Bool { get }
     
     var terminationBannerView: AnyView { get }
+    
+    func showCompletionSurvey()
     
 }
 
@@ -38,8 +40,8 @@ extension HasTerminationSurvey {
     }
     
     public var shouldDisplayTerminationSurvey: Bool {
-        if let studyEndDate {
-            return !studyEndDate.isInFuture && !hasCompletedTerminationSurvey && !isDismissedByUser
+        if let intendedStudyEndDate {
+            return !intendedStudyEndDate.isInFuture && !hasCompletedTerminationSurvey && !isDismissedByUser
         }
         return false
     }
@@ -48,6 +50,12 @@ extension HasTerminationSurvey {
         StudyBannerInvitation(surveyType: .completion)
             .environmentObject(self)
             .toAnyView()
+    }
+    
+    public func showCompletionSurvey() {
+        
+        showView(SurveyWebView(surveyType: .completion).environmentObject(self))
+        
     }
     
 }

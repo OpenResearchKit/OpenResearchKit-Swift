@@ -42,7 +42,7 @@ struct StudyStatusBadge: View {
             self.state = .loading
             
             do {
-                let status = try await study.currentStatus()
+                let status = try await study.currentDisplayStatus()
                 self.state = .loaded(status)
             } catch {
                 self.state = .error
