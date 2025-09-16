@@ -174,6 +174,8 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
         // Reset state variables (e.g. study identifier, all dates, etc.)
         self.store.deleteAllValues()
         
+        try self.resetLocalJSONFile()
+        
         // Delete all files
         try StudyFileManager.shared.deleteAllFiles(study: self, type: .working)
         try StudyFileManager.shared.deleteAllFiles(study: self, type: .upload)

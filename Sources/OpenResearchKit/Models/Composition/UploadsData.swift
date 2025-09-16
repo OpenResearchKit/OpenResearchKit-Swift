@@ -22,7 +22,7 @@ public protocol UploadsStudyData: GeneralStudy {
 
 extension UploadsStudyData {
     
-    // MARK: - Files and Data
+    // MARK: - Files and Data -
     
     public func studyDirectory(type: StudyDataDirectoryType = .working) -> URL {
         
@@ -65,6 +65,11 @@ extension UploadsStudyData {
         }
     }
     
+    internal func resetLocalJSONFile() throws {
+        let fileManager = FileManager.default
+        try fileManager.removeItem(at: jsonDataFilePath)
+    }
+    
     internal var JSONFile: [[String: Any]] {
         if let jsonData = try? Data(contentsOf: jsonDataFilePath),
            let decoded = try? JSONSerialization.jsonObject(with: jsonData, options: []),
@@ -93,7 +98,7 @@ extension UploadsStudyData {
         return URL(fileURLWithPath: NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0])
     }
     
-    // MARK: - Upload
+    // MARK: - Upload -
     
     public func shouldUpload() -> Bool {
         
@@ -152,6 +157,16 @@ extension UploadsStudyData {
         
         store.update(Study.Keys.LastSuccessfulUploadDate, value: newDate)
         publishChangesOnMain()
+        
+    }
+    
+    // MARK: -
+    
+    public func copyMainJSONToUpload() throws {
+        
+        let fileManager = FileManager.default
+        
+        try fileManager.copyItem(at: jsonDataFilePath, to: self.studyDirectory(type: .upload))
         
     }
     
