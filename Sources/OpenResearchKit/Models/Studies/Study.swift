@@ -14,7 +14,7 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
     
     public let studyIdentifier: String
     public let studyInformation: StudyInformation
-    public let uploadConfiguration: UploadConfiguration
+    public var uploadConfiguration: UploadConfiguration
     public let introductorySurveyURL: URL?
     public var participationIsPossible: Bool
     public let sharedAppGroupIdentifier: String?

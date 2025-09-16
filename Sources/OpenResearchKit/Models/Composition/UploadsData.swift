@@ -67,7 +67,10 @@ extension UploadsStudyData {
     
     internal func resetLocalJSONFile() throws {
         let fileManager = FileManager.default
-        try fileManager.removeItem(at: jsonDataFilePath)
+        
+        if fileManager.fileExists(atPath: jsonDataFilePath.path) {
+            try fileManager.removeItem(at: jsonDataFilePath)
+        }
     }
     
     internal var JSONFile: [[String: Any]] {
@@ -88,7 +91,7 @@ extension UploadsStudyData {
         return baseDirectory.appendingPathComponent(mainFileName)
     }
     
-    private var baseDirectory: URL {
+    internal var baseDirectory: URL {
         
         if let sharedAppGroupIdentifier {
             let fileManager = FileManager.default
@@ -155,7 +158,7 @@ extension UploadsStudyData {
         
         let date = newDate ?? dateGenerator.generate()
         
-        store.update(Study.Keys.LastSuccessfulUploadDate, value: newDate)
+        store.update(Study.Keys.LastSuccessfulUploadDate, value: date)
         publishChangesOnMain()
         
     }
@@ -165,8 +168,22 @@ extension UploadsStudyData {
     public func copyMainJSONToUpload() throws {
         
         let fileManager = FileManager.default
+        let destination = self.studyDirectory(type: .upload).appendingPathComponent(mainFileName)
         
-        try fileManager.copyItem(at: jsonDataFilePath, to: self.studyDirectory(type: .upload))
+        // Check that the main json file already exists
+        if fileManager.fileExists(atPath: jsonDataFilePath.path) {
+            
+            // If a file with the same name already exists in the folder, we delete it first
+            if fileManager.fileExists(atPath: destination.path) {
+                try fileManager.removeItem(at: destination)
+            }
+            
+            // Copy the file over
+            try fileManager.copyItem(at: jsonDataFilePath, to: destination)
+            
+        } else {
+            Logger.research.warning("The main json files does not exist currently. Maybe you forgot giving the user consent before trying to copy?")
+        }
         
     }
     

@@ -181,6 +181,40 @@ public class StudyFileManager {
         
     }
     
+    // MARK: - Upload Remaining Files -
+    
+    public func uploadStudyFolder(study: Study) async throws {
+        
+        let uploadDirectory = study.studyDirectory(type: .upload)
+        
+        let items = try FileManager.default.contentsOfDirectory(at: uploadDirectory, includingPropertiesForKeys: [.isRegularFileKey], options: [])
+        
+        for source in items {
+            
+            // Skip non-regular files and (optionally) hidden files
+            let values = try source.resourceValues(forKeys: [.isRegularFileKey, .isHiddenKey])
+            guard values.isRegularFile == true else { continue }
+            
+            if values.isHidden == true { continue }
+            
+            Logger.research.info("Uploading file '\(source.absoluteString)' of study '\(study.studyIdentifier)'.")
+            
+            try await upload(study: study, file: source)
+            
+        }
+        
+        
+    }
+    
+    /// Using this assumes that all data residing in the upload directory was already consented for sharing.
+    public func uploadAllRemainingFiles() async throws {
+        
+        for study in Study.allStudies {
+            try await self.uploadStudyFolder(study: study)
+        }
+        
+    }
+    
     // MARK: - Helpers -
     
     /// True if `child` URL is inside `parent` directory (after resolving symlinks/standardizing).

@@ -61,14 +61,24 @@ public class StudyDataUploader {
                 self.isCurrentlyUploading = false
                 
                 if let data = data {
-                    if let json = try? JSONSerialization.jsonObject(with: data, options: []) as? [String : Any], let result = json["result"] as? [String: Any], let hadSuccess = result["success"] as? String {
+                    if let json = try? JSONSerialization.jsonObject(with: data, options: []) as? [String : Any],
+                        let result = json["result"] as? [String: Any] {
                         
-                        print(hadSuccess)
-                        print(json)
+                        // Needed because of legacy API implementation
+                        let stringCast = result["success"] as? String
+                        let boolCast = result["success"] as? Bool
                         
-                        if hadSuccess == "true" {
-                            completion(.success(()))
+                        if stringCast != nil || boolCast != nil {
+                            
+                            print(result["success"] ?? "")
+                            print(json)
+                            
+                            if stringCast == "true" || boolCast == true {
+                                completion(.success(()))
+                            }
+                            
                         }
+                        
                     }
                 }
             }
