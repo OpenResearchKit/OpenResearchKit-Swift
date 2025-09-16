@@ -42,6 +42,8 @@ public struct ResearchWebView: UIViewRepresentable {
         return Coordinator(completion: completion)
     }
     
+    // MARK: - WKNavigationDelegate -
+    
     public class Coordinator: NSObject, WKNavigationDelegate {
         
         internal init(completion: @escaping (Bool, [String: String]) -> ()) {

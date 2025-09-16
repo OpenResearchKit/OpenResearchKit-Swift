@@ -180,9 +180,7 @@ public struct DefaultStudyView: View {
             string: "https://oslopsych.az1.qualtrics.com/jfe/form/SV_3woeKVMUpQsUBwy"
         )!,
         participationIsPossible: false,
-        introSurveyCompletionHandler: { parameters, study in
-            // not necessary
-        }
+        introSurveyCompletionHandler: nil
     )
     
     List {

@@ -30,49 +30,39 @@ public struct SurveyWebView: View {
     public var body: some View {
         NavigationView {
             if let surveyUrl = study.surveyUrl(for: surveyType) {
-                ResearchWebView(url: surveyUrl, completion: { (success, parameters) in
-                    if surveyType == .introductory {
-                        if success {
-                            // schedule push notification for study completed date -> in 6 weeks
-                            // automatically opens completion survey
-                           
-                            if let group = parameters["assignedGroup"] {
-                                study.assignedGroup = group
-                            } else if let group = parameters["groupid"] {
-                                study.assignedGroup = group
-                            }
+                ResearchWebView(
+                    url: surveyUrl,
+                    completion: { (success, parameters) in
+                        
+                        if surveyType == .introductory {
                             
-                            study.saveUserConsentHasBeenGiven() {
-                                presentationMode.wrappedValue.dismiss()
-                                
-                                study.introSurveyCompletionHandler?(
-                                    parameters,
-                                    study
-                                )
-                            }
+                            study.handleIntroductionSurveyResults(
+                                consented: success,
+                                parameters: parameters,
+                                dismissView: {
+                                    presentationMode.wrappedValue.dismiss()
+                                }
+                            )
+                        
+                        } else if surveyType == .completion {
                             
-                        } else {
-                            study.isDismissedByUser = true
                             presentationMode.wrappedValue.dismiss()
+                            
+                            if let study = study as? (any HasTerminationSurvey) {
+                                study.hasCompletedTerminationSurvey = true
+                            }
+                            
+                        } else if surveyType == .mid {
+                            
+                            presentationMode.wrappedValue.dismiss()
+                            
+                            if let study = study as? (any HasMidSurvey) {
+                                study.hasCompletedMidSurvey = true
+                            }
+                            
                         }
-                    } else if surveyType == .completion {
-                        
-                        presentationMode.wrappedValue.dismiss()
-                        
-                        if let study = study as? (any HasTerminationSurvey) {
-                            study.hasCompletedTerminationSurvey = true
-                        }
-                        
-                    } else if surveyType == .mid {
-                        
-                        presentationMode.wrappedValue.dismiss()
-                        
-                        if let study = study as? (any HasMidSurvey) {
-                            study.hasCompletedMidSurvey = true
-                        }
-                        
                     }
-                })
+                )
                 .navigationTitle("Survey")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {

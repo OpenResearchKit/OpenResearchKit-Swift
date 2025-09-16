@@ -79,12 +79,56 @@ class DataDonationStudyTests: XCTestCase {
         XCTAssertTrue(isDir.boolValue)
     }
     
+    // MARK: - State -
+    
+    func testStudyCompletedAfterSuccessfulIntroductorySurvey() {
+        
+        let study = Dummy.makeStudy()
+        
+        XCTAssertFalse(study.isActive)
+        XCTAssertFalse(study.hasUserGivenConsent)
+        
+        let timeInSeconds = 2.0
+        let expectation = XCTestExpectation(description: "Waiting shortly for the dismissal of the view")
+        
+        study.handleIntroductionSurveyResults(consented: true, parameters: [:], dismissView: {
+            expectation.fulfill()
+        })
+        
+        wait(for: [expectation], timeout: timeInSeconds)
+        
+        XCTAssertTrue(study.isCompleted)
+        XCTAssertFalse(study.isActive)
+        
+    }
+    
+    func testStudyNotCompletedAfterNotSuccessfulIntroductorySurvey() {
+        
+        let study = Dummy.makeStudy()
+        
+        XCTAssertFalse(study.isActive)
+        XCTAssertFalse(study.hasUserGivenConsent)
+        
+        let timeInSeconds = 2.0
+        let expectation = XCTestExpectation(description: "Waiting shortly for the dismissal of the view")
+        
+        study.handleIntroductionSurveyResults(consented: false, parameters: [:], dismissView: {
+            expectation.fulfill()
+        })
+        
+        wait(for: [expectation], timeout: timeInSeconds)
+        
+        XCTAssertFalse(study.isCompleted)
+        XCTAssertFalse(study.isActive)
+        
+    }
+    
     // MARK: - Helpers -
     
     private struct Dummy {
         static func makeStudy(
             id: String = UUID().uuidString
-        ) -> Study {
+        ) -> DataDonationStudy {
             
             let info = StudyInformation(
                 title: "Dummy",

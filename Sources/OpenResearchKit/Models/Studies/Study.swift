@@ -123,10 +123,6 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
         
         let consentedNotDismissed = self.hasUserGivenConsent // && !self.isDismissedByUser
         
-        if let study = self as? (any HasTerminationSurvey) {
-            return !study.hasCompletedTerminationSurvey && consentedNotDismissed
-        }
-        
         return consentedNotDismissed
         
     }
@@ -184,9 +180,41 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
         
     }
     
-    // MARK: - Callbacks
+    open func handleIntroductionSurveyResults(consented: Bool, parameters: [String: String], dismissView: @escaping () -> Void) {
+        
+        if consented {
+            
+            if let group = parameters["assignedGroup"] {
+                self.assignedGroup = group
+            } else if let group = parameters["groupid"] {
+                self.assignedGroup = group
+            }
+            
+            self.saveUserConsentHasBeenGiven() {
+                
+                self.didFinishSurveyIntroPreCompletionHandler()
+                
+                dismissView()
+                
+                self.introSurveyCompletionHandler?(
+                    parameters,
+                    self
+                )
+                
+                self.didFinishSurveyPostCompletionHandler()
+                
+            }
+            
+        } else {
+            self.isDismissedByUser = true
+            dismissView()
+        }
+        
+    }
     
-    public func didTerminateParticipation(terminationDate: Date) {
+    // MARK: - Callbacks -
+    
+    open func didTerminateParticipation(terminationDate: Date) {
         self.appendNewJSONObjects(newObjects: [
             [
                 "terminationReason": "terminatedByUser",
@@ -195,6 +223,16 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
         ])
         self.uploadIfNecessary()
     }
+    
+    open func didFinishSurveyIntroPreCompletionHandler() {
+        
+    }
+    
+    open func didFinishSurveyPostCompletionHandler() {
+        
+    }
+    
+    // MARK: - Helpers -
     
     public internal(set) var dateGenerator: any DateGenerator = DefaultDateGenerator()
     
@@ -225,6 +263,22 @@ extension Study {
         allStudies.first { study in
             return study.isActive
         }
+        
+    }
+    
+    public static func filterRecommended(studies: [Study]) -> [Study] {
+        
+        return studies
+            .filter { !$0.isDismissedByUser }
+            .filter {
+                
+                if let study = $0 as? (any HasTerminationSurvey) {
+                    return !study.hasCompletedTerminationSurvey
+                }
+                
+                return true
+                
+            }
         
     }
     

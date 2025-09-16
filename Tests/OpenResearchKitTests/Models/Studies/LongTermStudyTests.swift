@@ -186,6 +186,30 @@ final class LongTermStudyTests: XCTestCase {
         
     }
     
+    // MARK: - Long Term without Conclusion
+    
+    func testIsActiveLongTermWithoutConclusionSurveyRegularFlow() {
+        
+        let dateGenerator = TimeTraveler()
+        let study = createLongTermStudy(concludingSurvey: nil, duration: 10)
+        study.dateGenerator = dateGenerator
+        
+        XCTAssertFalse(study.isActive)
+        
+        study.saveUserConsentHasBeenGiven(completion: {})
+        
+        XCTAssertTrue(study.isActive)
+        
+        dateGenerator.travel(by: 5)
+        
+        XCTAssertTrue(study.isActive)
+        
+        dateGenerator.travel(by: 6)
+        
+        XCTAssertFalse(study.isActive)
+        
+    }
+    
     // MARK: - Test helpers
     
     private let uploadConfiguration = UploadConfiguration(
