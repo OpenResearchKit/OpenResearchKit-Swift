@@ -79,7 +79,7 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
     /// Appends data to the main study file if the user consented into taking part in the study and when the
     /// study period is actively running (from date of consent till the end of the configured duration.
     /// - Parameter newObjects: data to be added to the main study file
-    open func appendNewJSONObjects(newObjects: [[String : any JSONConvertible]]) {
+    open override func appendNewJSONObjects(newObjects: [[String : any JSONConvertible]]) {
         
         if isActiveStudyPeriod {
             super.appendNewJSONObjects(newObjects: newObjects)
@@ -89,7 +89,7 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
     
     // MARK: - Uploading -
     
-    open func shouldUpload() -> Bool {
+    open override func shouldUpload() -> Bool {
         
         guard let lastSuccessfulUploadDate = self.lastSuccessfulUploadDate else {
             if isActiveStudyPeriod {
@@ -120,11 +120,11 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
     
     // MARK: - Notification Handling -
     
-    open func shouldHaveNotifications() -> Bool {
+    open override func shouldHaveNotifications() -> Bool {
         return true
     }
     
-    open func registerNotifications() {
+    open override func registerNotifications() {
         
         super.registerNotifications()
         

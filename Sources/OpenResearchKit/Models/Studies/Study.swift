@@ -238,6 +238,310 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
     
     public internal(set) var dateGenerator: any DateGenerator = DefaultDateGenerator()
     
+    // MARK: - HasIntroductionSurvey -
+    
+    open var invitationBannerView: AnyView {
+        
+        StudyBannerInvitation(surveyType: .introductory)
+            .environmentObject(self)
+            .toAnyView()
+        
+    }
+    
+    open var shouldDisplayIntroductorySurvey: Bool {
+        
+        if introductorySurveyURL == nil {
+            return false
+        }
+        
+        if !participationIsPossible {
+            return false
+        }
+        
+        return !hasUserGivenConsent && !isDismissedByUser
+        
+    }
+
+    // MARK: -
+    
+    /// Prepares and sets up local notifications for the study after user consent.
+    ///
+    /// This method is automatically called when a user gives consent to participate in a study.
+    /// It handles the complete notification setup flow including:
+    /// 1. Checking if the study requires notifications via `shouldHaveNotifications()`
+    /// 2. Presenting a user-friendly alert explaining why notifications are needed
+    /// 3. Requesting push notification permissions from the system
+    /// 4. Calling `registerNotifications()` to set up study-specific notifications
+    ///
+    /// ## Notification Flow
+    ///
+    /// The method follows this sequence:
+    /// - If `shouldHaveNotifications()` returns `false`, the completion handler is called immediately
+    /// - If notifications are required, displays an alert to inform the user about post-study questionnaires
+    /// - Upon user confirmation, requests system notification permissions
+    /// - Calls `registerNotifications()` regardless of permission grant status
+    /// - Executes the completion handler when the flow is complete
+    ///
+    /// ## Alert Content
+    ///
+    /// The alert displays localized content:
+    /// - **Title**: "Post-Study-Questionnaire" (localized)
+    /// - **Message**: "We'll send you a push notification when the study is concluded to fill out the post-questionnaire." (localized)
+    /// - **Action**: "Ok" button to proceed with permission request
+    ///
+    /// ## Unit Testing Considerations
+    ///
+    /// When running unit tests (`Bundle.main.isRunningUnitTests` is `true`), the completion
+    /// handler is called immediately to prevent UI interactions during automated testing.
+    ///
+    /// ## Usage Example
+    ///
+    /// ```swift
+    /// // Called automatically during consent process
+    /// study.saveUserConsentHasBeenGiven(consentTimestamp: Date()) {
+    ///     // Notifications are now prepared
+    ///     print("User consent saved and notifications prepared")
+    /// }
+    /// ```
+    ///
+    /// ## Implementation Notes
+    ///
+    /// - Permission denial doesn't prevent `registerNotifications()` from being called
+    /// - The alert is presented on the topmost view controller in the hierarchy
+    /// - All UI operations are performed on the main thread
+    ///
+    /// - Parameter completion: A closure executed when the notification preparation is complete.
+    ///   Called immediately if notifications are disabled, or after the permission flow when enabled.
+    ///   Defaults to an empty closure if not provided.
+    ///
+    /// - Important: This method should not be called directly. It's automatically invoked
+    ///   as part of the user consent process in `saveUserConsentHasBeenGiven(consentTimestamp:completion:)`.
+    ///
+    /// - Note: The actual notification scheduling should be implemented in the `registerNotifications()`
+    ///   method of conforming types.
+    ///
+    /// - SeeAlso:
+    ///   - `shouldHaveNotifications()` for controlling whether notifications are used
+    ///   - `registerNotifications()` for implementing study-specific notification scheduling
+    ///   - `LocalPushController.shared.askUserForPushPermission(completion:)` for the permission request implementation
+    internal func prepareLocalNotifications(completion: @escaping () -> Void = {}) {
+        
+        if shouldHaveNotifications() {
+            
+            let alert = UIAlertController(
+                title: NSLocalizedString(
+                    "Post-Study-Questionnaire", bundle: Bundle.module, comment: ""),
+                message: NSLocalizedString(
+                    "We’ll send you a push notification when the study is concluded to fill out the post-questionnaire.",
+                    bundle: Bundle.module, comment: ""),
+                preferredStyle: .alert
+            )
+            
+            let proceedAction = UIAlertAction(title: "Ok", style: .default) { _ in
+                LocalPushController.shared.askUserForPushPermission { success in
+                    
+                    // todo: does it make sense to also register them when no push permission was given?
+                    
+                    self.registerNotifications()
+                    
+                    completion()
+                    
+                }
+            }
+            
+            alert.addAction(proceedAction)
+            
+            UIViewController.topViewController()?.present(alert, animated: true)
+            
+            if Bundle.main.isRunningUnitTests {
+                completion()
+            }
+            
+        } else {
+            completion()
+        }
+        
+    }
+    
+    open func shouldHaveNotifications() -> Bool {
+        return false
+    }
+    
+    open func registerNotifications() {
+        
+    }
+    
+    // MARK: - UploadsStudyData -
+    
+    public func studyDirectory(type: StudyDataDirectoryType = .working) -> URL {
+        
+        let fileManager = FileManager.default
+        let studyDirectoryURL = baseDirectory
+            .appendingPathComponent("OpenResearchKit/Studies", isDirectory: true)
+            .appendingPathComponent(studyIdentifier, isDirectory: true)
+            .appendingPathComponent(type.directoryName, isDirectory: true)
+        
+        // Ensure the directory exists
+        do {
+            try fileManager.createDirectory(
+                at: studyDirectoryURL,
+                withIntermediateDirectories: true,
+                attributes: nil
+            )
+        } catch {
+            Logger.research.error("Failed to create study directory: \(error)")
+        }
+        
+        return studyDirectoryURL
+        
+    }
+    
+    public func appendNewJSONObjects(newObjects: [[String: JSONConvertible]]) {
+        
+        if hasUserGivenConsent {
+            // only add data if study is running: user has given consent and study has not yet ended
+            var existingFile = self.JSONFile
+            existingFile.append(contentsOf: newObjects)
+            self.saveAndUploadIfNeccessary(jsonFile: existingFile)
+        }
+        
+    }
+    
+    private func saveAndUploadIfNeccessary(jsonFile: [ [String: Any] ]) {
+        if let jsonData = try? JSONSerialization.data(withJSONObject: jsonFile, options: .prettyPrinted) {
+            try? jsonData.write(to: jsonDataFilePath)
+            self.uploadIfNecessary()
+        }
+    }
+    
+    internal func resetLocalJSONFile() throws {
+        let fileManager = FileManager.default
+        
+        if fileManager.fileExists(atPath: jsonDataFilePath.path) {
+            try fileManager.removeItem(at: jsonDataFilePath)
+        }
+    }
+    
+    internal var JSONFile: [[String: Any]] {
+        if let jsonData = try? Data(contentsOf: jsonDataFilePath),
+           let decoded = try? JSONSerialization.jsonObject(with: jsonData, options: []),
+           let json = decoded as? [ [String: Any] ] {
+            return json
+        }
+        
+        return []
+    }
+    
+    private var mainFileName: String {
+        "study-\(studyIdentifier)-\(userIdentifier).json"
+    }
+    
+    private var jsonDataFilePath: URL {
+        return baseDirectory.appendingPathComponent(mainFileName)
+    }
+    
+    internal var baseDirectory: URL {
+        
+        if let sharedAppGroupIdentifier {
+            let fileManager = FileManager.default
+            return fileManager.containerURL(forSecurityApplicationGroupIdentifier: sharedAppGroupIdentifier)!
+        }
+        
+        return URL(fileURLWithPath: NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0])
+    }
+    
+    // MARK: - Upload
+    
+    open func shouldUpload() -> Bool {
+        
+        guard let lastSuccessfulUploadDate else {
+            return true
+        }
+        
+        if abs(lastSuccessfulUploadDate.timeIntervalSinceNow) > uploadConfiguration.uploadFrequency {
+            return true
+        }
+        
+        return false
+        
+    }
+    
+    open func uploadIfNecessary() {
+        
+        if shouldUpload() {
+            self.uploadJSON()
+        }
+        
+    }
+    
+    public var lastSuccessfulUploadDate: Date? {
+        return store.get(Study.Keys.LastSuccessfulUploadDate, type: Date.self)
+    }
+    
+    internal func uploadJSON() {
+        
+        StudyDataUploader.shared.uploadJSON(
+            filePath: jsonDataFilePath,
+            uploadConfiguration: uploadConfiguration,
+            userIdentifier: userIdentifier,
+            fileName: mainFileName
+        ) { (result: Result<Void, any Error>) in
+            
+            switch result {
+                    
+                case .success(_):
+                    DispatchQueue.main.async {
+                        self.updateUploadDate()
+                    }
+                    
+                case .failure(let error):
+                    print(error)
+                    
+            }
+            
+        }
+        
+    }
+    
+    internal func updateUploadDate(newDate: Date? = nil) {
+        
+        let date = newDate ?? dateGenerator.generate()
+        
+        store.update(Study.Keys.LastSuccessfulUploadDate, value: date)
+        publishChangesOnMain()
+        
+    }
+    
+    public func copyMainJSONToUpload() throws {
+        
+        let fileManager = FileManager.default
+        let destination = self.studyDirectory(type: .upload).appendingPathComponent(mainFileName)
+        
+        // Check that the main json file already exists
+        if fileManager.fileExists(atPath: jsonDataFilePath.path) {
+            
+            // If a file with the same name already exists in the folder, we delete it first
+            if fileManager.fileExists(atPath: destination.path) {
+                try fileManager.removeItem(at: destination)
+            }
+            
+            // Copy the file over
+            try fileManager.copyItem(at: jsonDataFilePath, to: destination)
+            
+        } else {
+            Logger.research.warning("The main json files does not exist currently. Maybe you forgot giving the user consent before trying to copy?")
+        }
+        
+    }
+    
+    // MARK: - HasTerminationSurvey
+    
+    open var terminationBannerView: AnyView {
+        StudyBannerInvitation(surveyType: .completion)
+            .environmentObject(self)
+            .toAnyView()
+    }
+    
 }
 
 extension Study {

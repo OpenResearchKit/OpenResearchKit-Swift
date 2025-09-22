@@ -49,12 +49,6 @@ extension HasTerminationSurvey {
         return false
     }
     
-    public var terminationBannerView: AnyView {
-        StudyBannerInvitation(surveyType: .completion)
-            .environmentObject(self)
-            .toAnyView()
-    }
-    
     public func showCompletionSurvey() {
         
         showView(SurveyWebView(surveyType: .completion).environmentObject(self))

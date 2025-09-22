@@ -16,29 +16,3 @@ public protocol HasIntroductorySurvey: GeneralStudy {
     var introductorySurveyURL: URL? { get }
     
 }
-
-public extension HasIntroductorySurvey {
-    
-    var invitationBannerView: AnyView {
-        
-        StudyBannerInvitation(surveyType: .introductory)
-            .environmentObject(self)
-            .toAnyView()
-        
-    }
-    
-    var shouldDisplayIntroductorySurvey: Bool {
-        
-        if introductorySurveyURL == nil {
-            return false
-        }
-        
-        if !participationIsPossible {
-            return false
-        }
-        
-        return !hasUserGivenConsent && !isDismissedByUser
-        
-    }
-    
-}
