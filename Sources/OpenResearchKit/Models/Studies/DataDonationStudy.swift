@@ -11,7 +11,7 @@ open class DataDonationStudy: Study {
     
     /// For data donation studies (which have no fixed duration), the study is considered active
     /// if the user has given consent and has not explicitly terminated participation or completed or dismissed.
-    public override var isActive: Bool {
+    open override var isActive: Bool {
         
         let terminatedOrCompletedOrDismissed = wasTerminatedBeforeCompletion || isCompleted || isDismissedByUser
         
@@ -25,7 +25,7 @@ open class DataDonationStudy: Study {
     
     // MARK: - Callbacks -
     
-    public override func didFinishSurveyPostCompletionHandler() {
+    open override func didFinishSurveyPostCompletionHandler() {
         super.didFinishSurveyPostCompletionHandler()
         
         self.isCompleted = true
