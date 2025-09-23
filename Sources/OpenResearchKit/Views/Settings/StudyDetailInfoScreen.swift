@@ -11,6 +11,7 @@ import SwiftUI
 public struct StudyDetailInfoScreen: View {
     
     @EnvironmentObject var activeStudy: Study
+    @Environment(\.dismiss) var dismiss
     
     let study: Study
     
@@ -220,6 +221,7 @@ public struct StudyDetailInfoScreen: View {
                 
                 ThrowingButton("Reset study data") {
                     try study.reset()
+                    dismiss()
                 }
                 .foregroundStyle(.red)
                 

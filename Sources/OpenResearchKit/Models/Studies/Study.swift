@@ -107,6 +107,10 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
     
     open func currentDisplayStatus() async throws -> StudyStatus {
         
+        if isCompleted {
+            return .successStyle(text: "Completed")
+        }
+        
         if terminationBeforeCompletionDate != nil {
             return .errorStyle(text: "Terminated")
         }
@@ -125,6 +129,24 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
         
         return consentedNotDismissed
         
+    }
+    
+    public var isCompleted: Bool {
+        get {
+            return completionDate != nil
+        }
+        set {
+            completionDate = dateGenerator.generate()
+        }
+    }
+    
+    internal var completionDate: Date? {
+        get {
+            store.get(Keys.CompletionDate, type: Date.self)
+        }
+        set {
+            store.update(Keys.CompletionDate, value: newValue)
+        }
     }
     
     // MARK: - Persistence -
@@ -258,7 +280,7 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
             return false
         }
         
-        return !hasUserGivenConsent && !isDismissedByUser
+        return !completedIntroductionSurvey && !isDismissedByUser
         
     }
 
@@ -566,9 +588,10 @@ extension Study {
     
     public static var currentActiveStudy: Study? {
         
-        allStudies.first { study in
-            return study.isActive
-        }
+        allStudies
+            .first { study in
+                return study.isActive
+            }
         
     }
     
@@ -576,14 +599,16 @@ extension Study {
         
         return studies
             .filter { !$0.isDismissedByUser }
+            .filter { !$0.isCompleted }
+            .filter { $0.participationIsPossible }
+            
+    }
+    
+    public static func filterCompleted(studies: [Study]) -> [Study] {
+        
+        return studies
             .filter {
-                
-                if let study = $0 as? (any HasTerminationSurvey) {
-                    return !study.hasCompletedTerminationSurvey
-                }
-                
-                return true
-                
+                $0.isCompleted || $0.wasTerminatedBeforeCompletion
             }
         
     }
@@ -603,6 +628,8 @@ extension Study {
         static let AssignedGroup = "assignedGroup"
         static let LastSuccessfulUploadDate = "lastSuccessfulUploadDate"
         static let LocalUserIdentifier = "localUserIdentifier"
+        static let CompletionDate = "completionDate"
+        static let IntroSurveyCompletionDate = "introSurveyCompletionDate"
     }
     
 }

@@ -36,6 +36,8 @@ public struct SurveyWebView: View {
                         
                         if surveyType == .introductory {
                             
+                            study.completeIntroductionSurvey()
+                            
                             study.handleIntroductionSurveyResults(
                                 consented: success,
                                 parameters: parameters,
@@ -43,7 +45,7 @@ public struct SurveyWebView: View {
                                     presentationMode.wrappedValue.dismiss()
                                 }
                             )
-                        
+                            
                         } else if surveyType == .completion {
                             
                             presentationMode.wrappedValue.dismiss()
@@ -51,6 +53,8 @@ public struct SurveyWebView: View {
                             if let study = study as? (any HasTerminationSurvey) {
                                 study.hasCompletedTerminationSurvey = true
                             }
+                            
+                            study.isCompleted = true
                             
                         } else if surveyType == .mid {
                             

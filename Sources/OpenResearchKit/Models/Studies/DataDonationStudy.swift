@@ -23,24 +23,6 @@ open class DataDonationStudy: Study {
         
     }
     
-    public var isCompleted: Bool {
-        get {
-            return completionDate != nil
-        }
-        set {
-            completionDate = dateGenerator.generate()
-        }
-    }
-    
-    internal var completionDate: Date? {
-        get {
-            store.get(Keys.CompletionDate, type: Date.self)
-        }
-        set {
-            store.update(Keys.CompletionDate, value: newValue)
-        }
-    }
-    
     // MARK: - Callbacks -
     
     public override func didFinishSurveyPostCompletionHandler() {
@@ -51,10 +33,3 @@ open class DataDonationStudy: Study {
     
 }
 
-extension DataDonationStudy {
-    
-    struct Keys {
-        static let CompletionDate = "completionDate"
-    }
-    
-}
