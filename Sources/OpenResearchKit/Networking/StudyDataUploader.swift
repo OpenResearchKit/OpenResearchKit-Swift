@@ -24,7 +24,25 @@ public class StudyDataUploader {
     
     public static let shared = StudyDataUploader()
     
-    private let session = URLSession.shared
+    private let session: URLSession
+    
+    private init() {
+        
+        let appBundleName = Bundle.main.bundleURL.lastPathComponent.lowercased().replacingOccurrences(of: " ", with: ".")
+        let sessionIdentifier: String = "wtf.riedel.one-sec.\(appBundleName)"
+        let configuration = URLSessionConfiguration.background(withIdentifier: appBundleName)
+        
+        #if DEBUG
+        // For testing: Set isDiscretionary to false during development to avoid long delays and ensure tasks are executed immediately.
+        configuration.isDiscretionary = false
+        #endif
+        
+        // Ensure the app is launched or resumed in the background when a download or upload task completes.
+        configuration.sessionSendsLaunchEvents = true
+        
+        self.session = URLSession.shared
+        
+    }
     
     private var isCurrentlyUploading = false
     
@@ -95,6 +113,7 @@ public class StudyDataUploader {
     public func uploadFile(
         filePath: URL,
         uploadConfiguration: UploadConfiguration,
+        studyIdentifier: String,
         userIdentifier: String,
         fileName: String
     ) async throws(UploadError) {
@@ -104,6 +123,8 @@ public class StudyDataUploader {
             uploadConfiguration: uploadConfiguration,
             userIdentifier: userIdentifier
         )
+        
+        uploadSession.addTextField(named: "study_identifier", value: studyIdentifier)
         
         uploadSession.addDataField(
             named: "file",

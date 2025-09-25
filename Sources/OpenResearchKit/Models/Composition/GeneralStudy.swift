@@ -16,18 +16,18 @@ public protocol GeneralStudy: AnyObject, ObservableObject {
     
     var userIdentifier: String { get }
     
-    var sharedAppGroupIdentifier: String? { get }
-    
     var userConsentDate: Date? { get }
     
     /// If a study is dismissed by the user, it won't be shown again in the recommended studies.
     /// However, it will still be shown in the list in the settings.
     var isDismissedByUser: Bool { get set }
     
-    var participationIsPossible: Bool { get }
-    
     /// If a study returns being active, it is the primary study presented in the app.
     var isActive: Bool { get }
+    
+    // MARK: - Eligibility
+    
+    func isEligible() async -> Bool
     
     func showView<Content>(_ view: Content) where Content : View
     

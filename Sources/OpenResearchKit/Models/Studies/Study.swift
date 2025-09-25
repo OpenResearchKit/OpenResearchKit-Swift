@@ -12,6 +12,9 @@ import OSLog
 
 open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssignedGroups, HasNotifications, UploadsStudyData {
     
+    /// Workaround as we need to have an active study at all times.
+    public static let emptyPlaceholderStudyIdentifier = "empty"
+    
     public let studyIdentifier: String
     public let studyInformation: StudyInformation
     public var uploadConfiguration: UploadConfiguration
@@ -64,6 +67,24 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
         
     }
     
+    open func currentDisplayStatus() async throws -> StudyStatus {
+        
+        if isCompleted {
+            return .successStyle(text: "Completed")
+        }
+        
+        if terminationBeforeCompletionDate != nil {
+            return .errorStyle(text: "Terminated")
+        }
+        
+        if await isEligible() && !hasUserGivenConsent {
+            return .mutedStyle(text: "Available")
+        }
+        
+        return .mutedStyle(text: "Unknown")
+        
+    }
+    
     func surveyUrl(for surveyType: SurveyType) -> URL? {
         
         let additionalQueryItems: [URLQueryItem] = self.additionalQueryItems(surveyType)
@@ -105,24 +126,6 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
         }
     }
     
-    open func currentDisplayStatus() async throws -> StudyStatus {
-        
-        if isCompleted {
-            return .successStyle(text: "Completed")
-        }
-        
-        if terminationBeforeCompletionDate != nil {
-            return .errorStyle(text: "Terminated")
-        }
-        
-        if participationIsPossible && !hasUserGivenConsent {
-            return .mutedStyle(text: "Available")
-        }
-        
-        return .mutedStyle(text: "Unknown")
-            
-    }
-    
     public var isActive: Bool {
         
         let consentedNotDismissed = self.hasUserGivenConsent // && !self.isDismissedByUser
@@ -147,6 +150,12 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
         set {
             store.update(Keys.CompletionDate, value: newValue)
         }
+    }
+    
+    // MARK: - Eligibility -
+    
+    open func isEligible() async -> Bool {
+        return participationIsPossible
     }
     
     // MARK: - Persistence -
@@ -276,7 +285,7 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
             return false
         }
         
-        if !participationIsPossible {
+        if studyIdentifier == Self.emptyPlaceholderStudyIdentifier {
             return false
         }
         
@@ -595,12 +604,20 @@ extension Study {
         
     }
     
-    public static func filterRecommended(studies: [Study]) -> [Study] {
+    public static func filterRecommended(studies: [Study]) async -> [Study] {
         
-        return studies
-            .filter { !$0.isDismissedByUser }
-            .filter { !$0.isCompleted }
-            .filter { $0.participationIsPossible }
+        var result: [Study] = []
+        
+        for study in studies {
+            if study.isDismissedByUser { continue }
+            if study.isCompleted { continue }
+            if study.studyIdentifier == Study.emptyPlaceholderStudyIdentifier { continue }
+            if await study.isEligible() {
+                result.append(study)
+            }
+        }
+        
+        return result
             
     }
     

@@ -172,6 +172,7 @@ public class StudyFileManager {
         try await StudyDataUploader.shared.uploadFile(
             filePath: file,
             uploadConfiguration: study.uploadConfiguration,
+            studyIdentifier: study.studyIdentifier,
             userIdentifier: study.userIdentifier,
             fileName: file.lastPathComponent
         )
