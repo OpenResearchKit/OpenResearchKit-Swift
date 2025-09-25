@@ -107,9 +107,9 @@ final class StudyTests: XCTestCase {
 
     func test_shouldDisplayIntroductorySurvey_isFalseAfterConsent() {
         
-        study.saveUserConsentHasBeenGiven(consentTimestamp: Date()) {}
+        study.completeIntroductionSurvey()
 
-        XCTAssertFalse(study.shouldDisplayIntroductorySurvey, "Should not display intro survey after giving consent.")
+        XCTAssertFalse(study.shouldDisplayIntroductorySurvey, "Should not display intro survey after intro survey was marked as completed.")
         
     }
 
@@ -122,7 +122,9 @@ final class StudyTests: XCTestCase {
         
     }
 
-    func test_shouldDisplayIntroductorySurvey_isFalseWhenParticipationNotPossible() {
+    func test_shouldDisplayIntroductorySurvey_isFalseWhenStudyIsPlaceholderStudy() {
+        
+        let study = LongTermDummy.makeStudy(id: Study.emptyPlaceholderStudyIdentifier)
         
         study.participationIsPossible = false
         
