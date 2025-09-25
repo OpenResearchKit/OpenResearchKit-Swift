@@ -154,7 +154,8 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
     
     // MARK: - Eligibility -
     
-    open func isEligible() async -> Bool {
+    @MainActor
+    open func isEligible() -> Bool {
         return participationIsPossible
     }
     
@@ -604,7 +605,8 @@ extension Study {
         
     }
     
-    public static func filterRecommended(studies: [Study]) async -> [Study] {
+    @MainActor
+    public static func filterRecommended(studies: [Study]) -> [Study] {
         
         var result: [Study] = []
         
@@ -612,7 +614,7 @@ extension Study {
             if study.isDismissedByUser { continue }
             if study.isCompleted { continue }
             if study.studyIdentifier == Study.emptyPlaceholderStudyIdentifier { continue }
-            if await study.isEligible() {
+            if study.isEligible() {
                 result.append(study)
             }
         }
