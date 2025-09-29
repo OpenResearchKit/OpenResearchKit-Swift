@@ -6,7 +6,6 @@
 //
 
 
-import SafariServices
 import SwiftUI
 import UIKit
 
