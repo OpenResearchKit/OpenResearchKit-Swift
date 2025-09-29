@@ -66,7 +66,7 @@ open class LongTermWithMidSurveyStudy: LongTermStudy, HasMidSurvey {
     
     public override var isActive: Bool {
         
-        return super.isActive && hasCompletedMidSurvey
+        return super.isActive && !hasCompletedMidSurvey
         
     }
     
