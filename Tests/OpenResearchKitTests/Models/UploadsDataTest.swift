@@ -57,9 +57,11 @@ class UploadsDataTest: XCTestCase {
 
         // Ensure no main JSON file exists
         let mainFilePath = study.jsonDataFilePath
-        removeFileIfExists(mainFilePath)
-
-        XCTAssertNoThrow("Should not throw a file system error but handle it gracefully by only logging it.")
+        
+        XCTAssertNoThrow(
+            removeFileIfExists(mainFilePath),
+            "Should not throw a file system error but handle it gracefully by only logging it."
+        )
     }
 
     func testCopyMainJSONToUpload_OverwritesExistingFileInUploadDirectory() throws {
@@ -287,10 +289,9 @@ class UploadsDataTest: XCTestCase {
     func testResetLocalJSONFile_NotThrowsWhenFileDoesNotExist() {
         // Arrange
         let study = TestStudy.makeStudy()
-        removeFileIfExists(study.jsonDataFilePath)
-
+        
         // Act & Assert
-        XCTAssertNoThrow("If no file is to be deleted, handle it gracefully.")
+        XCTAssertNoThrow(removeFileIfExists(study.jsonDataFilePath), "If no file is to be deleted, handle it gracefully.")
     }
 
     // MARK: - Helper Methods
