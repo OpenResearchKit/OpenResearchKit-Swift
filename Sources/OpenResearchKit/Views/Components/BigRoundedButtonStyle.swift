@@ -6,9 +6,7 @@
 //
 
 
-import SafariServices
 import SwiftUI
-import UIKit
 
 public struct BigRoundedButtonStyle: ButtonStyle {
     
