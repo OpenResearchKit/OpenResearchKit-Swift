@@ -27,7 +27,7 @@ public protocol GeneralStudy: AnyObject, ObservableObject {
     
     // MARK: - Eligibility
     
-    func isEligible() async -> Bool
+    func isEligible() -> Bool
     
     func showView<Content>(_ view: Content) where Content : View
     
