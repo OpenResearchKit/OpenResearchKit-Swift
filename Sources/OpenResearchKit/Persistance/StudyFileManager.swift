@@ -204,6 +204,7 @@ public class StudyFileManager {
             
         }
         
+        try await study.didUploadStudyFolder()
         
     }
     
@@ -211,9 +212,46 @@ public class StudyFileManager {
     public func uploadAllRemainingFiles() async throws {
         
         for study in Study.allStudies {
-            try await self.uploadStudyFolder(study: study)
+            
+            // Upload each study folder individually and catch errors here to not block other study uploads.
+            do {
+                try await self.uploadStudyFolder(study: study)
+            } catch {
+                Logger.research.error("Failed to upload remaining files of the study \(study.studyIdentifier): \(String(describing: study))")
+            }
+            
         }
         
+    }
+    
+    public func isUploadFolderEmpty(study: Study) -> Bool {
+        
+        let uploadDir = study.studyDirectory(type: .upload)
+        
+        do {
+            
+            let items = try fileManager.contentsOfDirectory(
+                at: uploadDir,
+                includingPropertiesForKeys: [.isRegularFileKey],
+                options: []
+            )
+            
+            for item in items {
+                let values = try item.resourceValues(forKeys: [.isRegularFileKey, .isHiddenKey])
+                if values.isRegularFile == true, values.isHidden != true {
+                    return false // found a visible, regular file
+                }
+            }
+            
+            return true
+            
+        } catch {
+            
+            Logger.research.error("Failed to check upload folder for study \(study.studyIdentifier): \(String(describing: error), privacy: .public)")
+            
+            return false
+            
+        }
     }
     
     // MARK: - Helpers -

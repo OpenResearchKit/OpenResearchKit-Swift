@@ -266,6 +266,10 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
         
     }
     
+    open func didUploadStudyFolder() async throws {
+        
+    }
+    
     // MARK: - Helpers -
     
     public internal(set) var dateGenerator: any DateGenerator = DefaultDateGenerator()
