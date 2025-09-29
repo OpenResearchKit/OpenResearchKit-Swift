@@ -153,4 +153,10 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
         
     }
     
+    // MARK: - Details -
+    
+    open override var shouldShowTerminationButton: Bool {
+        return isActiveStudyPeriod
+    }
+    
 }

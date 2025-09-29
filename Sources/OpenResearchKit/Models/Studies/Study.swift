@@ -578,6 +578,14 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
             .toAnyView()
     }
     
+    // MARK: - Detail View -
+    
+    /// Determines if the termination button should be shown in the detail screen of the study in the settings.
+    /// Mostly relevant for long-term studies affecting the user experience.
+    open var shouldShowTerminationButton: Bool {
+        return false
+    }
+    
 }
 
 extension Study {
