@@ -87,9 +87,9 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
         }
         
         if !isActiveStudyPeriod {
-            if let intendedStudyEndDate = self.intendedStudyEndDate {
-                // Study period is over, uploading remaining file one last time
-                if lastSuccessfulUploadDate < intendedStudyEndDate {
+            if let actualStudyEndDate = self.actualStudyEndDate {
+                // Study period is over (or participant terminated early), uploading remaining file one last time
+                if lastSuccessfulUploadDate < actualStudyEndDate {
                     return true
                 }
             }
