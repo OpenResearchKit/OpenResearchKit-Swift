@@ -14,9 +14,15 @@ public protocol LongTerm: AnyObject, GeneralStudy {
     
     /// Calculates the end of the study if the user already started the study, `nil` otherwise.
     /// - Note: If the user terminated the study earlier by immediately terminating the study, this will still be the initial end date.
+    /// See `actualStudyEndDate` for retrieving the study end date respecting pre-completion terminations.
     var intendedStudyEndDate: Date? { get }
     
-    /// Checks if the user consented into the study and the current date is between the consent date and the `expectedStudyEndDate` calculated base on the `duration`.
+    /// Calculates the end of the study if the user already started the study, `nil` otherwise.
+    /// If the study was terminated before exceeding the original `intendedStudyEndDate`, the `terminationBeforeCompletionDate` is returned.
+    /// - Note: This respects pre-completion terminations and not only returns the `intendedStudyEndDate`.
+    var actualStudyEndDate: Date? { get }
+    
+    /// Checks if the user consented into the study and the current date is between the consent date and the `intendedStudyEndDate` calculated based on the `duration`.
     /// If the study was terminated before the intented study end date, the study is not considered to be in active study period anymore.
     var isActiveStudyPeriod: Bool { get }
     
@@ -27,6 +33,16 @@ extension LongTerm {
     
     public var intendedStudyEndDate: Date? {
         return userConsentDate?.addingTimeInterval(duration)
+    }
+    
+    public var actualStudyEndDate: Date? {
+        
+        if let actualStudyEndDate {
+            return terminationBeforeCompletionDate ?? actualStudyEndDate
+        }
+        
+        return nil
+        
     }
     
     public var isActiveStudyPeriod: Bool {
