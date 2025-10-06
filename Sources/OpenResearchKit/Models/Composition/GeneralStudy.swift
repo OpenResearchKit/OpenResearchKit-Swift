@@ -91,6 +91,8 @@ extension GeneralStudy {
         }
     }
     
+    // MARK: - Pre-Completion Termination -
+    
     /// If a user terminated their study participation before completion, we save that date
     /// and save it in the metadata of the study file as additional datapoints to indicate that
     /// the user did not complete the entire treatment duration.
@@ -118,6 +120,28 @@ extension GeneralStudy {
         self.terminationBeforeCompletionDate = terminationDate
         self.didTerminateParticipation(terminationDate: terminationDate)
     }
+    
+    // MARK: - Completion -
+    
+    public var isCompleted: Bool {
+        get {
+            return completionDate != nil
+        }
+        set {
+            completionDate = dateGenerator.generate()
+        }
+    }
+    
+    internal var completionDate: Date? {
+        get {
+            store.get(Study.Keys.CompletionDate, type: Date.self)
+        }
+        set {
+            store.update(Study.Keys.CompletionDate, value: newValue)
+        }
+    }
+    
+    // MARK: - UI -
     
     public func showView<Content>(_ view: Content) where Content : View {
         

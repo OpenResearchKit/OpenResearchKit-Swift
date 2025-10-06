@@ -115,24 +115,6 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
         
     }
     
-    public var isCompleted: Bool {
-        get {
-            return completionDate != nil
-        }
-        set {
-            completionDate = dateGenerator.generate()
-        }
-    }
-    
-    internal var completionDate: Date? {
-        get {
-            store.get(Keys.CompletionDate, type: Date.self)
-        }
-        set {
-            store.update(Keys.CompletionDate, value: newValue)
-        }
-    }
-    
     // MARK: - Eligibility -
     
     @MainActor
