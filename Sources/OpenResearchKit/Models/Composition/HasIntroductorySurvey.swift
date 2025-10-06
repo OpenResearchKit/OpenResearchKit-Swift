@@ -11,6 +11,7 @@ public protocol HasIntroductorySurvey: GeneralStudy {
     
     var invitationBannerView: AnyView { get }
     
+    /// Determines if the introductory survey view (banner / teaser) should be shown.
     var shouldDisplayIntroductorySurvey: Bool { get }
     
     var introductorySurveyURL: URL? { get }

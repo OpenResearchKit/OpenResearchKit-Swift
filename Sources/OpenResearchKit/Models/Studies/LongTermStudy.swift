@@ -92,7 +92,7 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
     open override func shouldUpload() -> Bool {
         
         guard let lastSuccessfulUploadDate = self.lastSuccessfulUploadDate else {
-            if isActiveStudyPeriod {
+            if hasUserGivenConsent {
                 return true
             }
             return false
@@ -100,16 +100,17 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
         
         if !isActiveStudyPeriod {
             if let intendedStudyEndDate = self.intendedStudyEndDate {
-                // study terminated, uploading remaining file
+                // Study period is over, uploading remaining file one last time
                 if lastSuccessfulUploadDate < intendedStudyEndDate {
                     return true
                 }
             }
             
-            // study is not running, dont upload anything
+            // The study period is over and the file was uploaded one last time
             return false
         }
         
+        // Check if the last successful upload exceeds the configured uploading configuration
         if abs(lastSuccessfulUploadDate.timeIntervalSinceNow) > uploadConfiguration.uploadFrequency {
             return true
         }

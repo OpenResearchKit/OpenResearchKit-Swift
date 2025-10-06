@@ -490,12 +490,19 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
     
     open func shouldUpload() -> Bool {
         
+        // If the participant has not consented into the study, we don't allow uploads.
+        if !hasUserGivenConsent {
+            return false
+        }
+        
+        // If the data was never uploaded before, the data should be uploaded.
         guard let lastSuccessfulUploadDate else {
             return true
         }
         
-        if abs(lastSuccessfulUploadDate.timeIntervalSinceNow) > uploadConfiguration.uploadFrequency {
-            return true
+        // If the study is still treated active and the uploadConfiguration instructs us to upload, we upload.
+        if isActive {
+            return uploadConfiguration.isUploadDue(lastUpload: lastSuccessfulUploadDate)
         }
         
         return false

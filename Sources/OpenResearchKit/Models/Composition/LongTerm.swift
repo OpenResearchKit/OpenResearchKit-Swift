@@ -14,7 +14,6 @@ public protocol LongTerm: AnyObject, GeneralStudy {
     
     /// Calculates the end of the study if the user already started the study, `nil` otherwise.
     /// - Note: If the user terminated the study earlier by immediately terminating the study, this will still be the initial end date.
-    /// Use `todo` for checking the real end date respecting the termination date.
     var intendedStudyEndDate: Date? { get }
     
     /// Checks if the user consented into the study and the current date is between the consent date and the `expectedStudyEndDate` calculated base on the `duration`.

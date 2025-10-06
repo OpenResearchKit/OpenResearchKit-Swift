@@ -22,4 +22,11 @@ public struct UploadConfiguration {
         self.apiKey = apiKey
     }
     
+    func isUploadDue(lastUpload: Date) -> Bool {
+        if abs(lastUpload.timeIntervalSinceNow) > self.uploadFrequency {
+            return true
+        }
+        return false
+    }
+    
 }
