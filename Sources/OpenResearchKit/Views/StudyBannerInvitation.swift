@@ -144,7 +144,7 @@ public struct DefaultStudyView: View {
                 
             }
             
-            Button(surveyType == .introductory ? "Learn more" : "Complete") {
+            Button(surveyType == .introductory ? "Learn More" : "Complete") {
                 primaryAction()
             }
             .buttonStyle(BigRoundedButtonStyle(backgroundColor: Color.accentColor.opacity(0.22), textColor: Color.accentColor))

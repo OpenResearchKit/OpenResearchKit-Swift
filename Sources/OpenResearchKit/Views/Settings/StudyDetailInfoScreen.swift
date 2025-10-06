@@ -102,7 +102,7 @@ public struct StudyDetailInfoScreen: View {
             
             
             Button(action: openEmail) {
-                Text("Contact us")
+                Text("Contact Us")
             }
             
         }
