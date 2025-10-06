@@ -29,7 +29,7 @@ public struct BigRoundedButtonStyle: ButtonStyle {
         }
         .padding(16)
         .background(backgroundColor)
-        .mask(RoundedRectangle(cornerRadius: 12))
+        .mask(Capsule(style: .continuous))
         .opacity(configuration.isPressed ? 0.6 : 1)
         .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
         
