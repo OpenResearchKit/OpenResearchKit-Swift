@@ -200,7 +200,7 @@ public struct StudyDetailInfoScreen: View {
     private func actions() -> some View {
         
         Section {
-            if #available(iOS 15.0, *), study.shouldShowTerminationButton {
+            if study.shouldShowTerminationButton {
                 Button("Terminate participation") {
                     self.showTerminationDialog = true
                 }
