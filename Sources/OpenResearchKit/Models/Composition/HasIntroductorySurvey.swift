@@ -16,13 +16,15 @@ public protocol HasIntroductorySurvey: GeneralStudy {
     
     var introductorySurveyURL: URL? { get }
     
-    var introductionSurveyCompletionDate: Date? { get set }
+    var introductionSurveyCompletionDate: Date? { get }
+    
+    func completeIntroductionSurvey()
     
 }
 
 extension HasIntroductorySurvey {
     
-    public var introductionSurveyCompletionDate: Date? {
+    public private(set) var introductionSurveyCompletionDate: Date? {
         get {
             store.get(Study.Keys.IntroSurveyCompletionDate, type: Date.self)
         }

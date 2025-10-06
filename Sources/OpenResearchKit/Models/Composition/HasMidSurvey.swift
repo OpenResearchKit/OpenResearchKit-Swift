@@ -13,8 +13,10 @@ protocol HasMidSurvey: AnyObject, GeneralStudy {
     
     var midSurveyBannerView: AnyView { get }
     
-    var hasCompletedMidSurvey: Bool { get set }
+    var hasCompletedMidSurvey: Bool { get }
     
+    /// A mid survey should be displayed if the user has consented into participating in the study and as soon
+    /// as the `showAfterDate` interval of the study has elapsed.
     var shouldDisplayMidSurvey: Bool { get }
     
     func showMidStudySurvey()
@@ -23,7 +25,7 @@ protocol HasMidSurvey: AnyObject, GeneralStudy {
 
 extension HasMidSurvey {
     
-    public var hasCompletedMidSurvey: Bool {
+    public private(set) var hasCompletedMidSurvey: Bool {
         get {
             return store.get(Study.Keys.HasCompletedMidSurvey, type: Bool.self) ?? false
         }
@@ -59,6 +61,12 @@ extension HasMidSurvey {
     public func showMidStudySurvey() {
         
         self.showView(SurveyWebView(surveyType: .mid).environmentObject(self))
+        
+    }
+    
+    public func completeMidSurvey() {
+        
+        self.hasCompletedMidSurvey = true
         
     }
     

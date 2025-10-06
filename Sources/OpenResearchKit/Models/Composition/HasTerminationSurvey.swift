@@ -10,11 +10,13 @@ import SwiftUI
 
 public protocol HasTerminationSurvey: AnyObject, LongTerm, GeneralStudy {
     
-    var hasCompletedTerminationSurvey: Bool { get set }
+    var hasCompletedTerminationSurvey: Bool { get }
     
     var shouldDisplayTerminationSurvey: Bool { get }
     
     var terminationBannerView: AnyView { get }
+    
+    func completeTerminationSurvey()
     
     func showCompletionSurvey()
     
@@ -22,7 +24,7 @@ public protocol HasTerminationSurvey: AnyObject, LongTerm, GeneralStudy {
 
 extension HasTerminationSurvey {
     
-    public var hasCompletedTerminationSurvey: Bool {
+    public internal(set) var hasCompletedTerminationSurvey: Bool {
         get {
             return store.get(Study.Keys.HasCompletedTerminationSurvey, type: Bool.self) ?? false
         }
@@ -53,6 +55,10 @@ extension HasTerminationSurvey {
         
         showView(SurveyWebView(surveyType: .completion).environmentObject(self))
         
+    }
+    
+    public func completeTerminationSurvey() {
+        hasCompletedTerminationSurvey = true
     }
     
 }

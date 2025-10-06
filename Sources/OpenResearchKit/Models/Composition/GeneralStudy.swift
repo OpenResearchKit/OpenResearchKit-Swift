@@ -25,6 +25,10 @@ public protocol GeneralStudy: AnyObject, ObservableObject {
     /// If a study returns being active, it is the primary study presented in the app.
     var isActive: Bool { get }
     
+    // MARK: - Actions
+    
+    func setCompleted()
+    
     // MARK: - Eligibility
     
     func isEligible() -> Bool
@@ -49,6 +53,25 @@ public protocol GeneralStudy: AnyObject, ObservableObject {
 }
 
 extension GeneralStudy {
+    
+    public internal(set) var userIdentifier: String {
+        
+        get {
+            if let localUserIdentifier = store.get(Study.Keys.LocalUserIdentifier, type: String.self) {
+                return localUserIdentifier
+            }
+            
+            let newLocalUserIdentifier = "\(studyIdentifier)-\(UUID().uuidString)"
+            self.userIdentifier = newLocalUserIdentifier
+            return newLocalUserIdentifier
+        }
+        
+        set {
+            store.update(Study.Keys.LocalUserIdentifier, value: newValue)
+            publishChangesOnMain()
+        }
+        
+    }
     
     public var userConsentDate: Date? {
         store.get(Study.Keys.UserConsentDate, type: Date.self)

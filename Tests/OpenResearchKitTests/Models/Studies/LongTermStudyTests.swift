@@ -135,7 +135,7 @@ final class LongTermStudyTests: XCTestCase {
         // Concluding survey needed but not finished
         XCTAssertFalse(study2.finishedConclusionSurveyOrNotNeeded)
         
-        study2.hasCompletedTerminationSurvey = true
+        study2.completeTerminationSurvey()
         
         // Concluding survey needed and now finished
         XCTAssertTrue(study2.finishedConclusionSurveyOrNotNeeded)
@@ -156,7 +156,7 @@ final class LongTermStudyTests: XCTestCase {
         
         dateGenerator.travel(by: 20)
         
-        study.hasCompletedTerminationSurvey = true
+        study.completeTerminationSurvey()
         
         XCTAssertFalse(study.isActive)
         

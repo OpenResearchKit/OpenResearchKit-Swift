@@ -62,18 +62,6 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
         
     }
     
-    internal var finishedConclusionSurveyOrNotNeeded: Bool {
-        
-        let needsConclusionSurveyParticipation = self.concludingSurveyURL != nil
-        
-        if needsConclusionSurveyParticipation {
-            return hasCompletedTerminationSurvey
-        } else {
-            return true
-        }
-        
-    }
-    
     // MARK: - Data Handling -
     
     /// Appends data to the main study file if the user consented into taking part in the study and when the
@@ -158,6 +146,18 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
     
     open override var shouldShowTerminationButton: Bool {
         return isActiveStudyPeriod
+    }
+    
+    internal var finishedConclusionSurveyOrNotNeeded: Bool {
+        
+        let needsConclusionSurveyParticipation = self.concludingSurveyURL != nil
+        
+        if needsConclusionSurveyParticipation {
+            return hasCompletedTerminationSurvey
+        } else {
+            return true
+        }
+        
     }
     
 }

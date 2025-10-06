@@ -28,7 +28,7 @@ open class DataDonationStudy: Study {
     open override func didFinishSurveyPostCompletionHandler() {
         super.didFinishSurveyPostCompletionHandler()
         
-        self.isCompleted = true
+        self.setCompleted()
     }
     
 }

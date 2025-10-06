@@ -48,25 +48,6 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
         Study.allStudies.append(self)
     }
     
-    public private(set) var userIdentifier: String {
-        
-        get {
-            if let localUserIdentifier = store.get(Keys.LocalUserIdentifier, type: String.self) {
-                return localUserIdentifier
-            }
-            
-            let newLocalUserIdentifier = "\(studyIdentifier)-\(UUID().uuidString)"
-            self.userIdentifier = newLocalUserIdentifier
-            return newLocalUserIdentifier
-        }
-        
-        set {
-            store.update(Keys.LocalUserIdentifier, value: newValue)
-            publishChangesOnMain()
-        }
-        
-    }
-    
     open func currentDisplayStatus() async throws -> StudyStatus {
         
         if isCompleted {
@@ -244,6 +225,10 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
             dismissView()
         }
         
+    }
+    
+    open func setCompleted() {
+        self.isCompleted = true
     }
     
     // MARK: - Callbacks -
