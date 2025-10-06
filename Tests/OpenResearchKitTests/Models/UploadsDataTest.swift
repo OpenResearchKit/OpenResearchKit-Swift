@@ -163,19 +163,26 @@ class UploadsDataTest: XCTestCase {
 
     // MARK: - shouldUpload Tests
 
-    func testShouldUpload_ReturnsTrueWhenNoLastUploadDate() {
+    func testShouldUpload_ReturnsTrueWhenNoLastUploadDateAndConsentPresent() {
         // Arrange
         let study = TestStudy.makeStudy()
         // Don't set any upload date
+        
+        study.saveUserConsentHasBeenGiven(completion: {})
+        
+        study.saveUserConsentHasBeenGiven {
+            // Act & Assert
+            XCTAssertTrue(study.shouldUpload(), "Should upload when no previous upload date exists")
+        }
 
-        // Act & Assert
-        XCTAssertTrue(study.shouldUpload(), "Should upload when no previous upload date exists")
     }
 
     func testShouldUpload_ReturnsTrueWhenUploadFrequencyExceeded() {
         // Arrange
         let study = TestStudy.makeStudy()
 
+        study.saveUserConsentHasBeenGiven(completion: {})
+        
         // Create custom upload configuration with 1 hour frequency
         study.setUploadConfiguration(frequency: 3600)
 
@@ -191,6 +198,8 @@ class UploadsDataTest: XCTestCase {
         // Arrange
         let study = TestStudy.makeStudy()
 
+        study.saveUserConsentHasBeenGiven(completion: {})
+        
         // Create custom upload configuration with 1 hour frequency
         study.setUploadConfiguration(frequency: 3600)
 
