@@ -69,6 +69,7 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
     /// - Parameter newObjects: data to be added to the main study file
     open override func appendNewJSONObjects(newObjects: [[String : any JSONConvertible]]) {
         
+        // only add data if study is running: user has given consent and study has not yet ended
         if isActiveStudyPeriod {
             super.appendNewJSONObjects(newObjects: newObjects)
         }

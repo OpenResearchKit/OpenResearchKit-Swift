@@ -402,7 +402,7 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
     public func appendNewJSONObjects(newObjects: [[String: JSONConvertible]]) {
         
         if hasUserGivenConsent {
-            // only add data if study is running: user has given consent and study has not yet ended
+            // only add data if study is running: user has given consent
             var existingFile = self.JSONFile
             existingFile.append(contentsOf: newObjects)
             self.saveAndUploadIfNeccessary(jsonFile: existingFile)
