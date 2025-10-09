@@ -37,8 +37,8 @@ extension LongTerm {
     
     public var actualStudyEndDate: Date? {
         
-        if let actualStudyEndDate {
-            return terminationBeforeCompletionDate ?? actualStudyEndDate
+        if let intendedStudyEndDate {
+            return terminationBeforeCompletionDate ?? intendedStudyEndDate
         }
         
         return nil

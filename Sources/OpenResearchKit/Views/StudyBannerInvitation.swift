@@ -177,7 +177,7 @@ public struct DefaultStudyView: View {
             apiKey: "some-api-key"
         ),
         introductorySurveyURL: URL(
-            string: "https://oslopsych.az1.qualtrics.com/jfe/form/SV_3woeKVMUpQsUBwy"
+            string: "https://example.org"
         )!,
         participationIsPossible: false,
         introSurveyCompletionHandler: nil
