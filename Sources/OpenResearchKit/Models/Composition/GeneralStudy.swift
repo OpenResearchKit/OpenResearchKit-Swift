@@ -123,12 +123,16 @@ extension GeneralStudy {
     
     // MARK: - Completion -
     
-    public var isCompleted: Bool {
+    public internal(set) var isCompleted: Bool {
         get {
             return completionDate != nil
         }
         set {
-            completionDate = dateGenerator.generate()
+            if newValue {
+                completionDate = dateGenerator.generate()
+            } else {
+                completionDate = nil
+            }
         }
     }
     
