@@ -27,7 +27,7 @@ struct ThrowingButton<Label: View>: View {
         }) {
             label()
         }
-        .alert(String(localized: "Error"), isPresented: Binding(
+        .alert(String(localized: "Error", bundle: .module), isPresented: Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
         )) {

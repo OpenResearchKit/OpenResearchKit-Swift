@@ -12,7 +12,7 @@ import UIKit
 public struct StudyInformation {
     
     public let title: String
-    public let subtitle: String
+    public let description: String
     public let contactEmail: String
     public let image: UIImage?
     public let detailInfos: String?
@@ -25,7 +25,7 @@ public struct StudyInformation {
         detailInfos: String? = nil
     ) {
         self.title = title
-        self.subtitle = subtitle
+        self.description = subtitle
         self.contactEmail = contactEmail
         self.image = image
         self.detailInfos = detailInfos

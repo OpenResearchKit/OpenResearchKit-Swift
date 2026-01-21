@@ -26,7 +26,7 @@ final class LongTermStudyTests: XCTestCase {
         let study = createLongTermStudy()
         
         XCTAssertEqual(study.studyInformation.title, "Test Study")
-        XCTAssertEqual(study.studyInformation.subtitle, "Test Subtitle")
+        XCTAssertEqual(study.studyInformation.description, "Test Subtitle")
         XCTAssertEqual(study.duration, 10)
         XCTAssertEqual(study.studyInformation.contactEmail, "test@example.com")
         XCTAssertEqual(study.uploadConfiguration.apiKey, "test")

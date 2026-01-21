@@ -39,15 +39,17 @@ public struct StudyDetailInfoScreen: View {
             
             studyStatus()
             
-            metadata()
-            
-            data()
+            if study.hasUserGivenConsent {
+                metadata()
+                
+                data()
+            }
             
             actions()
             
         }
-        .navigationBarTitle(study.studyInformation.title)
-        .onAppear {
+//        .navigationBarTitle(study.studyInformation.title)
+        .task {
             self.lastUploadDate = study.lastSuccessfulUploadDate
             self.studyData = study.JSONFile
         }
@@ -70,14 +72,14 @@ public struct StudyDetailInfoScreen: View {
     @ViewBuilder
     private func info() -> some View {
         
-        Section(header: Text("Information")) {
+        Section(header: Text("Information", bundle: .module)) {
             
             VStack(alignment: .leading) {
                 
                 Text(study.studyInformation.title)
                     .fontWeight(.medium)
                 
-                Text(study.studyInformation.subtitle)
+                Text(study.studyInformation.description)
                     .foregroundStyle(.secondary)
                     .padding(.bottom)
                 
@@ -93,7 +95,7 @@ public struct StudyDetailInfoScreen: View {
                     Button {
                         UIPasteboard.general.string = study.studyInformation.contactEmail
                     } label: {
-                        Label("Copy Email", systemImage: "doc.on.doc")
+                        Label(String(localized: "Copy Email", bundle: .module), systemImage: "doc.on.doc")
                     }
                 }
                 
@@ -102,7 +104,7 @@ public struct StudyDetailInfoScreen: View {
             
             
             Button(action: openEmail) {
-                Text("Contact Us")
+                Text("Contact Us", bundle: .module)
             }
             
         }
@@ -116,7 +118,7 @@ public struct StudyDetailInfoScreen: View {
             
             HStack {
                 
-                Text("Current status")
+                Text("Current status", bundle: .module)
                 
                 Spacer()
                 
@@ -126,12 +128,10 @@ public struct StudyDetailInfoScreen: View {
             
             if let study = study as? LongTermStudy {
                 
-                if study.isActiveStudyPeriod || Bundle.main.isInDebugMode {
-                    if let detailInfos = study.studyInformation.detailInfos {
-                        Text(detailInfos)
-                    } else {
-                        Text("You are currently participating in a scientific study to help make this app even better. If you have any questions, please contact us.")
-                    }
+                if study.isActiveStudyPeriod {
+                    
+                    Text("You are currently participating in this study to help make this app even better. If you have any questions, please contact us.", bundle: .module)
+                    
                 }
                 
             }
@@ -143,7 +143,7 @@ public struct StudyDetailInfoScreen: View {
     @ViewBuilder
     private func metadata() -> some View {
         
-        Section {
+        Section(footer: Text("Your anonymous participation id will be used once you explicitly consented into participating in the study.", bundle: .module)) {
             
             MetadataRow(title: "Anonymous participation id", content: "`\(study.userIdentifier)`")
                 .contextMenu {
@@ -198,6 +198,18 @@ public struct StudyDetailInfoScreen: View {
     
     @ViewBuilder
     private func actions() -> some View {
+        
+        Section {
+            
+            if !study.hasUserGivenConsent {
+                
+                Button("Start participation") {
+                    StudyPresenter.show(study: study, surveyType: .introductory)
+                }
+                
+            }
+            
+        }
         
         Section {
             if study.shouldShowTerminationButton {

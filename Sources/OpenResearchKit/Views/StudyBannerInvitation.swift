@@ -25,13 +25,7 @@ public struct StudyBannerInvitation: View {
                 study.isDismissedByUser = true
             },
             primaryAction: {
-                let surveyView = UIHostingController(
-                    rootView: SurveyWebView(
-                        surveyType: surveyType
-                    ).environmentObject(study)
-                )
-                surveyView.modalPresentationStyle = .fullScreen
-                UIViewController.topViewController()?.present(surveyView, animated: true)
+                StudyPresenter.show(study: study, surveyType: surveyType)
             }
         )
         
@@ -110,7 +104,7 @@ public struct DefaultStudyView: View {
                     .font(.headline)
                     .bold()
                 
-                Text(studyMetadata.subtitle)
+                Text(studyMetadata.description)
                     .foregroundColor(.secondary)
                     .padding(.top, 8)
                 
@@ -192,8 +186,7 @@ fileprivate let study = DataDonationStudy(
             named: "placeholder_header",
             in: .module,
             with: nil
-        )!,
-        detailInfos: nil
+        )!
     ),
     uploadConfiguration: UploadConfiguration(
         fileSubmissionServer: URL(string: "https://example.org")!,
