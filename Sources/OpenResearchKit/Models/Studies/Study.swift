@@ -58,7 +58,7 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
             return .errorStyle(text: "Terminated")
         }
         
-        if await isEligible() && !hasUserGivenConsent {
+        if await meetsRecommendationCriteria && !hasUserGivenConsent {
             return .mutedStyle(text: "Available")
         }
         
@@ -117,9 +117,26 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
     
     // MARK: - Eligibility -
     
-    @MainActor
-    open func isEligible() -> Bool {
+    /// The eligibility status of a study is checked before a study is started.
+    /// It prevent users from participating in the study if they are not eligible
+    /// If a non-eligible user tries to start participating in a `Study` manually (e.g. via a Deep Link), an alert will be shown indicating that the user
+    /// does not match the conditions set for participating in the study. This should enfore scientific soundness.
+    @MainActor open func isEligible() -> Bool {
         return participationIsPossible
+    }
+    
+    /// Determines whether the `Study` should be recommended as part of the default study enrollment procedure
+    /// in one sec. If set to `true`, the `Study` can only be started via a manual start (e.g. using an activation url).
+    /// A `Study` will only get recommended if and only if the user is eligible via `isEligible` and the `Study` is not removed from recommendations
+    /// via `removeFromRecommendations`.
+    @MainActor open func removeFromRecommendations() -> Bool {
+        return false
+    }
+    
+    /// A `Study` will only get recommended if and only if the user is eligible via `isEligible` and the `Study` is
+    /// not removed from recommendations via `removeFromRecommendations`.
+    @MainActor private var meetsRecommendationCriteria: Bool {
+        return isEligible() && !removeFromRecommendations()
     }
     
     // MARK: - Persistence -
@@ -600,7 +617,7 @@ extension Study {
             if study.isDismissedByUser { continue }
             if study.isCompleted { continue }
             if study.studyIdentifier == Study.emptyPlaceholderStudyIdentifier { continue }
-            if study.isEligible() {
+            if study.meetsRecommendationCriteria {
                 result.append(study)
             }
         }

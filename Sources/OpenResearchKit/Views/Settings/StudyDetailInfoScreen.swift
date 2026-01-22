@@ -201,7 +201,7 @@ public struct StudyDetailInfoScreen: View {
         
         Section {
             
-            if !study.hasUserGivenConsent {
+            if !study.hasUserGivenConsent && study.introductorySurveyURL != nil {
                 
                 Button("Start participation") {
                     StudyPresenter.show(study: study, surveyType: .introductory)
