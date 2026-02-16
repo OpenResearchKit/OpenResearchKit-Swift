@@ -7,8 +7,6 @@
 
 import SwiftUI
 import WebKit
-import SwiftUI
-import WebKit
 import UIKit
 
 /// A SwiftUI wrapper around a `WKWebView` that loads survey URLs in an isolated, non-shareable context.
@@ -20,6 +18,7 @@ public struct SurveyWebView: View {
     
     @Environment(\.presentationMode) var presentationMode
     @EnvironmentObject var study: Study
+    @State private var isInitialLoading = true
     
     let surveyType: SurveyType
     
@@ -30,43 +29,53 @@ public struct SurveyWebView: View {
     public var body: some View {
         NavigationView {
             if let surveyUrl = study.surveyUrl(for: surveyType) {
-                ResearchWebView(
-                    url: surveyUrl,
-                    completion: { (success, parameters) in
-                        
-                        if surveyType == .introductory {
+                ZStack {
+                    ResearchWebView(
+                        url: surveyUrl,
+                        completion: { (success, parameters) in
                             
-                            study.completeIntroductionSurvey()
-                            
-                            study.handleIntroductionSurveyResults(
-                                consented: success,
-                                parameters: parameters,
-                                dismissView: {
-                                    presentationMode.wrappedValue.dismiss()
+                            if surveyType == .introductory {
+                                
+                                study.completeIntroductionSurvey()
+                                
+                                study.handleIntroductionSurveyResults(
+                                    consented: success,
+                                    parameters: parameters,
+                                    dismissView: {
+                                        presentationMode.wrappedValue.dismiss()
+                                    }
+                                )
+                                
+                            } else if surveyType == .completion {
+                                
+                                presentationMode.wrappedValue.dismiss()
+                                
+                                if let study = study as? (any HasTerminationSurvey) {
+                                    study.completeTerminationSurvey()
                                 }
-                            )
-                            
-                        } else if surveyType == .completion {
-                            
-                            presentationMode.wrappedValue.dismiss()
-                            
-                            if let study = study as? (any HasTerminationSurvey) {
-                                study.completeTerminationSurvey()
+                                
+                                study.setCompleted()
+                                
+                            } else if surveyType == .mid {
+                                
+                                presentationMode.wrappedValue.dismiss()
+                                
+                                if let study = study as? (any HasMidSurvey) {
+                                    study.completeMidSurvey()
+                                }
+                                
                             }
-                            
-                            study.setCompleted()
-                            
-                        } else if surveyType == .mid {
-                            
-                            presentationMode.wrappedValue.dismiss()
-                            
-                            if let study = study as? (any HasMidSurvey) {
-                                study.completeMidSurvey()
-                            }
-                            
+                        },
+                        onInitialLoadStateChange: { isLoading in
+                            isInitialLoading = isLoading
                         }
+                    )
+                    
+                    if isInitialLoading {
+                        ProgressView()
+                            .controlSize(.large)
                     }
-                )
+                }
                 .navigationTitle("Survey")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
