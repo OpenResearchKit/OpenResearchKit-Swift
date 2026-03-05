@@ -155,7 +155,10 @@ public struct StudyDetailInfoScreen: View {
                 }
             
             MetadataRow(title: "Consent date", content: "`\(study.userConsentDate?.description ?? "n/a")`")
-            MetadataRow(title: "End date", content: "`\(study.userConsentDate?.description ?? "n/a")`")
+            
+            if let study = study as? LongTermStudy {
+                MetadataRow(title: "End date", content: "`\(study.actualStudyEndDate?.description ?? study.intendedStudyEndDate?.description ?? "n/a")`")
+            }
             
         }
         
