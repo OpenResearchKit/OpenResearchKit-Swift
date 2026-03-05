@@ -29,6 +29,9 @@ open class DataDonationStudy: Study {
         super.didFinishSurveyPostCompletionHandler()
         
         self.setCompleted()
+        
+        self.uploadIfNecessary()
+        
     }
     
 }

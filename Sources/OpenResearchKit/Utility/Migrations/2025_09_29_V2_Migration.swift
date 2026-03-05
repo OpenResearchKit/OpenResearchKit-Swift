@@ -9,9 +9,15 @@ class AdaptNewDataFormatMigration: DataMigration {
     
     var id: String = "2025_09_29_V2_Migration"
     
+    private let studyRegistry: StudyRegistry
+    
+    public init(studyRegistry: StudyRegistry = StudyRegistry.shared) {
+        self.studyRegistry = studyRegistry
+    }
+    
     func perform() async throws {
         
-        for study in Study.allStudies {
+        for study in studyRegistry.studies {
             self.updateStudy(study)
         }
         

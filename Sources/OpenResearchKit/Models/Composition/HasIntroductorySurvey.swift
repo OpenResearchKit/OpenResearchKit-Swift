@@ -39,6 +39,9 @@ extension HasIntroductorySurvey {
     
     public func completeIntroductionSurvey() {
         self.introductionSurveyCompletionDate = dateGenerator.generate()
+        
+        NotificationCenter.default.post(name: .completedIntroductionSurvey, object: self)
+        
     }
     
 }

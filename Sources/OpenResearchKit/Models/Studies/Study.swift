@@ -44,8 +44,6 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
         self.sharedAppGroupIdentifier = sharedAppGroupIdentifier
         self.introSurveyCompletionHandler = introSurveyCompletionHandler
         self.additionalQueryItems = additionalQueryItems
-        
-        Study.allStudies.append(self)
     }
     
     open func currentDisplayStatus() async throws -> StudyStatus {
@@ -216,6 +214,8 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
                 )
                 
                 self.didFinishSurveyPostCompletionHandler()
+                
+                NotificationCenter.default.post(name: .userConsented, object: self)
                 
             }
             
@@ -596,17 +596,6 @@ extension Study {
 
 
 extension Study {
-    
-    public static var allStudies = [Study]()
-    
-    public static var currentActiveStudy: Study? {
-        
-        allStudies
-            .first { study in
-                return study.isActive
-            }
-        
-    }
     
     @MainActor
     public static func filterRecommended(studies: [Study]) -> [Study] {

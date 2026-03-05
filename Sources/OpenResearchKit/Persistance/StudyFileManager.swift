@@ -29,6 +29,11 @@ public class StudyFileManager {
     
     public static let shared = StudyFileManager()
     
+    public init(studyRegistry: StudyRegistry = StudyRegistry.shared) {
+        self.studyRegistry = studyRegistry
+    }
+    
+    private let studyRegistry: StudyRegistry
     private let fileManager: FileManager = .default
     
     /// Deletes all files present in the study directory (either the `upload` or the `working` directory).
@@ -211,7 +216,7 @@ public class StudyFileManager {
     /// Using this assumes that all data residing in the upload directory was already consented for sharing.
     public func uploadAllRemainingFiles() async throws {
         
-        for study in Study.allStudies {
+        for study in studyRegistry.studies {
             
             // Upload each study folder individually and catch errors here to not block other study uploads.
             do {
