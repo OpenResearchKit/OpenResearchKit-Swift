@@ -11,6 +11,8 @@ public protocol HasAssignedGroups: AnyObject, GeneralStudy {
     
     var assignedGroup: String? { get set }
     
+    func allPossibleTreatmentGroups() -> [TreatmentGroupOption]
+    
 }
 
 extension HasAssignedGroups {
@@ -24,6 +26,19 @@ extension HasAssignedGroups {
             store.update(Study.Keys.AssignedGroup, value: newValue)
             publishChangesOnMain()
         }
+    }
+    
+    public func allPossibleTreatmentGroups() -> [TreatmentGroupOption] {
+        []
+    }
+    
+    public var selectedTreatmentGroup: TreatmentGroupOption? {
+        guard let assignedGroup else {
+            return nil
+        }
+        
+        return allPossibleTreatmentGroups()
+            .first { $0.id == assignedGroup }
     }
     
 }

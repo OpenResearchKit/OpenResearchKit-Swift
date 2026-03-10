@@ -46,6 +46,10 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
         self.additionalQueryItems = additionalQueryItems
     }
     
+    open func allPossibleTreatmentGroups() -> [TreatmentGroupOption] {
+        []
+    }
+    
     open func currentDisplayStatus() async throws -> StudyStatus {
         
         if isCompleted {

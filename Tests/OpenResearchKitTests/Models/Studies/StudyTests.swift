@@ -64,6 +64,17 @@ final class StudyTests: XCTestCase {
         }
         
     }
+    
+    private final class TreatmentGroupStudy: LongTermStudy {
+        
+        override func allPossibleTreatmentGroups() -> [TreatmentGroupOption] {
+            [
+                TreatmentGroupOption(id: "control", displayName: "Control"),
+                TreatmentGroupOption(id: "intervention", displayName: "Intervention")
+            ]
+        }
+        
+    }
 
     // MARK: - Tests
 
@@ -157,6 +168,48 @@ final class StudyTests: XCTestCase {
             components?.queryItems?.contains(URLQueryItem(name: "test", value: "true")) ?? false,
             "Additional query items should be present.")
 
+    }
+    
+    func test_allPossibleTreatmentGroups_isEmptyByDefault() {
+        XCTAssertEqual(study.allPossibleTreatmentGroups(), [])
+    }
+    
+    func test_allPossibleTreatmentGroups_canBeCustomizedPerStudy() {
+        
+        let customStudy = TreatmentGroupStudy(
+            studyIdentifier: "treatment-\(UUID().uuidString)",
+            studyInformation: StudyInformation(
+                title: "Treatment Study",
+                subtitle: "",
+                contactEmail: "",
+                image: nil
+            ),
+            uploadConfiguration: UploadConfiguration(
+                fileSubmissionServer: URL(string: "https://example.com/upload")!,
+                uploadFrequency: 3600,
+                apiKey: "TEST_API_KEY"
+            ),
+            duration: 60 * 60,
+            introductorySurveyURL: URL(string: "https://example.com/intro")!,
+            concludingSurveyURL: URL(string: "https://example.com/conclusion")!,
+            introSurveyCompletionHandler: nil
+        )
+        let baseStudy: Study = customStudy
+        
+        XCTAssertEqual(
+            baseStudy.allPossibleTreatmentGroups(),
+            [
+                TreatmentGroupOption(id: "control", displayName: "Control"),
+                TreatmentGroupOption(id: "intervention", displayName: "Intervention")
+            ]
+        )
+        
+        customStudy.assignedGroup = "control"
+        
+        XCTAssertEqual(
+            customStudy.selectedTreatmentGroup,
+            TreatmentGroupOption(id: "control", displayName: "Control")
+        )
     }
 
     func test_reset_clearsStudyData() throws {

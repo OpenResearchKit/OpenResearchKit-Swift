@@ -24,6 +24,10 @@ public struct StudyDetailInfoScreen: View {
     @State var lastUploadDate: Date?
     @State var studyData: [ [String: Any] ] = []
     
+    private var shouldShowDebugTools: Bool {
+        Bundle.main.isInDebugMode || Bundle.main.isOnTestFlight
+    }
+    
     public var body: some View {
         
         List {
@@ -44,6 +48,8 @@ public struct StudyDetailInfoScreen: View {
                 
                 data()
             }
+            
+            treatmentGroups()
             
             actions()
             
@@ -200,6 +206,45 @@ public struct StudyDetailInfoScreen: View {
     }
     
     @ViewBuilder
+    private func treatmentGroups() -> some View {
+        
+        let options = study.allPossibleTreatmentGroups()
+        
+        if shouldShowDebugTools && !options.isEmpty {
+            Section(
+                header: Text("Treatment Group", bundle: .module),
+                footer: Text("Debug and TestFlight only. This overrides the currently stored treatment group for this study.", bundle: .module)
+            ) {
+                ForEach(options) { option in
+                    Button {
+                        study.assignedGroup = option.id
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(option.displayName)
+                                    .foregroundStyle(.primary)
+                                Text(option.id)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            if study.assignedGroup == option.id {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("treatment-group-\(option.id)")
+                }
+            }
+        }
+        
+    }
+    
+    @ViewBuilder
     private func actions() -> some View {
         
         Section {
@@ -231,7 +276,7 @@ public struct StudyDetailInfoScreen: View {
             }
         }
         
-        if Bundle.main.isInDebugMode || Bundle.main.isOnTestFlight {
+        if shouldShowDebugTools {
             Section {
                 
                 ThrowingButton("Reset study data") {
@@ -254,6 +299,17 @@ public struct StudyDetailInfoScreen: View {
         guard let url = URL(string: emailformatted) else { return }
         UIApplication.shared.open(url)
         
+    }
+    
+    @ViewBuilder
+    private func detailRow(title: LocalizedStringKey, value: String) -> some View {
+        if #available(iOS 16.0, *) {
+            LabeledContent(title) {
+                Text(verbatim: value)
+            }
+        } else {
+            Text(title) + Text(": ") + Text(verbatim: value)
+        }
     }
     
 }
