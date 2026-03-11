@@ -38,22 +38,24 @@ public struct StudyListScreen: View {
                 
             }
             
-            Section(header: Text("Available for you")) {
-                
-                if activeStudy == nil {
+            if !availableStudies.isEmpty {
+                Section(header: Text("Available for you")) {
                     
-                    ForEach(availableStudies, id: \.studyIdentifier) { study in
-                        StudyRow(study: study)
+                    if activeStudy == nil {
+                        
+                        ForEach(availableStudies, id: \.studyIdentifier) { study in
+                            StudyRow(study: study)
+                        }
+                        
+                    } else {
+                        
+                        Text("You cannot participate in another study while already being enrolled in a study.")
+                            .font(.body)
+                            .foregroundStyle(.secondary)
+                        
                     }
                     
-                } else {
-                    
-                    Text("You cannot participate in another study while already being enrolled in a study.")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                    
                 }
-                
             }
             
             Section(header: Text("Previous participations")) {
