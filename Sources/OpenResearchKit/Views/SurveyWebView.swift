@@ -7,8 +7,6 @@
 
 import SwiftUI
 import WebKit
-import SwiftUI
-import WebKit
 import UIKit
 
 /// A SwiftUI wrapper around a `WKWebView` that loads survey URLs in an isolated, non-shareable context.
@@ -20,6 +18,7 @@ public struct SurveyWebView: View {
     
     @Environment(\.presentationMode) var presentationMode
     @EnvironmentObject var study: Study
+    @State private var isInitialLoading = true
     
     let surveyType: SurveyType
     
@@ -30,39 +29,53 @@ public struct SurveyWebView: View {
     public var body: some View {
         NavigationView {
             if let surveyUrl = study.surveyUrl(for: surveyType) {
-                ResearchWebView(url: surveyUrl, completion: { (success, parameters) in
-                    if surveyType == .introductory {
-                        if success {
-                            // schedule push notification for study completed date -> in 6 weeks
-                            // automatically opens completion survey
-                           
-                            if let group = parameters["assignedGroup"] {
-                                study.assignedGroup = group
-                            } else if let group = parameters["groupid"] {
-                                study.assignedGroup = group
-                            }
+                ZStack {
+                    ResearchWebView(
+                        url: surveyUrl,
+                        completion: { (success, parameters) in
                             
-                            study.saveUserConsentHasBeenGiven(consentTimestamp: Date()) {
+                            if surveyType == .introductory {
+                                
+                                study.completeIntroductionSurvey()
+                                
+                                study.handleIntroductionSurveyResults(
+                                    consented: success,
+                                    parameters: parameters,
+                                    dismissView: {
+                                        presentationMode.wrappedValue.dismiss()
+                                    }
+                                )
+                                
+                            } else if surveyType == .completion {
+                                
                                 presentationMode.wrappedValue.dismiss()
                                 
-                                study.introSurveyCompletionHandler?(
-                                    parameters,
-                                    study
-                                )
+                                if let study = study as? (any HasTerminationSurvey) {
+                                    study.completeTerminationSurvey()
+                                }
+                                
+                                study.setCompleted()
+                                
+                            } else if surveyType == .mid {
+                                
+                                presentationMode.wrappedValue.dismiss()
+                                
+                                if let study = study as? (any HasMidSurvey) {
+                                    study.completeMidSurvey()
+                                }
+                                
                             }
-                            
-                        } else {
-                            study.isDismissedByUser = true
-                            presentationMode.wrappedValue.dismiss()
+                        },
+                        onInitialLoadStateChange: { isLoading in
+                            isInitialLoading = isLoading
                         }
-                    } else if surveyType == .completion {
-                        presentationMode.wrappedValue.dismiss()
-                        study.hasCompletedTerminationSurvey = true
-                    } else if surveyType == .mid {
-                        presentationMode.wrappedValue.dismiss()
-                        study.hasCompletedMidSurvey = true
+                    )
+                    
+                    if isInitialLoading {
+                        ProgressView()
+                            .controlSize(.large)
                     }
-                })
+                }
                 .navigationTitle("Survey")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -78,16 +91,4 @@ public struct SurveyWebView: View {
         }
     }
     
-}
-
-
-extension URL {
-    public var queryParameters: [String: String]? {
-        guard
-            let components = URLComponents(url: self, resolvingAgainstBaseURL: true),
-            let queryItems = components.queryItems else { return nil }
-        return queryItems.reduce(into: [String: String]()) { (result, item) in
-            result[item.name] = item.value
-        }
-    }
 }
