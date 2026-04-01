@@ -169,18 +169,22 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
     public func manuallyGiveUserConsent(
         timeStamp: Date? = nil,
         userId: String?,
+        groupId: String? = nil,
         completion: @escaping () -> Void
     ) {
-        
+
         let consentTimestamp = timeStamp ?? dateGenerator.generate()
-        
+
         self.saveUserConsentHasBeenGiven(consentTimestamp: consentTimestamp, completion: {
             if let userId {
                 self.userIdentifier = userId
             }
+            if let groupId {
+                self.assignedGroup = groupId
+            }
             completion()
         })
-        
+
     }
     
     open func reset() throws {
@@ -541,6 +545,10 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
         store.update(Study.Keys.LastSuccessfulUploadDate, value: date)
         publishChangesOnMain()
         
+    }
+    
+    public func markUploadSuccessful(newDate: Date? = nil) {
+        self.updateUploadDate(newDate: newDate)
     }
     
     public func copyMainJSONToUpload() throws {
