@@ -7,7 +7,7 @@
 
 import Foundation
 
-public protocol TreatmentGroupProtocol: RawRepresentable<String>, CaseIterable, Equatable, Hashable {
+public protocol StudyTreatmentGroup: RawRepresentable<String>, CaseIterable, Equatable, Hashable {
     
     var displayName: String { get }
     
@@ -15,7 +15,7 @@ public protocol TreatmentGroupProtocol: RawRepresentable<String>, CaseIterable, 
 
 public protocol HasTreatmentGroups: AnyObject, GeneralStudy {
     
-    associatedtype TreatmentGroup: TreatmentGroupProtocol
+    associatedtype TreatmentGroup: StudyTreatmentGroup
     
     var selectedTreatmentGroup: TreatmentGroup? { get set }
     
