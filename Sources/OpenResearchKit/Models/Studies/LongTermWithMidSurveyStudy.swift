@@ -22,8 +22,7 @@ open class LongTermWithMidSurveyStudy: LongTermStudy, HasMidSurvey {
         concludingSurveyURL: URL,
         participationIsPossible: Bool = true,
         sharedAppGroupIdentifier: String? = nil,
-        additionalQueryItems: @escaping (SurveyType) -> [URLQueryItem] = { _ in [] },
-        introSurveyCompletionHandler: (([String : String], Study) -> Void)?
+        additionalQueryItems: @escaping (SurveyType) -> [URLQueryItem] = { _ in [] }
     ) {
         self.midSurvey = midStudySurvey
         
@@ -36,8 +35,7 @@ open class LongTermWithMidSurveyStudy: LongTermStudy, HasMidSurvey {
             concludingSurveyURL: concludingSurveyURL,
             participationIsPossible: participationIsPossible,
             sharedAppGroupIdentifier: sharedAppGroupIdentifier,
-            additionalQueryItems: additionalQueryItems,
-            introSurveyCompletionHandler: introSurveyCompletionHandler
+            additionalQueryItems: additionalQueryItems
         )
     }
     

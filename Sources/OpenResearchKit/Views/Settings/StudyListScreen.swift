@@ -122,7 +122,7 @@ public struct StudyRow: View {
                 named: "placeholder_header",
                 in: .module,
                 with: nil
-            ),
+            )
         ),
         uploadConfiguration: .init(
             fileSubmissionServer: URL(string: "https://example.org")!,
@@ -130,8 +130,7 @@ public struct StudyRow: View {
             apiKey: ""
         ),
         introductorySurveyURL: URL(string: "https://one-sec.app/placeholder-survey"),
-        participationIsPossible: true,
-        introSurveyCompletionHandler: nil
+        participationIsPossible: true
     )
     
     

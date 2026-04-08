@@ -14,7 +14,7 @@ public struct StudyInformation {
     public let title: String
     public let description: String
     public let contactEmail: String
-    public let image: UIImage?
+    public let image: (() -> UIImage?)?
     public let detailInfos: String?
     
     public init(
@@ -27,7 +27,7 @@ public struct StudyInformation {
         self.title = title
         self.description = subtitle
         self.contactEmail = contactEmail
-        self.image = image
+        self.image = { image }
         self.detailInfos = detailInfos
     }
     

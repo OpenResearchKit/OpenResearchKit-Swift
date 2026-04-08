@@ -349,8 +349,7 @@ extension UploadsDataTest {
             studyIdentifier: String, studyInformation: StudyInformation,
             uploadConfiguration: UploadConfiguration, introductorySurveyURL: URL?,
             participationIsPossible: Bool,
-            additionalQueryItems: @escaping (SurveyType) -> [URLQueryItem],
-            introSurveyCompletionHandler: (([String: String], Study) -> Void)?
+            additionalQueryItems: @escaping (SurveyType) -> [URLQueryItem]
         ) {
             self._uploadConfiguration = uploadConfiguration
             super.init(
@@ -358,8 +357,8 @@ extension UploadsDataTest {
                 uploadConfiguration: uploadConfiguration,
                 introductorySurveyURL: introductorySurveyURL,
                 participationIsPossible: participationIsPossible,
-                additionalQueryItems: additionalQueryItems,
-                introSurveyCompletionHandler: introSurveyCompletionHandler)
+                additionalQueryItems: additionalQueryItems
+            )
         }
 
         // Expose internal methods for testing
@@ -407,8 +406,7 @@ extension UploadsDataTest {
                 uploadConfiguration: uploadConfig,
                 introductorySurveyURL: nil,
                 participationIsPossible: true,
-                additionalQueryItems: { _ in [] },
-                introSurveyCompletionHandler: nil
+                additionalQueryItems: { _ in [] }
             )
         }
     }

@@ -58,8 +58,7 @@ final class StudyTests: XCTestCase {
                 introductorySurveyURL: introURL,
                 concludingSurveyURL: introURL,
                 participationIsPossible: true,
-                additionalQueryItems: { _ in [URLQueryItem(name: "test", value: "true")] },
-                introSurveyCompletionHandler: nil
+                additionalQueryItems: { _ in [URLQueryItem(name: "test", value: "true")] }
             )
         }
         
@@ -191,8 +190,7 @@ final class StudyTests: XCTestCase {
             ),
             duration: 60 * 60,
             introductorySurveyURL: URL(string: "https://example.com/intro")!,
-            concludingSurveyURL: URL(string: "https://example.com/conclusion")!,
-            introSurveyCompletionHandler: nil
+            concludingSurveyURL: URL(string: "https://example.com/conclusion")!
         )
         let baseStudy: Study = customStudy
         

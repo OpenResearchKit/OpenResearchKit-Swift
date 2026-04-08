@@ -49,7 +49,9 @@ public struct StudyDetailInfoScreen: View {
                 data()
             }
             
-            treatmentGroups()
+            if let study = study as? (any HasTreatmentGroups) {
+                AnyView(treatmentGroups(for: study, shouldShowDebugTools: shouldShowDebugTools))
+            }
             
             actions()
             
@@ -65,7 +67,7 @@ public struct StudyDetailInfoScreen: View {
     @ViewBuilder
     private func header() -> some View {
         
-        if let image = study.studyInformation.image {
+        if let image = study.studyInformation.image?() {
             Section {
                 Image(uiImage: image)
                     .resizable()
@@ -199,45 +201,6 @@ public struct StudyDetailInfoScreen: View {
                     ForEach(Array(self.studyData.enumerated()), id: \.offset) { item in
                         Text(item.element.description)
                     }
-                }
-            }
-        }
-        
-    }
-    
-    @ViewBuilder
-    private func treatmentGroups() -> some View {
-        
-        let options = study.allPossibleTreatmentGroups()
-        
-        if shouldShowDebugTools && !options.isEmpty {
-            Section(
-                header: Text("Treatment Group", bundle: .module),
-                footer: Text("Debug and TestFlight only. This overrides the currently stored treatment group for this study.", bundle: .module)
-            ) {
-                ForEach(options) { option in
-                    Button {
-                        study.assignedGroup = option.id
-                    } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(option.displayName)
-                                    .foregroundStyle(.primary)
-                                Text(option.id)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            
-                            Spacer()
-                            
-                            if study.assignedGroup == option.id {
-                                Image(systemName: "checkmark")
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("treatment-group-\(option.id)")
                 }
             }
         }

@@ -21,8 +21,7 @@ class DataDonationStudyTests: XCTestCase {
                 image: nil
             ),
             uploadConfiguration: .dummy,
-            introductorySurveyURL: URL(string: "https://example.com/intro"),
-            introSurveyCompletionHandler: nil
+            introductorySurveyURL: URL(string: "https://example.com/intro")
         )
         
         let url = study.surveyUrl(for: .introductory)
@@ -149,8 +148,7 @@ class DataDonationStudyTests: XCTestCase {
                 uploadConfiguration: uploadConfig,
                 introductorySurveyURL: nil,
                 participationIsPossible: true,
-                additionalQueryItems: { _ in [] },
-                introSurveyCompletionHandler: nil
+                additionalQueryItems: { _ in [] }
             )
         }
     }
