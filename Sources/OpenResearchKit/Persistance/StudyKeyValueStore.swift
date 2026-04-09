@@ -62,14 +62,14 @@ public final class StudyKeyValueStore {
     ///   - key: The value key inside the study dictionary.
     ///   - type: The expected value type (for readability at call sites).
     /// - Returns: The typed value if present and castable, otherwise `nil`.
-    func get<T>(_ key: String, type: T.Type) -> T? {
+    public func get<T>(_ key: String, type: T.Type) -> T? {
         return values()[key] as? T
     }
     
     /// Replaces **all** stored values for this study.
     ///
     /// - Parameter values: The entire dictionary to persist for this study.
-    func saveValues(_ values: [String: Any]) {
+    func replaceValues(_ values: [String: Any]) {
         var currentDefaults = defaults.dictionary(forKey: Self.key) as? OpenResearchDefaults ?? [:]
         currentDefaults[studyIdentifier] = values
         defaults.set(currentDefaults, forKey: Self.key)
@@ -80,7 +80,7 @@ public final class StudyKeyValueStore {
     /// - Parameters:
     ///   - key: The key to update.
     ///   - value: New value. Pass `nil` to **remove** the key from the study’s dictionary.
-    func update(_ key: String, value: Any?) {
+    public func update(_ key: String, value: Any?) {
         self.updateValues { values in
             values[key] = value // assigning nil removes the key
         }

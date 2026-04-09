@@ -17,7 +17,7 @@ class AdaptNewDataFormatMigration: DataMigration {
     
     func perform() async throws {
         
-        for study in studyRegistry.studies {
+        for study in await studyRegistry.studies {
             self.updateStudy(study)
         }
         

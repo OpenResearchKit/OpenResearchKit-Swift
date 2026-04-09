@@ -216,7 +216,7 @@ public class StudyFileManager {
     /// Using this assumes that all data residing in the upload directory was already consented for sharing.
     public func uploadAllRemainingFiles() async throws {
         
-        for study in studyRegistry.studies {
+        for study in await studyRegistry.studies {
             
             // Upload each study folder individually and catch errors here to not block other study uploads.
             do {

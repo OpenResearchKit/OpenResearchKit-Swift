@@ -11,12 +11,14 @@ public struct ActiveStudyDisclaimerView<Background: View>: View {
     
     @State var showSheet = false
     
-    @EnvironmentObject var study: Study
+    @EnvironmentObject var studyRegistry: StudyRegistry
     
+    public let study: Study
     public let foregroundColor: Color
     public let background: () -> Background
     
-    public init(foregroundColor: Color, @ViewBuilder background: @escaping () -> Background) {
+    public init(study: Study, foregroundColor: Color, @ViewBuilder background: @escaping () -> Background) {
+        self.study = study
         self.foregroundColor = foregroundColor
         self.background = background
     }
@@ -83,6 +85,17 @@ public struct ActiveStudyDisclaimerView<Background: View>: View {
     List {
         
         ActiveStudyDisclaimerView(
+            study: Study(
+                studyIdentifier: "test",
+                studyInformation: StudyInformation(
+                    title: "Example Study",
+                    subtitle: "Take part in this example study.",
+                    contactEmail: "info@example.org",
+                    image: nil
+                ),
+                uploadConfiguration: .init(fileSubmissionServer: URL(string: "https://example.org")!, uploadFrequency: 24 * 60 * 60, apiKey: ""),
+                introductorySurveyURL: URL(string: "https://example.org")
+            ),
             foregroundColor: .white
         ) {
             Color.cyan
