@@ -78,7 +78,7 @@ public struct DefaultStudyView: View {
                 
             }
             
-            if let image = studyMetadata.image {
+            if let image = studyMetadata.image?() {
                 ZStack {
                     Image(uiImage: image)
                         .resizable()
@@ -196,8 +196,7 @@ fileprivate let study = DataDonationStudy(
     introductorySurveyURL: URL(
         string: "https://example.org"
     )!,
-    participationIsPossible: false,
-    introSurveyCompletionHandler: nil
+    participationIsPossible: false
 )
 
 #Preview {

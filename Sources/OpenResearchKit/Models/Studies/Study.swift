@@ -10,7 +10,7 @@ import UIKit
 import SwiftUI
 import OSLog
 
-open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssignedGroups, HasNotifications, UploadsStudyData {
+open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNotifications, UploadsStudyData {
     
     /// Workaround as we need to have an active study at all times.
     public static let emptyPlaceholderStudyIdentifier = "empty"
@@ -22,7 +22,6 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
     public var participationIsPossible: Bool
     public let sharedAppGroupIdentifier: String?
     public var additionalQueryItems: (SurveyType) -> [URLQueryItem] = { _ in [] }
-    public let introSurveyCompletionHandler: (([String: String], Study) -> Void)?
     
     public init(
         studyIdentifier: String,
@@ -31,8 +30,7 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
         introductorySurveyURL: URL?,
         participationIsPossible: Bool = true,
         sharedAppGroupIdentifier: String? = nil,
-        additionalQueryItems: @escaping (SurveyType) -> [URLQueryItem] = { _ in [] },
-        introSurveyCompletionHandler: (([String: String], Study) -> Void)?
+        additionalQueryItems: @escaping (SurveyType) -> [URLQueryItem] = { _ in [] }
     ) {
         self.studyIdentifier = studyIdentifier
         self.studyInformation = studyInformation
@@ -42,7 +40,6 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
         self.introductorySurveyURL = introductorySurveyURL
         self.participationIsPossible = participationIsPossible
         self.sharedAppGroupIdentifier = sharedAppGroupIdentifier
-        self.introSurveyCompletionHandler = introSurveyCompletionHandler
         self.additionalQueryItems = additionalQueryItems
     }
     
@@ -86,8 +83,8 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
                 
                 let url = study.concludingSurveyURL?.appendingQueryItem(name: "uuid", value: self.userIdentifier)
                 
-                if let assignedGroup = self.assignedGroup {
-                    return url?.appendingQueryItem(name: Keys.AssignedGroup, value: assignedGroup)
+                if let study = self as? (any HasTreatmentGroups), let assignedGroup = study.selectedTreatmentGroup {
+                    return url?.appendingQueryItem(name: Keys.AssignedGroup, value: assignedGroup.rawValue)
                 }
                 
                 return url?.appendingQueryItems(additionalQueryItems)
@@ -169,7 +166,6 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
     public func manuallyGiveUserConsent(
         timeStamp: Date? = nil,
         userId: String?,
-        groupId: String? = nil,
         completion: @escaping () -> Void
     ) {
 
@@ -178,9 +174,6 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
         self.saveUserConsentHasBeenGiven(consentTimestamp: consentTimestamp, completion: {
             if let userId {
                 self.userIdentifier = userId
-            }
-            if let groupId {
-                self.assignedGroup = groupId
             }
             completion()
         })
@@ -204,10 +197,12 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
         
         if consented {
             
-            if let group = parameters["assignedGroup"] {
-                self.assignedGroup = group
-            } else if let group = parameters["groupid"] {
-                self.assignedGroup = group
+            if let study = self as? (any HasTreatmentGroups) {
+                if let group = parameters["assignedGroup"] {
+                    study.setRawAssignedGroup(group)
+                } else if let group = parameters["groupid"] {
+                    study.setRawAssignedGroup(group)
+                }
             }
             
             self.saveUserConsentHasBeenGiven() {
@@ -216,10 +211,7 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
                 
                 dismissView()
                 
-                self.introSurveyCompletionHandler?(
-                    parameters,
-                    self
-                )
+                self.didCompleteIntroSurveyHandler(parameters: parameters)
                 
                 self.didFinishSurveyPostCompletionHandler()
                 
@@ -251,6 +243,10 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasAssi
     }
     
     open func didFinishSurveyIntroPreCompletionHandler() {
+        
+    }
+    
+    open func didCompleteIntroSurveyHandler(parameters: [String: String]) {
         
     }
     

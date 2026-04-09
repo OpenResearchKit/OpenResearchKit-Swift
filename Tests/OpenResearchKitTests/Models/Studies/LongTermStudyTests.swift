@@ -236,8 +236,7 @@ final class LongTermStudyTests: XCTestCase {
             duration: duration,
             introductorySurveyURL: introductorySurvey!,
             midStudySurvey: .init(showAfter: 50 * 60, url: URL(string: "https://example.com/mid")!),
-            concludingSurveyURL: concludingSurvey!,
-            introSurveyCompletionHandler: nil
+            concludingSurveyURL: concludingSurvey!
         )
         
         try? study.reset()
@@ -263,8 +262,7 @@ final class LongTermStudyTests: XCTestCase {
             uploadConfiguration: uploadConfiguration,
             duration: duration,
             introductorySurveyURL: introductorySurvey,
-            concludingSurveyURL: concludingSurvey,
-            introSurveyCompletionHandler: nil
+            concludingSurveyURL: concludingSurvey
         )
         
         try? study.reset()
