@@ -43,10 +43,6 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
         self.additionalQueryItems = additionalQueryItems
     }
     
-    open func allPossibleTreatmentGroups() -> [TreatmentGroupOption] {
-        []
-    }
-    
     open func currentDisplayStatus() async throws -> StudyStatus {
         
         if isCompleted {
@@ -106,6 +102,10 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
         }
     }
     
+    open var hasExpired: Bool {
+        return false
+    }
+    
     public var isActive: Bool {
         
         let consentedNotDismissed = self.hasUserGivenConsent // && !self.isDismissedByUser
@@ -135,7 +135,7 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
     /// A `Study` will only get recommended if and only if the user is eligible via `isEligible` and the `Study` is
     /// not removed from recommendations via `removeFromRecommendations`.
     private var meetsRecommendationCriteria: Bool {
-        return isEligible() && !removeFromRecommendations()
+        return isEligible() && !removeFromRecommendations() && !hasExpired
     }
     
     // MARK: - Persistence -

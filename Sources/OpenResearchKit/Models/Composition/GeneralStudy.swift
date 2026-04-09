@@ -142,6 +142,7 @@ extension GeneralStudy {
         }
         set {
             store.update(Study.Keys.CompletionDate, value: newValue)
+            publishChangesOnMain()
         }
     }
     
