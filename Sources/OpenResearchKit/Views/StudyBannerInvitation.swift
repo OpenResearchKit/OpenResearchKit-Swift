@@ -12,8 +12,12 @@ import UIKit
 public struct StudyBannerInvitation: View {
     
     let surveyType: SurveyType
+    let study: Study
     
-    @EnvironmentObject var study: Study
+    init(study: Study, surveyType: SurveyType) {
+        self.surveyType = surveyType
+        self.study = study
+    }
     
     public var body: some View {
         
@@ -204,18 +208,15 @@ fileprivate let study = DataDonationStudy(
     List {
         
         Section {
-            StudyBannerInvitation(surveyType: .introductory)
-                .environmentObject(study as Study)
+            StudyBannerInvitation(study: study, surveyType: .introductory)
         }
         
         Section {
-            StudyBannerInvitation(surveyType: .mid)
-                .environmentObject(study as Study)
+            StudyBannerInvitation(study: study, surveyType: .mid)
         }
         
         Section {
-            StudyBannerInvitation(surveyType: .completion)
-                .environmentObject(study as Study)
+            StudyBannerInvitation(study: study, surveyType: .completion)
         }
         
     }
@@ -226,8 +227,7 @@ fileprivate let study = DataDonationStudy(
     
     List {
         
-        StudyBannerInvitation(surveyType: .introductory)
-            .environmentObject(study as Study)
+        StudyBannerInvitation(study: study, surveyType: .introductory)
         
     }
     .preferredColorScheme(.dark)

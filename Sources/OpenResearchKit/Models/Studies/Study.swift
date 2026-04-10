@@ -43,10 +43,6 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
         self.additionalQueryItems = additionalQueryItems
     }
     
-    open func allPossibleTreatmentGroups() -> [TreatmentGroupOption] {
-        []
-    }
-    
     open func currentDisplayStatus() async throws -> StudyStatus {
         
         if isCompleted {
@@ -106,6 +102,10 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
         }
     }
     
+    open var hasExpired: Bool {
+        return false
+    }
+    
     public var isActive: Bool {
         
         let consentedNotDismissed = self.hasUserGivenConsent // && !self.isDismissedByUser
@@ -120,7 +120,7 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
     /// It prevent users from participating in the study if they are not eligible
     /// If a non-eligible user tries to start participating in a `Study` manually (e.g. via a Deep Link), an alert will be shown indicating that the user
     /// does not match the conditions set for participating in the study. This should enfore scientific soundness.
-    @MainActor open func isEligible() -> Bool {
+    open func isEligible() -> Bool {
         return participationIsPossible
     }
     
@@ -128,14 +128,14 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
     /// in one sec. If set to `true`, the `Study` can only be started via a manual start (e.g. using an activation url).
     /// A `Study` will only get recommended if and only if the user is eligible via `isEligible` and the `Study` is not removed from recommendations
     /// via `removeFromRecommendations`.
-    @MainActor open func removeFromRecommendations() -> Bool {
+    open func removeFromRecommendations() -> Bool {
         return false
     }
     
     /// A `Study` will only get recommended if and only if the user is eligible via `isEligible` and the `Study` is
     /// not removed from recommendations via `removeFromRecommendations`.
-    @MainActor private var meetsRecommendationCriteria: Bool {
-        return isEligible() && !removeFromRecommendations()
+    private var meetsRecommendationCriteria: Bool {
+        return isEligible() && !removeFromRecommendations() && !hasExpired
     }
     
     // MARK: - Persistence -
@@ -266,8 +266,7 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
     
     open var invitationBannerView: AnyView {
         
-        StudyBannerInvitation(surveyType: .introductory)
-            .environmentObject(self)
+        StudyBannerInvitation(study: self, surveyType: .introductory)
             .toAnyView()
         
     }
@@ -572,8 +571,7 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
     // MARK: - HasTerminationSurvey
     
     open var terminationBannerView: AnyView {
-        StudyBannerInvitation(surveyType: .completion)
-            .environmentObject(self)
+        StudyBannerInvitation(study: self, surveyType: .completion)
             .toAnyView()
     }
     
@@ -605,7 +603,6 @@ extension Study {
 
 extension Study {
     
-    @MainActor
     public static func filterRecommended(studies: [Study]) -> [Study] {
         
         var result: [Study] = []

@@ -75,8 +75,7 @@ open class LongTermWithMidSurveyStudy: LongTermStudy, HasMidSurvey {
     }
     
     var midSurveyBannerView: AnyView {
-        StudyBannerInvitation(surveyType: .mid)
-            .environmentObject(self)
+        StudyBannerInvitation(study: self, surveyType: .mid)
             .toAnyView()
     }
     

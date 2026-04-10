@@ -38,7 +38,7 @@ final class StudyKeyValueStoreTests: XCTestCase {
     func testSaveAndReadRoundtrip() {
         let store = StudyKeyValueStore(studyIdentifier: "study-A", appGroup: suiteName)
         let now = Date()
-        store.saveValues([
+        store.replaceValues([
             "lastUploadDate": now,
             "count": 3,
             "flag": true,
@@ -54,7 +54,7 @@ final class StudyKeyValueStoreTests: XCTestCase {
     
     func testUpdateValuesMergesChanges() {
         let store = StudyKeyValueStore(studyIdentifier: "study-A", appGroup: suiteName)
-        store.saveValues(["count": 1, "name": "Start"])
+        store.replaceValues(["count": 1, "name": "Start"])
         
         store.updateValues { dict in
             dict["count"] = (dict["count"] as? Int ?? 0) + 1
@@ -69,7 +69,7 @@ final class StudyKeyValueStoreTests: XCTestCase {
     
     func testTypedGet() {
         let store = StudyKeyValueStore(studyIdentifier: "study-A", appGroup: suiteName)
-        store.saveValues(["count": 7, "name": "Bob", "flag": false])
+        store.replaceValues(["count": 7, "name": "Bob", "flag": false])
         
         XCTAssertEqual(store.get("count", type: Int.self), 7)
         XCTAssertEqual(store.get("name", type: String.self), "Bob")
@@ -80,7 +80,7 @@ final class StudyKeyValueStoreTests: XCTestCase {
     
     func testUpdateSingleKeyAndRemove() {
         let store = StudyKeyValueStore(studyIdentifier: "study-A", appGroup: suiteName)
-        store.saveValues(["a": 1, "b": 2])
+        store.replaceValues(["a": 1, "b": 2])
         
         // set/replace
         store.update("b", value: 42)
@@ -96,8 +96,8 @@ final class StudyKeyValueStoreTests: XCTestCase {
         let a = StudyKeyValueStore(studyIdentifier: "study-A", appGroup: suiteName)
         let b = StudyKeyValueStore(studyIdentifier: "study-B", appGroup: suiteName)
         
-        a.saveValues(["onlyA": true])
-        b.saveValues(["onlyB": true])
+        a.replaceValues(["onlyA": true])
+        b.replaceValues(["onlyB": true])
         
         XCTAssertEqual(a.get("onlyA", type: Bool.self), true)
         XCTAssertNil(a.get("onlyB", type: Bool.self))
@@ -108,7 +108,7 @@ final class StudyKeyValueStoreTests: XCTestCase {
     
     func testDeleteAllValuesRemovesStudyDictionary() {
         let store = StudyKeyValueStore(studyIdentifier: "study-A", appGroup: suiteName)
-        store.saveValues(["a": 1, "b": 2])
+        store.replaceValues(["a": 1, "b": 2])
         XCTAssertFalse(store.values().isEmpty)
         
         store.deleteAllValues()
@@ -126,7 +126,7 @@ final class StudyKeyValueStoreTests: XCTestCase {
         XCTAssertTrue(store.values().isEmpty)
         
         // Create then delete twice
-        store.saveValues(["x": 42])
+        store.replaceValues(["x": 42])
         XCTAssertEqual(store.get("x", type: Int.self), 42)
         
         store.deleteAllValues()
@@ -141,8 +141,8 @@ final class StudyKeyValueStoreTests: XCTestCase {
         let a = StudyKeyValueStore(studyIdentifier: "study-A", appGroup: suiteName)
         let b = StudyKeyValueStore(studyIdentifier: "study-B", appGroup: suiteName)
         
-        a.saveValues(["onlyA": true])
-        b.saveValues(["onlyB": true])
+        a.replaceValues(["onlyA": true])
+        b.replaceValues(["onlyB": true])
         
         a.deleteAllValues()
         

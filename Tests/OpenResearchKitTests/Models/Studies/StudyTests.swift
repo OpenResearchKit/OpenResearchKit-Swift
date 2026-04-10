@@ -64,13 +64,20 @@ final class StudyTests: XCTestCase {
         
     }
     
-    private final class TreatmentGroupStudy: LongTermStudy {
+    private final class TreatmentGroupStudy: LongTermStudy, HasTreatmentGroups {
         
-        override func allPossibleTreatmentGroups() -> [TreatmentGroupOption] {
-            [
-                TreatmentGroupOption(id: "control", displayName: "Control"),
-                TreatmentGroupOption(id: "intervention", displayName: "Intervention")
-            ]
+        enum TreatmentGroup: String, StudyTreatmentGroup {
+            case control
+            case intervention
+            
+            var displayName: String {
+                switch self {
+                    case .control:
+                        return "Control"
+                    case .intervention:
+                        return "Intervention"
+                }
+            }
         }
         
     }
@@ -169,11 +176,7 @@ final class StudyTests: XCTestCase {
 
     }
     
-    func test_allPossibleTreatmentGroups_isEmptyByDefault() {
-        XCTAssertEqual(study.allPossibleTreatmentGroups(), [])
-    }
-    
-    func test_allPossibleTreatmentGroups_canBeCustomizedPerStudy() {
+    func test_treatmentGroupsCanBeCustomizedPerStudy() {
         
         let customStudy = TreatmentGroupStudy(
             studyIdentifier: "treatment-\(UUID().uuidString)",
@@ -192,21 +195,12 @@ final class StudyTests: XCTestCase {
             introductorySurveyURL: URL(string: "https://example.com/intro")!,
             concludingSurveyURL: URL(string: "https://example.com/conclusion")!
         )
-        let baseStudy: Study = customStudy
         
-        XCTAssertEqual(
-            baseStudy.allPossibleTreatmentGroups(),
-            [
-                TreatmentGroupOption(id: "control", displayName: "Control"),
-                TreatmentGroupOption(id: "intervention", displayName: "Intervention")
-            ]
-        )
-        
-        customStudy.assignedGroup = "control"
+        customStudy.selectedTreatmentGroup = .control
         
         XCTAssertEqual(
             customStudy.selectedTreatmentGroup,
-            TreatmentGroupOption(id: "control", displayName: "Control")
+            .control
         )
     }
 
