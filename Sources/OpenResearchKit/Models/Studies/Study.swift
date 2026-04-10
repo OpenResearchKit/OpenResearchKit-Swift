@@ -12,9 +12,6 @@ import OSLog
 
 open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNotifications, UploadsStudyData {
     
-    /// Workaround as we need to have an active study at all times.
-    public static let emptyPlaceholderStudyIdentifier = "empty"
-    
     public let studyIdentifier: String
     public let studyInformation: StudyInformation
     public var uploadConfiguration: UploadConfiguration
@@ -53,7 +50,7 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
             return .errorStyle(text: "Terminated")
         }
         
-        if await meetsRecommendationCriteria && !hasUserGivenConsent {
+        if meetsRecommendationCriteria && !hasUserGivenConsent {
             return .mutedStyle(text: "Available")
         }
         
@@ -274,10 +271,6 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
     open var shouldDisplayIntroductorySurvey: Bool {
         
         if introductorySurveyURL == nil {
-            return false
-        }
-        
-        if studyIdentifier == Self.emptyPlaceholderStudyIdentifier {
             return false
         }
         
@@ -610,7 +603,6 @@ extension Study {
         for study in studies {
             if study.isDismissedByUser { continue }
             if study.isCompleted { continue }
-            if study.studyIdentifier == Study.emptyPlaceholderStudyIdentifier { continue }
             if study.meetsRecommendationCriteria {
                 result.append(study)
             }

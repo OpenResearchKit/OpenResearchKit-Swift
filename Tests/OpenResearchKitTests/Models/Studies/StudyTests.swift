@@ -139,16 +139,6 @@ final class StudyTests: XCTestCase {
         
     }
 
-    func test_shouldDisplayIntroductorySurvey_isFalseWhenStudyIsPlaceholderStudy() {
-        
-        let study = LongTermDummy.makeStudy(id: Study.emptyPlaceholderStudyIdentifier)
-        
-        study.participationIsPossible = false
-        
-        XCTAssertFalse(study.shouldDisplayIntroductorySurvey, "Should not display intro survey if participation is not possible.")
-        
-    }
-
     func test_shouldDisplayIntroductorySurvey_isFalseWithoutURL() {
         
         let studyWithoutURL = LongTermDummy.makeStudy(id: "no-url-study", introURL: nil)
