@@ -237,6 +237,10 @@ final class StudyRegistryTests: XCTestCase {
 
 private final class QuietDataDonationStudy: DataDonationStudy {
     
+    override func shouldHaveNotifications() -> Bool {
+        false
+    }
+    
     override func didTerminateParticipation(terminationDate: Date) {
         
     }
