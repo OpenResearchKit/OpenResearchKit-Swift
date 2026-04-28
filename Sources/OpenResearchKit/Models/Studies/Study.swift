@@ -177,6 +177,17 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
 
     }
     
+    public func setPublicIdentifier(_ publicUserIdentifier: String) {
+        
+        // todo: make sure a those identifiers can only be set once manually to prevent overwriting
+//        if self.publicUserIdentifier == nil {
+            self.publicUserIdentifier = publicUserIdentifier
+//        } else {
+//            throw EnrollmentError.cannotOverrideExistingPublicIdentifier
+//        }
+        
+    }
+    
     open func reset() throws {
         
         // Reset state variables (e.g. study identifier, all dates, etc.)
@@ -636,6 +647,7 @@ extension Study {
         static let AssignedGroup = "assignedGroup"
         static let LastSuccessfulUploadDate = "lastSuccessfulUploadDate"
         static let LocalUserIdentifier = "localUserIdentifier"
+        static let PublicUserIdentifier = "publicUserIdentifier"
         static let CompletionDate = "completionDate"
         static let IntroSurveyCompletionDate = "introSurveyCompletionDate"
     }

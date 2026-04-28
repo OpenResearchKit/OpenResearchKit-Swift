@@ -1,0 +1,539 @@
+openapi: 3.0.0
+info:
+  title: 'one sec research API'
+  description: 'Generated OpenAPI specification for the one sec research backend.'
+  version: 1.0.0
+servers:
+  -
+    url: /
+    description: 'Application root URL'
+paths:
+  /api/v2/upload:
+    post:
+      tags:
+        - Participants
+      summary: 'Upload a participant file using explicit study and participant identity.'
+      operationId: uploadStudyFile
+      parameters:
+        -
+          name: Participant-Identifier
+          in: header
+          description: 'Opaque participant identifier.'
+          required: true
+          schema:
+            type: string
+            example: study-123-123e4567-e89b-12d3-a456-426614174000
+        -
+          name: Participant-Public-Identifier
+          in: header
+          description: 'Human-readable participant identifier when one is bound to the participant.'
+          required: false
+          schema:
+            type: string
+            example: participant-123
+            nullable: true
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              required:
+                - api_key
+                - study_identifier
+                - timestamp
+                - file
+              properties:
+                api_key:
+                  type: string
+                study_identifier:
+                  type: string
+                  example: study-123
+                timestamp:
+                  type: string
+                  pattern: '^\d{8}_\d{6}$'
+                  example: '20260428_120000'
+                file:
+                  type: string
+                  format: binary
+              type: object
+      responses:
+        200:
+          description: 'Upload stored successfully.'
+          content:
+            application/json:
+              schema:
+                properties:
+                  result:
+                    properties:
+                      success:
+                        type: boolean
+                        example: true
+                      path:
+                        type: string
+                        example: uploads/study-123/study-123-123e4567-e89b-12d3-a456-426614174000/20260428_120000/file.json
+                    type: object
+                type: object
+        403:
+          description: 'Invalid API key.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiMessage'
+        404:
+          description: 'Study not found.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiMessage'
+        422:
+          description: 'Validation error.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+  '/api/v2/studies/{studyIdentifier}/participants/enroll':
+    post:
+      tags:
+        - Participants
+      summary: 'Enroll a participant for a study using the opaque identifier contract.'
+      operationId: enrollParticipant
+      parameters:
+        -
+          name: studyIdentifier
+          in: path
+          description: 'Public study identifier.'
+          required: true
+          schema:
+            type: string
+            example: study-123
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrollParticipantRequest'
+      responses:
+        200:
+          description: 'Participant enrolled successfully.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParticipantEnrollmentResponse'
+        404:
+          description: 'Study not found.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiMessage'
+        422:
+          description: 'Validation error.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+  '/api/v2/studies/{studyIdentifier}/signals':
+    post:
+      tags:
+        - Signals
+      summary: 'Store a participant-authenticated signal for a study using participant identity headers.'
+      operationId: storeStudySignal
+      parameters:
+        -
+          name: studyIdentifier
+          in: path
+          description: 'Public study identifier.'
+          required: true
+          schema:
+            type: string
+            example: study-123
+        -
+          name: Participant-Identifier
+          in: header
+          description: 'Opaque participant identifier.'
+          required: true
+          schema:
+            type: string
+            example: study-123-123e4567-e89b-12d3-a456-426614174000
+        -
+          name: Participant-Public-Identifier
+          in: header
+          description: 'Human-readable participant identifier when one is bound to the participant.'
+          required: false
+          schema:
+            type: string
+            example: participant-123
+            nullable: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StoreSignalRequest'
+      responses:
+        201:
+          description: 'Signal stored successfully.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoredSignalResponse'
+        404:
+          description: 'Study not found.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiMessage'
+        422:
+          description: 'Validation error.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+  '/api/v1/studies/{studyIdentifier}/configuration':
+    get:
+      tags:
+        - 'Study Configuration'
+      summary: 'Return the current public configuration for a study.'
+      operationId: showStudyConfiguration
+      parameters:
+        -
+          name: studyIdentifier
+          in: path
+          description: 'Public study identifier.'
+          required: true
+          schema:
+            type: string
+            example: study-123
+      responses:
+        200:
+          description: 'Study configuration payload.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudyConfigurationResponse'
+        404:
+          description: 'Study not found.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiMessage'
+  '/api/v2/studies/{studyIdentifier}/leaderboard':
+    get:
+      tags:
+        - Leaderboards
+      summary: 'Return render-ready public leaderboard rows with optional participant context.'
+      operationId: showStudyLeaderboard
+      parameters:
+        -
+          name: studyIdentifier
+          in: path
+          description: 'Public study identifier.'
+          required: true
+          schema:
+            type: string
+            example: study-123
+        -
+          name: Participant-Identifier
+          in: header
+          description: 'Opaque participant identifier for current-participant context.'
+          required: false
+          schema:
+            type: string
+            example: study-123-123e4567-e89b-12d3-a456-426614174000
+        -
+          name: Participant-Public-Identifier
+          in: header
+          description: 'Human-readable participant identifier when one is bound to the participant.'
+          required: false
+          schema:
+            type: string
+            example: participant-123
+            nullable: true
+      responses:
+        200:
+          description: 'Leaderboard payload.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaderboardResponseEnvelope'
+        404:
+          description: 'Study or leaderboard not found.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiMessage'
+        422:
+          description: 'Validation error.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+components:
+  schemas:
+    ApiMessage:
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          example: Unauthorized
+      type: object
+    StudyConfiguration:
+      required:
+        - study_identifier
+        - is_available
+      properties:
+        study_identifier:
+          type: string
+          example: study-123
+        starts_at:
+          type: string
+          format: date-time
+          example: '2026-04-27T09:00:00+00:00'
+          nullable: true
+        ends_at:
+          type: string
+          format: date-time
+          example: '2026-05-27T09:00:00+00:00'
+          nullable: true
+        is_available:
+          type: boolean
+          example: true
+      type: object
+    StudyConfigurationResponse:
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/StudyConfiguration'
+      type: object
+    EnrollParticipantRequest:
+      required:
+        - participant_identifier
+      properties:
+        participant_identifier:
+          type: string
+          example: study-123-123e4567-e89b-12d3-a456-426614174000
+        participant_public_identifier:
+          type: string
+          example: participant-123
+          nullable: true
+      type: object
+    ParticipantCredential:
+      required:
+        - participant_identifier
+        - enrolled_at
+      properties:
+        participant_identifier:
+          type: string
+          example: study-123-123e4567-e89b-12d3-a456-426614174000
+        participant_public_identifier:
+          type: string
+          example: participant-123
+          nullable: true
+        enrolled_at:
+          type: string
+          format: date-time
+          example: '2026-04-27T10:00:00+00:00'
+      type: object
+    ParticipantEnrollmentResponse:
+      required:
+        - participant
+      properties:
+        participant:
+          $ref: '#/components/schemas/ParticipantCredential'
+      type: object
+    LeaderboardEntry:
+      required:
+        - rank
+        - identifier
+        - points
+        - is_current_participant
+      properties:
+        rank:
+          type: integer
+          example: 1
+        identifier:
+          type: string
+          example: study-123-participant-123
+        points:
+          type: integer
+          example: 14
+        is_current_participant:
+          type: boolean
+          example: false
+      type: object
+    LeaderboardResponse:
+      required:
+        - study_identifier
+        - timezone
+        - as_of_date
+        - rows
+      properties:
+        study_identifier:
+          type: string
+          example: study-123
+        timezone:
+          type: string
+          example: Europe/London
+        as_of_date:
+          type: string
+          example: '2026-04-27'
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/LeaderboardRow'
+      type: object
+    LeaderboardResponseEnvelope:
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/LeaderboardResponse'
+      type: object
+    LeaderboardRow:
+      required:
+        - rank
+        - text
+        - points
+        - is_current_participant
+      properties:
+        rank:
+          type: integer
+          example: 1
+          nullable: true
+        text:
+          type: string
+          example: participant-123
+        points:
+          type: integer
+          example: 14
+          nullable: true
+        is_current_participant:
+          type: boolean
+          example: false
+      type: object
+    EmergencyBypassSignal:
+      required:
+        - type
+        - data
+      properties:
+        type:
+          description: 'Reserved event type for an NHS emergency bypass signal.'
+          type: string
+          example: emergency_bypass
+          enum:
+            - emergency_bypass
+        data:
+          $ref: '#/components/schemas/EmergencyBypassSignalPayload'
+      type: object
+    EmergencyBypassSignalPayload:
+      required:
+        - bypass_type
+      properties:
+        bypass_type:
+          type: string
+          example: budget_limit
+          enum:
+            - budget_limit
+            - night_time_curfew
+      type: object
+      additionalProperties: false
+    GenericSignal:
+      required:
+        - type
+        - data
+      properties:
+        type:
+          description: 'Any non-reserved signal type. Reserved types, such as emergency_bypass, must use their dedicated schema.'
+          type: string
+          pattern: '^(?!emergency_bypass$).+'
+          example: app_opened
+        data:
+          description: 'Arbitrary JSON object payload for generic events.'
+          type: object
+          example:
+            source: shortcut
+            count: 1
+          additionalProperties: true
+      type: object
+    StoreSignalRequest:
+      description: 'Typed signal request. Reserved signal types use dedicated schemas; all other events use the generic signal schema.'
+      discriminator:
+        propertyName: type
+        mapping:
+          emergency_bypass: '#/components/schemas/EmergencyBypassSignal'
+      oneOf:
+        -
+          $ref: '#/components/schemas/EmergencyBypassSignal'
+        -
+          $ref: '#/components/schemas/GenericSignal'
+    StoredSignal:
+      required:
+        - id
+        - participant_identifier
+        - type
+        - data
+        - created_at
+      properties:
+        id:
+          type: integer
+          example: 1
+        participant_identifier:
+          type: string
+          example: study-123-123e4567-e89b-12d3-a456-426614174000
+        participant_public_identifier:
+          type: string
+          example: participant-123
+          nullable: true
+        type:
+          description: 'Stored signal type. Leaderboard scorers may consume reserved values such as emergency_bypass.'
+          type: string
+          example: app_opened
+        data:
+          description: 'Arbitrary JSON object payload for the signal.'
+          type: object
+          example:
+            source: shortcut
+            count: 1
+          additionalProperties: true
+        created_at:
+          type: string
+          format: date-time
+          example: '2026-04-27T10:05:00+00:00'
+      type: object
+    StoredSignalResponse:
+      required:
+        - signal
+      properties:
+        signal:
+          $ref: '#/components/schemas/StoredSignal'
+      type: object
+    ValidationError:
+      required:
+        - message
+        - errors
+      properties:
+        message:
+          type: string
+          example: 'The given data was invalid.'
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+      type: object
+tags:
+  -
+    name: 'Study Configuration'
+    description: 'Public study configuration endpoints.'
+  -
+    name: Participants
+    description: 'Participant enrollment endpoints.'
+  -
+    name: Signals
+    description: 'Participant-authenticated signal ingestion endpoints.'
+  -
+    name: Leaderboards
+    description: 'Public participant leaderboard endpoints.'
+
