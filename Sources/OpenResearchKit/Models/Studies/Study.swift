@@ -18,6 +18,7 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
     public let introductorySurveyURL: URL?
     public var participationIsPossible: Bool
     public let sharedAppGroupIdentifier: String?
+    public let studyFileManager: StudyFileManager
     public var additionalQueryItems: (SurveyType) -> [URLQueryItem] = { _ in [] }
     
     public init(
@@ -27,6 +28,7 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
         introductorySurveyURL: URL?,
         participationIsPossible: Bool = true,
         sharedAppGroupIdentifier: String? = nil,
+        studyFileManager: StudyFileManager = .shared,
         additionalQueryItems: @escaping (SurveyType) -> [URLQueryItem] = { _ in [] }
     ) {
         self.studyIdentifier = studyIdentifier
@@ -37,6 +39,7 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
         self.introductorySurveyURL = introductorySurveyURL
         self.participationIsPossible = participationIsPossible
         self.sharedAppGroupIdentifier = sharedAppGroupIdentifier
+        self.studyFileManager = studyFileManager
         self.additionalQueryItems = additionalQueryItems
     }
     
@@ -122,7 +125,7 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
     }
     
     /// Determines whether the `Study` should be recommended as part of the default study enrollment procedure
-    /// in one sec. If set to `true`, the `Study` can only be started via a manual start (e.g. using an activation url).
+    /// in the host app. If set to `true`, the `Study` can only be started via a manual start (e.g. using an activation url).
     /// A `Study` will only get recommended if and only if the user is eligible via `isEligible` and the `Study` is not removed from recommendations
     /// via `removeFromRecommendations`.
     open func removeFromRecommendations() -> Bool {
@@ -196,9 +199,9 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
         try self.resetLocalJSONFile()
         
         // Delete all files
-        try StudyFileManager.shared.deleteAllFiles(study: self, type: .working)
-        try StudyFileManager.shared.deleteAllFiles(study: self, type: .upload)
         
+        try studyFileManager.deleteAllFiles(study: self, type: .working)
+        try studyFileManager.deleteAllFiles(study: self, type: .upload)
     }
     
     open func handleIntroductionSurveyResults(consented: Bool, parameters: [String: String], dismissView: @escaping () -> Void) {
