@@ -62,6 +62,51 @@ final class StudyDataUploaderV2Tests: XCTestCase {
         XCTAssertEqual(requestCount, 1)
     }
 
+    func testUploadStudyFolder_UploadsMultipleFilesAcrossBatchesAndCleansUp() async throws {
+        let state = RecordingTransportState()
+        let uploader = StudyDataUploader(client: makeClient(state: state))
+        let manager = StudyFileManager(uploader: uploader)
+        let study = UploadTestStudy.makeStudy(id: "MultiFileUploadStudy-\(UUID().uuidString)")
+        let firstFile = try createUploadFile(
+            study: study,
+            timestamp: "20260428_120000",
+            name: "first-upload.json",
+            contents: #"{"file":"first"}"#
+        )
+        let secondFile = try createUploadFile(
+            study: study,
+            timestamp: "20260428_120000",
+            name: "second-upload.json",
+            contents: #"{"file":"second"}"#
+        )
+        let thirdFile = try createUploadFile(
+            study: study,
+            timestamp: "20260428_121500",
+            name: "third-upload.json",
+            contents: #"{"file":"third"}"#
+        )
+        let firstBatch = firstFile.deletingLastPathComponent()
+        let secondBatch = thirdFile.deletingLastPathComponent()
+
+        try await manager.uploadStudyFolder(study: study)
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: firstFile.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: secondFile.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: thirdFile.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: firstBatch.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: secondBatch.path))
+        XCTAssertNotNil(study.lastSuccessfulUploadDate)
+
+        let requests = await state.requests
+        XCTAssertEqual(requests.count, 3)
+        let bodyStrings = requests.compactMap { request in
+            request.body.flatMap { String(data: $0, encoding: .utf8) }
+        }
+        XCTAssertTrue(bodyStrings.contains { $0.contains("first-upload.json") && $0.contains(#"{"file":"first"}"#) })
+        XCTAssertTrue(bodyStrings.contains { $0.contains("second-upload.json") && $0.contains(#"{"file":"second"}"#) })
+        XCTAssertTrue(bodyStrings.contains { $0.contains("third-upload.json") && $0.contains(#"{"file":"third"}"#) })
+    }
+
     func testUploadStudyFolder_KeepsFailedFilesForRetry() async throws {
         let state = RecordingTransportState(shouldFail: true)
         let uploader = StudyDataUploader(client: makeClient(state: state))
@@ -76,6 +121,57 @@ final class StudyDataUploaderV2Tests: XCTestCase {
             XCTAssertTrue(FileManager.default.fileExists(atPath: file.path))
             XCTAssertTrue(FileManager.default.fileExists(atPath: file.deletingLastPathComponent().path))
             XCTAssertNil(study.lastSuccessfulUploadDate)
+        }
+    }
+
+    func testUploadFile_MapsGeneratedErrorResponsesToHTTPStatusErrors() async throws {
+        try await assertUploadMapsStatus(
+            .forbidden,
+            responseBody: #"{"message":"Invalid API key."}"#,
+            expectedCode: 403
+        )
+        try await assertUploadMapsStatus(
+            .notFound,
+            responseBody: #"{"message":"Study not found."}"#,
+            expectedCode: 404
+        )
+        try await assertUploadMapsStatus(
+            .unprocessableContent,
+            responseBody: #"{"message":"The given data was invalid.","errors":{"file":["The file field is required."]}}"#,
+            expectedCode: 422
+        )
+        try await assertUploadMapsStatus(
+            HTTPResponse.Status(code: 418, reasonPhrase: "I'm a teapot"),
+            responseBody: #"{"message":"Unexpected upload response."}"#,
+            expectedCode: 418
+        )
+    }
+
+    private func assertUploadMapsStatus(
+        _ status: HTTPResponse.Status,
+        responseBody: String,
+        expectedCode: Int,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) async throws {
+        let state = RecordingTransportState(responseStatus: status, responseBody: responseBody)
+        let uploader = StudyDataUploader(client: makeClient(state: state))
+        let uploadFile = try makeTemporaryFile(name: "upload-\(expectedCode).json", contents: #"{"ok":true}"#)
+
+        do {
+            try await uploader.uploadFile(
+                filePath: uploadFile,
+                studyIdentifier: "study-123",
+                userIdentifier: "study-123-user",
+                publicUserIdentifier: nil,
+                timestamp: "20260428_120000",
+                fileName: uploadFile.lastPathComponent
+            )
+            XCTFail("Expected upload to fail with HTTP \(expectedCode).", file: file, line: line)
+        } catch UploadError.httpStatus(let code) {
+            XCTAssertEqual(code, expectedCode, file: file, line: line)
+        } catch {
+            XCTFail("Expected UploadError.httpStatus(\(expectedCode)), got \(error).", file: file, line: line)
         }
     }
 
@@ -97,11 +193,15 @@ final class StudyDataUploaderV2Tests: XCTestCase {
     }
 
     private func createUploadFile(study: Study, timestamp: String, name: String) throws -> URL {
+        try createUploadFile(study: study, timestamp: timestamp, name: name, contents: #"{"ok":true}"#)
+    }
+
+    private func createUploadFile(study: Study, timestamp: String, name: String, contents: String) throws -> URL {
         let file = study.studyDirectory(type: .upload)
             .appendingPathComponent(timestamp, isDirectory: true)
             .appendingPathComponent(name)
         try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try Data(#"{"ok":true}"#.utf8).write(to: file)
+        try Data(contents.utf8).write(to: file)
         return file
     }
 
@@ -118,9 +218,17 @@ private actor RecordingTransportState {
 
     var requests: [RecordedRequest] = []
     let shouldFail: Bool
+    let responseStatus: HTTPResponse.Status
+    let responseBody: String
 
-    init(shouldFail: Bool = false) {
+    init(
+        shouldFail: Bool = false,
+        responseStatus: HTTPResponse.Status = .ok,
+        responseBody: String = #"{"result":{"success":true,"path":"uploads/study/upload.json"}}"#
+    ) {
         self.shouldFail = shouldFail
+        self.responseStatus = responseStatus
+        self.responseBody = responseBody
     }
 
     func record(_ request: RecordedRequest) {
@@ -164,11 +272,10 @@ private struct RecordingTransport: ClientTransport {
             throw URLError(.notConnectedToInternet)
         }
 
-        var response = HTTPResponse(status: .ok)
+        var response = HTTPResponse(status: state.responseStatus)
         response.headerFields[.contentType] = "application/json"
-        let responseBody = #"{"result":{"success":true,"path":"uploads/study/upload.json"}}"#
 
-        return (response, HTTPBody(Data(responseBody.utf8)))
+        return (response, HTTPBody(Data(state.responseBody.utf8)))
 
     }
 
