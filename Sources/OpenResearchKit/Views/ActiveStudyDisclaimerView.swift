@@ -17,7 +17,11 @@ public struct ActiveStudyDisclaimerView<Background: View>: View {
     public let foregroundColor: Color
     public let background: () -> Background
     
-    public init(study: Study, foregroundColor: Color, @ViewBuilder background: @escaping () -> Background) {
+    public init(
+        study: Study,
+        foregroundColor: Color,
+        @ViewBuilder background: @escaping () -> Background
+    ) {
         self.study = study
         self.foregroundColor = foregroundColor
         self.background = background
@@ -37,7 +41,7 @@ public struct ActiveStudyDisclaimerView<Background: View>: View {
             }
             .padding(.bottom, 2)
             
-            Text("You are currently participating in a scientific study. This may have implications on how one sec works or may disable certain features.", bundle: .module)
+            Text("You are currently participating in a scientific study. This may affect how the app works or may disable certain features.", bundle: .module)
                 .font(.callout)
                 .padding(.bottom, 4)
             

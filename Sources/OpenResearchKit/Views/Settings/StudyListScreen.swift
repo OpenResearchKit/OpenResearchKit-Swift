@@ -129,7 +129,7 @@ public struct StudyRow: View {
             uploadFrequency: 0,
             apiKey: ""
         ),
-        introductorySurveyURL: URL(string: "https://one-sec.app/placeholder-survey"),
+        introductorySurveyURL: URL(string: "https://example.org/placeholder-survey"),
         participationIsPossible: true
     )
     
