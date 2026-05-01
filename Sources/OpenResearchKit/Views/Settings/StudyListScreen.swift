@@ -125,7 +125,7 @@ public struct StudyRow: View {
             )
         ),
         uploadConfiguration: .init(
-            fileSubmissionServer: URL(string: "https://example.org")!,
+            serverURL: URL(string: "https://example.org")!,
             uploadFrequency: 0,
             apiKey: ""
         ),

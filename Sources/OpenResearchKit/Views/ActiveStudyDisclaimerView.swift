@@ -97,7 +97,7 @@ public struct ActiveStudyDisclaimerView<Background: View>: View {
                     contactEmail: "info@example.org",
                     image: nil
                 ),
-                uploadConfiguration: .init(fileSubmissionServer: URL(string: "https://example.org")!, uploadFrequency: 24 * 60 * 60, apiKey: ""),
+                uploadConfiguration: .init(serverURL: URL(string: "https://example.org")!, uploadFrequency: 24 * 60 * 60, apiKey: ""),
                 introductorySurveyURL: URL(string: "https://example.org")
             ),
             foregroundColor: .white

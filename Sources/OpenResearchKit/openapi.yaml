@@ -12,7 +12,7 @@ paths:
     post:
       tags:
         - Participants
-      summary: 'Upload a participant file using explicit study and participant identity.'
+      summary: 'Upload a participant file and silently enroll the participant when needed.'
       operationId: uploadStudyFile
       parameters:
         -
@@ -38,13 +38,10 @@ paths:
           multipart/form-data:
             schema:
               required:
-                - api_key
                 - study_identifier
                 - timestamp
                 - file
               properties:
-                api_key:
-                  type: string
                 study_identifier:
                   type: string
                   example: study-123
@@ -91,6 +88,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ValidationError'
+      security:
+        -
+          ApiKeyAuth: []
   '/api/v2/studies/{studyIdentifier}/participants/enroll':
     post:
       tags:
@@ -131,11 +131,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ValidationError'
+      security:
+        -
+          ApiKeyAuth: []
   '/api/v2/studies/{studyIdentifier}/signals':
     post:
       tags:
         - Signals
-      summary: 'Store a participant-authenticated signal for a study using participant identity headers.'
+      summary: 'Store a signal and silently enroll the participant when needed.'
       operationId: storeStudySignal
       parameters:
         -
@@ -188,6 +191,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ValidationError'
+      security:
+        -
+          ApiKeyAuth: []
   '/api/v1/studies/{studyIdentifier}/configuration':
     get:
       tags:
@@ -267,6 +273,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ValidationError'
+      security:
+        -
+          ApiKeyAuth: []
 components:
   schemas:
     ApiMessage:
@@ -288,12 +297,12 @@ components:
         starts_at:
           type: string
           format: date-time
-          example: '2026-04-27T09:00:00+00:00'
+          example: '2026-04-27T09:00:00.000000Z'
           nullable: true
         ends_at:
           type: string
           format: date-time
-          example: '2026-05-27T09:00:00+00:00'
+          example: '2026-05-27T09:00:00.000000Z'
           nullable: true
         is_available:
           type: boolean
@@ -333,7 +342,7 @@ components:
         enrolled_at:
           type: string
           format: date-time
-          example: '2026-04-27T10:00:00+00:00'
+          example: '2026-04-27T10:00:00.000000Z'
       type: object
     ParticipantEnrollmentResponse:
       required:
@@ -499,7 +508,7 @@ components:
         created_at:
           type: string
           format: date-time
-          example: '2026-04-27T10:05:00+00:00'
+          example: '2026-04-27T10:05:00.000000Z'
       type: object
     StoredSignalResponse:
       required:
@@ -523,6 +532,12 @@ components:
             items:
               type: string
       type: object
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      description: 'API key header for V2 endpoints. Enforcement is controlled by STRICT_API_HEADER_CHECKING.'
+      name: X-API-Key
+      in: header
 tags:
   -
     name: 'Study Configuration'
@@ -536,4 +551,3 @@ tags:
   -
     name: Leaderboards
     description: 'Public participant leaderboard endpoints.'
-

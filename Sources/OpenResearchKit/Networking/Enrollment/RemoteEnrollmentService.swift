@@ -7,36 +7,41 @@
 
 import OSLog
 import Foundation
+import OpenAPIRuntime
 import OpenAPIURLSession
 
-public protocol EnrollmentService {
-    
-    func enroll(study: Study) async throws
-    
-}
 
 public class RemoteEnrollmentService: EnrollmentService {
-    
+
     private let client: Client
     private let logger: Logger = Logger(subsystem: "org.openresearchkit", category: "Enrollment")
-    
+
     public init(client: Client) {
         self.client = client
     }
-    
-    public init(serverURL: URL) {
-        self.client = Client(
-            serverURL: serverURL,
-            configuration: .init(dateTranscoder: .iso8601WithFractionalSeconds),
-            transport: URLSessionTransport(),
-            middlewares: [
-                AcceptLanguageMiddleware(),
-            ]
+
+    @available(*, deprecated, message: "Create a generated Client at app level and pass it to init(client:).")
+    public convenience init(
+        serverURL: URL,
+        apiKey: String,
+        transport: any ClientTransport = URLSessionTransport()
+    ) {
+        self.init(
+            client: Client(
+                baseURL: serverURL,
+                apiKey: apiKey,
+                transport: transport
+            )
         )
     }
-    
+
+    @available(*, deprecated, message: "Use init(serverURL:apiKey:) or pass a generated Client to init(client:).")
+    public convenience init(serverURL: URL) {
+        self.init(serverURL: serverURL, apiKey: "")
+    }
+
     public func enroll(study: Study) async throws {
-        
+
         let response = try await client.enrollParticipant(
             path: Operations.EnrollParticipant.Input.Path(
                 studyIdentifier: study.studyIdentifier
@@ -48,7 +53,7 @@ public class RemoteEnrollmentService: EnrollmentService {
                 )
             )
         )
-        
+
         switch response {
             case .ok(let data):
                 let enrolledAt = try data.body.json.participant.enrolledAt
@@ -63,7 +68,7 @@ public class RemoteEnrollmentService: EnrollmentService {
             case .undocumented(let statusCode, let payload):
                 self.logger.error("Failed with undocumented code \(statusCode): \(String(describing: payload.body))")
         }
-        
+
     }
-    
+
 }

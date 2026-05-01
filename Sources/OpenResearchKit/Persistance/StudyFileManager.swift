@@ -23,23 +23,46 @@ public enum StudyFileError: Error {
     case notRegularFile
     case wrongSourceDirectory // e.g. trying to transfer from upload -> upload
     case cannotDetermineRelativePath
+    case cannotDetermineUploadTimestamp
+    case duplicateUploadFileNames(timestamp: String, fileNames: [String])
+    case flatUploadFileFound(URL)
+    case invalidUploadBatchDirectory(URL)
 }
 
 public class StudyFileManager {
-    
-    public static let shared = StudyFileManager()
-    
+
     public init(
         studiesProvider: @escaping @MainActor @Sendable () -> [Study] = {
             StudyRegistry.shared.studies
-        }
+        },
+        uploader: StudyDataUploader
     ) {
         self.studiesProvider = studiesProvider
+        self.uploader = uploader
     }
-    
+
     private let studiesProvider: @MainActor @Sendable () -> [Study]
     private let fileManager: FileManager = .default
-    
+    private let uploader: StudyDataUploader
+
+    internal static func uploadTimestampString(from date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyyyMMdd_HHmmss"
+        return formatter.string(from: date)
+    }
+
+    public func uploadBatchDirectory(study: Study, date: Date? = nil) throws -> URL {
+        let timestamp = Self.uploadTimestampString(from: date ?? study.dateGenerator.generate())
+        let directory = study.studyDirectory(type: .upload)
+            .appendingPathComponent(timestamp, isDirectory: true)
+
+        try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+
+        return directory
+    }
+
     /// Deletes all files present in the study directory (either the `upload` or the `working` directory).
     public func deleteAllFiles(study: any UploadsStudyData, type: StudyDataDirectoryType) throws {
         
@@ -69,14 +92,14 @@ public class StudyFileManager {
         overwrite: Bool = true,
         includeHiddenFiles: Bool = false
     ) throws {
-        
+
         let workingDir = study.studyDirectory(type: .working)
-        let uploadDir  = study.studyDirectory(type: .upload)
-        
-        Logger.research.info("Transferring files (\(mode == .move ? "move" : "copy")) from working → upload for study \(study.studyIdentifier).")
-        
+        let uploadDir = try uploadBatchDirectory(study: study)
+
+        Logger.research.info("Transferring files (\(mode == .move ? "move" : "copy")) from working → upload batch \(uploadDir.lastPathComponent, privacy: .public) for study \(study.studyIdentifier, privacy: .public).")
+
         let items = try fileManager.contentsOfDirectory(at: workingDir, includingPropertiesForKeys: [.isRegularFileKey], options: [])
-        
+
         for source in items {
             // Skip non-regular files and (optionally) hidden files
             let values = try source.resourceValues(forKeys: [.isRegularFileKey, .isHiddenKey])
@@ -117,8 +140,8 @@ public class StudyFileManager {
         overwrite: Bool = true
     ) throws {
         let workingDir = study.studyDirectory(type: .working)
-        let uploadDir  = study.studyDirectory(type: .upload)
-        
+        let uploadDir  = try uploadBatchDirectory(study: study)
+
         // Resolve symlinks/standardization to harden the containment check
         let src = source.resolvingSymlinksInPath().standardizedFileURL
         
@@ -176,13 +199,19 @@ public class StudyFileManager {
     // MARK: - Uploading -
     
     public func upload(study: Study, file: URL) async throws {
-        
-        // Upload the study health data to the one sec study backend
-        try await StudyDataUploader.shared.uploadFile(
+        let timestamp = try uploadTimestamp(for: file, study: study)
+        try await upload(study: study, file: file, timestamp: timestamp)
+    }
+
+    private func upload(study: Study, file: URL, timestamp: String) async throws {
+
+        // Upload the study data to the configured study backend.
+        try await uploader.uploadFile(
             filePath: file,
-            uploadConfiguration: study.uploadConfiguration,
             studyIdentifier: study.studyIdentifier,
             userIdentifier: study.userIdentifier,
+            publicUserIdentifier: study.publicUserIdentifier,
+            timestamp: timestamp,
             fileName: file.lastPathComponent
         )
         
@@ -196,25 +225,31 @@ public class StudyFileManager {
     public func uploadStudyFolder(study: Study) async throws {
         
         let uploadDirectory = study.studyDirectory(type: .upload)
-        
-        let items = try FileManager.default.contentsOfDirectory(at: uploadDirectory, includingPropertiesForKeys: [.isRegularFileKey], options: [])
-        
-        for source in items {
-            
-            // Skip non-regular files and (optionally) hidden files
-            let values = try source.resourceValues(forKeys: [.isRegularFileKey, .isHiddenKey])
-            guard values.isRegularFile == true else { continue }
-            
-            if values.isHidden == true { continue }
-            
-            Logger.research.info("Uploading file '\(source.absoluteString)' of study '\(study.studyIdentifier)'.")
-            
-            try await upload(study: study, file: source)
-            
+        let batchDirectories = try uploadBatchDirectories(in: uploadDirectory)
+        var didUploadFile = false
+
+        for batchDirectory in batchDirectories {
+            let timestamp = batchDirectory.lastPathComponent
+            let files = try uploadableFiles(in: batchDirectory)
+
+            try validateUniqueUploadFileNames(files: files, timestamp: timestamp)
+
+            for source in files {
+                Logger.research.info("Uploading file '\(source.absoluteString)' of study '\(study.studyIdentifier)' from batch '\(timestamp, privacy: .public)'.")
+
+                try await upload(study: study, file: source, timestamp: timestamp)
+                didUploadFile = true
+            }
+
+            try removeEmptyDirectories(under: batchDirectory)
+
         }
-        
-        try await study.didUploadStudyFolder()
-        
+
+        if didUploadFile {
+            study.markUploadSuccessful()
+            try await study.didUploadStudyFolder()
+        }
+
     }
     
     /// Using this assumes that all data residing in the upload directory was already consented for sharing.
@@ -238,22 +273,9 @@ public class StudyFileManager {
         let uploadDir = study.studyDirectory(type: .upload)
         
         do {
-            
-            let items = try fileManager.contentsOfDirectory(
-                at: uploadDir,
-                includingPropertiesForKeys: [.isRegularFileKey],
-                options: []
-            )
-            
-            for item in items {
-                let values = try item.resourceValues(forKeys: [.isRegularFileKey, .isHiddenKey])
-                if values.isRegularFile == true, values.isHidden != true {
-                    return false // found a visible, regular file
-                }
-            }
-            
-            return true
-            
+
+            return try uploadableFiles(in: uploadDir).isEmpty
+
         } catch {
             
             Logger.research.error("Failed to check upload folder for study \(study.studyIdentifier): \(String(describing: error), privacy: .public)")
@@ -288,5 +310,144 @@ public class StudyFileManager {
         let vals = try url.resourceValues(forKeys: [.isRegularFileKey, .isDirectoryKey])
         return vals.isRegularFile == true && vals.isDirectory != true
     }
-    
+
+    private func isDirectory(_ url: URL) throws -> Bool {
+        let vals = try url.resourceValues(forKeys: [.isDirectoryKey])
+        return vals.isDirectory == true
+    }
+
+    private func uploadTimestamp(for file: URL, study: Study) throws -> String {
+        let uploadDirectory = study.studyDirectory(type: .upload)
+
+        guard let relativePath = relativePath(of: file, from: uploadDirectory) else {
+            throw StudyFileError.notInStudyDirectory
+        }
+
+        guard let timestamp = relativePath.split(separator: "/").first.map(String.init) else {
+            throw StudyFileError.cannotDetermineUploadTimestamp
+        }
+
+        guard isCanonicalUploadTimestamp(timestamp) else {
+            throw StudyFileError.invalidUploadBatchDirectory(file.deletingLastPathComponent())
+        }
+
+        return timestamp
+    }
+
+    private func uploadBatchDirectories(in uploadDirectory: URL) throws -> [URL] {
+        let items = try fileManager.contentsOfDirectory(
+            at: uploadDirectory,
+            includingPropertiesForKeys: [.isDirectoryKey, .isRegularFileKey, .isHiddenKey],
+            options: []
+        )
+
+        var directories: [URL] = []
+
+        for item in items {
+            let values = try item.resourceValues(forKeys: [.isDirectoryKey, .isRegularFileKey, .isHiddenKey])
+
+            if values.isHidden == true {
+                continue
+            }
+
+            if values.isRegularFile == true {
+                throw StudyFileError.flatUploadFileFound(item)
+            }
+
+            guard values.isDirectory == true else {
+                continue
+            }
+
+            guard isCanonicalUploadTimestamp(item.lastPathComponent) else {
+                throw StudyFileError.invalidUploadBatchDirectory(item)
+            }
+
+            directories.append(item)
+        }
+
+        return directories.sorted { $0.lastPathComponent < $1.lastPathComponent }
+    }
+
+    private func uploadableFiles(in directory: URL) throws -> [URL] {
+        guard fileManager.fileExists(atPath: directory.path) else {
+            return []
+        }
+
+        if try isRegularFile(directory) {
+            return [directory]
+        }
+
+        guard try isDirectory(directory) else {
+            return []
+        }
+
+        guard let enumerator = fileManager.enumerator(
+            at: directory,
+            includingPropertiesForKeys: [.isRegularFileKey, .isDirectoryKey, .isHiddenKey],
+            options: [.skipsHiddenFiles]
+        ) else {
+            return []
+        }
+
+        var files: [URL] = []
+
+        for case let url as URL in enumerator {
+            if try isRegularFile(url) {
+                files.append(url)
+            }
+        }
+
+        return files.sorted { $0.path < $1.path }
+    }
+
+    private func validateUniqueUploadFileNames(files: [URL], timestamp: String) throws {
+        let grouped = Dictionary(grouping: files, by: \.lastPathComponent)
+        let duplicates = grouped
+            .filter { $0.value.count > 1 }
+            .map(\.key)
+            .sorted()
+
+        if !duplicates.isEmpty {
+            throw StudyFileError.duplicateUploadFileNames(timestamp: timestamp, fileNames: duplicates)
+        }
+    }
+
+    private func isCanonicalUploadTimestamp(_ timestamp: String) -> Bool {
+        let pattern = #"^\d{8}_\d{6}$"#
+        return timestamp.range(of: pattern, options: .regularExpression) != nil
+    }
+
+    private func removeEmptyDirectories(under directory: URL) throws {
+        guard fileManager.fileExists(atPath: directory.path) else {
+            return
+        }
+
+        guard let enumerator = fileManager.enumerator(
+            at: directory,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles]
+        ) else {
+            return
+        }
+
+        let directories = enumerator
+            .compactMap { $0 as? URL }
+            .filter { (try? isDirectory($0)) == true }
+            .sorted { $0.path.count > $1.path.count }
+
+        for childDirectory in directories {
+            if try isDirectoryEmpty(childDirectory) {
+                try fileManager.removeItem(at: childDirectory)
+            }
+        }
+
+        if try isDirectoryEmpty(directory) {
+            try fileManager.removeItem(at: directory)
+        }
+    }
+
+    private func isDirectoryEmpty(_ directory: URL) throws -> Bool {
+        try fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil, options: []).isEmpty
+    }
+
 }

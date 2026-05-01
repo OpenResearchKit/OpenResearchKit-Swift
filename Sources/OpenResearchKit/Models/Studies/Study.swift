@@ -18,8 +18,19 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
     public let introductorySurveyURL: URL?
     public var participationIsPossible: Bool
     public let sharedAppGroupIdentifier: String?
-    public let studyFileManager: StudyFileManager
     public var additionalQueryItems: (SurveyType) -> [URLQueryItem] = { _ in [] }
+    
+    lazy var client: Client = {
+        Client(baseURL: uploadConfiguration.serverURL, apiKey: uploadConfiguration.apiKey)
+    }()
+    
+    lazy var uploader: StudyDataUploader = {
+        StudyDataUploader(client: client)
+    }()
+    
+    lazy var studyFileManager: StudyFileManager = {
+        StudyFileManager(uploader: uploader)
+    }()
     
     public init(
         studyIdentifier: String,
@@ -28,7 +39,6 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
         introductorySurveyURL: URL?,
         participationIsPossible: Bool = true,
         sharedAppGroupIdentifier: String? = nil,
-        studyFileManager: StudyFileManager = .shared,
         additionalQueryItems: @escaping (SurveyType) -> [URLQueryItem] = { _ in [] }
     ) {
         self.studyIdentifier = studyIdentifier
@@ -39,7 +49,6 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
         self.introductorySurveyURL = introductorySurveyURL
         self.participationIsPossible = participationIsPossible
         self.sharedAppGroupIdentifier = sharedAppGroupIdentifier
-        self.studyFileManager = studyFileManager
         self.additionalQueryItems = additionalQueryItems
     }
     
@@ -498,69 +507,58 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
         if isActive {
             return uploadConfiguration.isUploadDue(lastUpload: lastSuccessfulUploadDate)
         }
-        
+
         return false
-        
+
     }
-    
+
     open func uploadIfNecessary() {
-        
+
         if shouldUpload() {
-            self.uploadJSON()
+            do {
+                try self.copyMainJSONToUpload()
+            } catch {
+                Logger.research.error("Failed to stage main JSON for upload of study \(self.studyIdentifier): \(String(describing: error), privacy: .public)")
+            }
+
+            Task {
+                do {
+                    try await self.studyFileManager.uploadStudyFolder(study: self)
+                } catch {
+                    Logger.research.error("Failed to upload files for study \(self.studyIdentifier): \(String(describing: error), privacy: .public)")
+                }
+            }
         }
-        
+
     }
-    
+
     public var lastSuccessfulUploadDate: Date? {
         return store.get(Study.Keys.LastSuccessfulUploadDate, type: Date.self)
     }
-    
-    internal func uploadJSON() {
-        
-        StudyDataUploader.shared.uploadJSON(
-            filePath: jsonDataFilePath,
-            uploadConfiguration: uploadConfiguration,
-            userIdentifier: userIdentifier,
-            fileName: mainFileName
-        ) { (result: Result<Void, any Error>) in
-            
-            switch result {
-                    
-                case .success(_):
-                    DispatchQueue.main.async {
-                        self.updateUploadDate()
-                    }
-                    
-                case .failure(let error):
-                    print(error)
-                    
-            }
-            
-        }
-        
-    }
-    
+
     internal func updateUploadDate(newDate: Date? = nil) {
-        
+
         let date = newDate ?? dateGenerator.generate()
-        
+
         store.update(Study.Keys.LastSuccessfulUploadDate, value: date)
         publishChangesOnMain()
-        
+
     }
-    
+
     public func markUploadSuccessful(newDate: Date? = nil) {
         self.updateUploadDate(newDate: newDate)
     }
-    
+
     public func copyMainJSONToUpload() throws {
-        
+
         let fileManager = FileManager.default
-        let destination = self.studyDirectory(type: .upload).appendingPathComponent(mainFileName)
-        
+        let destination = try studyFileManager
+            .uploadBatchDirectory(study: self)
+            .appendingPathComponent(mainFileName)
+
         // Check that the main json file already exists
         if fileManager.fileExists(atPath: jsonDataFilePath.path) {
-            
+
             // If a file with the same name already exists in the folder, we delete it first
             if fileManager.fileExists(atPath: destination.path) {
                 try fileManager.removeItem(at: destination)

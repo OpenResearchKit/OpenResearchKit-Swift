@@ -21,7 +21,6 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
         concludingSurveyURL: URL?,
         participationIsPossible: Bool = true,
         sharedAppGroupIdentifier: String? = nil,
-        studyFileManager: StudyFileManager = .shared,
         additionalQueryItems: @escaping (SurveyType) -> [URLQueryItem] = { _ in [] }
     ) {
         self.duration = duration
@@ -34,7 +33,6 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
             introductorySurveyURL: introductorySurveyURL,
             participationIsPossible: participationIsPossible,
             sharedAppGroupIdentifier: sharedAppGroupIdentifier,
-            studyFileManager: studyFileManager,
             additionalQueryItems: additionalQueryItems
         )
     }

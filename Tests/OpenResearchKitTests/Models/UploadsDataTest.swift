@@ -17,6 +17,7 @@ class UploadsDataTest: XCTestCase {
         // Arrange
         let studyID = "test"
         let study = TestStudy.makeStudy(id: studyID)
+        study.dateGenerator = FixedDateGenerator(date: fixedUploadDate())
 
         // Create some JSON data in the main file
         let testData = [
@@ -35,7 +36,9 @@ class UploadsDataTest: XCTestCase {
 
         // Assert
         let expectedFileName = "study-\(studyID)-\(study.userIdentifier).json"
-        let expectedFilePath = uploadDir.appendingPathComponent(expectedFileName)
+        let expectedFilePath = uploadDir
+            .appendingPathComponent("20260428_120000", isDirectory: true)
+            .appendingPathComponent(expectedFileName)
 
         XCTAssertTrue(
             FileManager.default.fileExists(atPath: expectedFilePath.path),
@@ -68,6 +71,7 @@ class UploadsDataTest: XCTestCase {
         
         let studyID = "OverwriteStudy-\(UUID().uuidString)"
         let study = TestStudy.makeStudy(id: studyID)
+        study.dateGenerator = FixedDateGenerator(date: fixedUploadDate())
         study.saveUserConsentHasBeenGiven {}
 
         // Create initial data
@@ -87,7 +91,9 @@ class UploadsDataTest: XCTestCase {
         // Assert
         let uploadDir = study.studyDirectory(type: .upload)
         let expectedFileName = "study-\(studyID)-\(study.userIdentifier).json"
-        let expectedFilePath = uploadDir.appendingPathComponent(expectedFileName)
+        let expectedFilePath = uploadDir
+            .appendingPathComponent("20260428_120000", isDirectory: true)
+            .appendingPathComponent(expectedFileName)
 
         let uploadedData = try Data(contentsOf: expectedFilePath)
         let uploadedJSON = try JSONSerialization.jsonObject(with: uploadedData) as? [[String: Any]]
@@ -260,6 +266,90 @@ class UploadsDataTest: XCTestCase {
         XCTAssertTrue(isDirectory.boolValue)
     }
 
+    func testUploadTimestampString_UsesUTCPosixFormat() throws {
+        XCTAssertEqual(
+            StudyFileManager.uploadTimestampString(from: fixedUploadDate()),
+            "20260428_120000"
+        )
+    }
+
+    func testTransferWorkingToUpload_PlacesFilesInTimestampDirectory() throws {
+        let studyID = "TransferStudy-\(UUID().uuidString)"
+        let study = TestStudy.makeStudy(id: studyID)
+        study.dateGenerator = FixedDateGenerator(date: fixedUploadDate())
+
+        let workingDir = study.studyDirectory(type: .working)
+        let uploadDir = study.studyDirectory(type: .upload)
+        removeDirectoryIfExists(workingDir)
+        removeDirectoryIfExists(uploadDir)
+
+        try FileManager.default.createDirectory(at: workingDir, withIntermediateDirectories: true)
+        let source = workingDir.appendingPathComponent("event.json")
+        try Data(#"{"event":"test"}"#.utf8).write(to: source)
+
+        try study.studyFileManager.transferWorkingToUpload(study: study, mode: .move)
+
+        let destination = uploadDir
+            .appendingPathComponent("20260428_120000", isDirectory: true)
+            .appendingPathComponent("event.json")
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: source.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: destination.path))
+    }
+
+    func testIsUploadFolderEmpty_ChecksTimestampDirectoriesRecursively() throws {
+        let studyID = "RecursiveUploadStudy-\(UUID().uuidString)"
+        let study = TestStudy.makeStudy(id: studyID)
+        let uploadDir = study.studyDirectory(type: .upload)
+        removeDirectoryIfExists(uploadDir)
+
+        XCTAssertTrue(study.studyFileManager.isUploadFolderEmpty(study: study))
+
+        let nestedFile = uploadDir
+            .appendingPathComponent("20260428_120000", isDirectory: true)
+            .appendingPathComponent("nested", isDirectory: true)
+            .appendingPathComponent("event.json")
+
+        try FileManager.default.createDirectory(
+            at: nestedFile.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try Data("{}".utf8).write(to: nestedFile)
+
+        XCTAssertFalse(study.studyFileManager.isUploadFolderEmpty(study: study))
+    }
+
+    func testUploadStudyFolder_RejectsDuplicateFileNamesWithinBatch() async throws {
+        let studyID = "DuplicateUploadStudy-\(UUID().uuidString)"
+        let study = TestStudy.makeStudy(id: studyID)
+        let uploadDir = study.studyDirectory(type: .upload)
+        removeDirectoryIfExists(uploadDir)
+
+        let first = uploadDir
+            .appendingPathComponent("20260428_120000", isDirectory: true)
+            .appendingPathComponent("a", isDirectory: true)
+            .appendingPathComponent("event.json")
+        let second = uploadDir
+            .appendingPathComponent("20260428_120000", isDirectory: true)
+            .appendingPathComponent("b", isDirectory: true)
+            .appendingPathComponent("event.json")
+
+        try FileManager.default.createDirectory(at: first.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: second.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("first".utf8).write(to: first)
+        try Data("second".utf8).write(to: second)
+
+        do {
+            try await study.studyFileManager.uploadStudyFolder(study: study)
+            XCTFail("Expected duplicate upload file names to throw.")
+        } catch StudyFileError.duplicateUploadFileNames(let timestamp, let fileNames) {
+            XCTAssertEqual(timestamp, "20260428_120000")
+            XCTAssertEqual(fileNames, ["event.json"])
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
     // MARK: - File Management Tests
 
     func testJSONFile_ReturnsEmptyArrayWhenNoFileExists() {
@@ -298,7 +388,7 @@ class UploadsDataTest: XCTestCase {
     func testResetLocalJSONFile_NotThrowsWhenFileDoesNotExist() {
         // Arrange
         let study = TestStudy.makeStudy()
-        
+
         // Act & Assert
         XCTAssertNoThrow(removeFileIfExists(study.jsonDataFilePath), "If no file is to be deleted, handle it gracefully.")
     }
@@ -324,6 +414,19 @@ class UploadsDataTest: XCTestCase {
         if fm.fileExists(atPath: url.path, isDirectory: &isDirectory) && isDirectory.boolValue {
             try? fm.removeItem(at: url)
         }
+    }
+
+    private func fixedUploadDate() -> Date {
+        var components = DateComponents()
+        components.calendar = Calendar(identifier: .gregorian)
+        components.timeZone = TimeZone(secondsFromGMT: 0)
+        components.year = 2026
+        components.month = 4
+        components.day = 28
+        components.hour = 12
+        components.minute = 0
+        components.second = 0
+        return components.date!
     }
 }
 
@@ -380,7 +483,7 @@ extension UploadsDataTest {
 
         func setUploadConfiguration(frequency: TimeInterval) {
             _uploadConfiguration = UploadConfiguration(
-                fileSubmissionServer: URL(string: "https://test.example.com/upload")!,
+                serverURL: URL(string: "https://test.example.com/upload")!,
                 uploadFrequency: frequency,
                 apiKey: "TEST_API_KEY"
             )
@@ -395,7 +498,7 @@ extension UploadsDataTest {
             )
 
             let uploadConfig = UploadConfiguration(
-                fileSubmissionServer: URL(string: "https://test.example.com/upload")!,
+                serverURL: URL(string: "https://test.example.com/upload")!,
                 uploadFrequency: 3600,
                 apiKey: "TEST_API_KEY"
             )
@@ -408,6 +511,14 @@ extension UploadsDataTest {
                 participationIsPossible: true,
                 additionalQueryItems: { _ in [] }
             )
+        }
+    }
+
+    private struct FixedDateGenerator: DateGenerator {
+        let date: Date
+
+        func generate() -> Date {
+            date
         }
     }
 

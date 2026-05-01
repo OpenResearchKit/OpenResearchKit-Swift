@@ -163,7 +163,7 @@ final class StudyRegistryTests: XCTestCase {
                 image: nil
             ),
             uploadConfiguration: UploadConfiguration(
-                fileSubmissionServer: URL(string: "https://example.com/upload")!,
+                serverURL: URL(string: "https://example.com/upload")!,
                 uploadFrequency: 3600,
                 apiKey: "TEST_API_KEY"
             ),
@@ -188,7 +188,7 @@ final class StudyRegistryTests: XCTestCase {
                 image: nil
             ),
             uploadConfiguration: UploadConfiguration(
-                fileSubmissionServer: URL(string: "https://example.com/upload")!,
+                serverURL: URL(string: "https://example.com/upload")!,
                 uploadFrequency: 3600,
                 apiKey: "TEST_API_KEY"
             ),

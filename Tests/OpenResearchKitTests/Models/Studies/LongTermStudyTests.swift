@@ -11,7 +11,7 @@ import XCTest
 extension UploadConfiguration {
     
     static let dummy: UploadConfiguration = .init(
-        fileSubmissionServer: URL(string: "https://example.org/upload")!,
+        serverURL: URL(string: "https://example.org/upload")!,
         uploadFrequency: 60 * 60 * 24,
         apiKey: ""
     )
@@ -213,7 +213,7 @@ final class LongTermStudyTests: XCTestCase {
     // MARK: - Test helpers
     
     private let uploadConfiguration = UploadConfiguration(
-        fileSubmissionServer: URL(string: "https://example.com/upload")!,
+        serverURL: URL(string: "https://example.com/upload")!,
         uploadFrequency: 60,
         apiKey: "test"
     )
