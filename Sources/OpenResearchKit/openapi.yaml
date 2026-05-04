@@ -32,6 +32,78 @@ paths:
             type: string
             example: participant-123
             nullable: true
+        -
+          name: Client-Version
+          in: header
+          description: 'Optional client application version.'
+          required: false
+          schema:
+            type: string
+            example: 1.4.2
+            nullable: true
+        -
+          name: Client-Build
+          in: header
+          description: 'Optional client application build number.'
+          required: false
+          schema:
+            type: string
+            example: '1482'
+            nullable: true
+        -
+          name: Client-Platform
+          in: header
+          description: 'Optional client platform.'
+          required: false
+          schema:
+            type: string
+            example: iOS
+            nullable: true
+        -
+          name: Client-OS-Version
+          in: header
+          description: 'Optional operating system version.'
+          required: false
+          schema:
+            type: string
+            example: '18.4'
+            nullable: true
+        -
+          name: Client-Device-Model
+          in: header
+          description: 'Optional device model.'
+          required: false
+          schema:
+            type: string
+            example: iPhone16,2
+            nullable: true
+        -
+          name: Client-Timezone
+          in: header
+          description: 'Optional IANA timezone used to derive the client timestamp as UTC.'
+          required: false
+          schema:
+            type: string
+            example: Europe/Berlin
+            nullable: true
+        -
+          name: Client-Locale
+          in: header
+          description: 'Optional primary client locale.'
+          required: false
+          schema:
+            type: string
+            example: de-DE
+            nullable: true
+        -
+          name: Client-Locales
+          in: header
+          description: 'Optional ordered client locale list.'
+          required: false
+          schema:
+            type: string
+            example: 'de-DE,en-US'
+            nullable: true
       requestBody:
         required: true
         content:

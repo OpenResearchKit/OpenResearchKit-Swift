@@ -16,7 +16,21 @@ final class StudyDataUploaderV2Tests: XCTestCase {
 
     func testUploadFile_UsesGeneratedV2RequestWithHeadersAndTimestamp() async throws {
         let state = RecordingTransportState()
-        let uploader = StudyDataUploader(client: makeClient(state: state))
+        let uploader = StudyDataUploader(
+            client: makeClient(state: state),
+            clientMetadataProvider: {
+                StudyUploadClientMetadata(
+                    clientVersion: "1.4.2",
+                    clientBuild: "1482",
+                    clientPlatform: "iOS",
+                    clientOSVersion: "18.4",
+                    clientDeviceModel: "iPhone16,2",
+                    clientTimezone: "Europe/Berlin",
+                    clientLocale: "de-DE",
+                    clientLocales: "de-DE,en-US"
+                )
+            }
+        )
         let file = try makeTemporaryFile(name: "upload.json", contents: #"{"ok":true}"#)
 
         try await uploader.uploadFile(
@@ -38,6 +52,14 @@ final class StudyDataUploaderV2Tests: XCTestCase {
         XCTAssertEqual(recordedRequest.request.headerFields[HTTPField.Name("X-API-Key")!], "secret-key")
         XCTAssertEqual(recordedRequest.request.headerFields[HTTPField.Name("Participant-Identifier")!], "study-123-user")
         XCTAssertEqual(recordedRequest.request.headerFields[HTTPField.Name("Participant-Public-Identifier")!], "participant-123")
+        XCTAssertEqual(recordedRequest.request.headerFields[HTTPField.Name("Client-Version")!], "1.4.2")
+        XCTAssertEqual(recordedRequest.request.headerFields[HTTPField.Name("Client-Build")!], "1482")
+        XCTAssertEqual(recordedRequest.request.headerFields[HTTPField.Name("Client-Platform")!], "iOS")
+        XCTAssertEqual(recordedRequest.request.headerFields[HTTPField.Name("Client-OS-Version")!], "18.4")
+        XCTAssertEqual(recordedRequest.request.headerFields[HTTPField.Name("Client-Device-Model")!], "iPhone16,2")
+        XCTAssertEqual(recordedRequest.request.headerFields[HTTPField.Name("Client-Timezone")!], "Europe/Berlin")
+        XCTAssertEqual(recordedRequest.request.headerFields[HTTPField.Name("Client-Locale")!], "de-DE")
+        XCTAssertEqual(recordedRequest.request.headerFields[HTTPField.Name("Client-Locales")!], "de-DE,en-US")
         XCTAssertTrue(bodyString.contains("name=\"study_identifier\""))
         XCTAssertTrue(bodyString.contains("study-123"))
         XCTAssertTrue(bodyString.contains("name=\"timestamp\""))
@@ -145,6 +167,33 @@ final class StudyDataUploaderV2Tests: XCTestCase {
             responseBody: #"{"message":"Unexpected upload response."}"#,
             expectedCode: 418
         )
+    }
+
+    func testHeaderMiddlewareDecodesGeneratedHeaderValuesForAnyOperation() async throws {
+        let middleware = GeneratedHeaderParameterDecodingMiddleware()
+        var request = HTTPRequest(
+            method: .post,
+            url: URL(string: "https://research.example.com/api/v2/studies/study-123/signals")!
+        )
+        request.headerFields[HTTPField.Name("Participant-Public-Identifier")!] = "participant%2Fwith%2Fslash"
+        request.headerFields[HTTPField.Name("Client-Timezone")!] = "Europe%2FBerlin"
+        var capturedRequest: HTTPRequest?
+
+        _ = try await middleware.intercept(
+            request,
+            body: nil,
+            baseURL: URL(string: "https://research.example.com")!,
+            operationID: Operations.StoreStudySignal.id,
+            next: { request, _, _ in
+                capturedRequest = request
+                return (HTTPResponse(status: .ok), nil)
+            }
+        )
+
+        let decodedRequest = try XCTUnwrap(capturedRequest)
+
+        XCTAssertEqual(decodedRequest.headerFields[HTTPField.Name("Participant-Public-Identifier")!], "participant/with/slash")
+        XCTAssertEqual(decodedRequest.headerFields[HTTPField.Name("Client-Timezone")!], "Europe/Berlin")
     }
 
     private func assertUploadMapsStatus(

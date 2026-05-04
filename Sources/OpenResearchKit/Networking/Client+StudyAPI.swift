@@ -25,6 +25,7 @@ public extension Client {
                 APIKeyMiddleware(apiKeyGenerator: {
                     apiKey ?? ""
                 }),
+                GeneratedHeaderParameterDecodingMiddleware(),
             ]
         )
     }

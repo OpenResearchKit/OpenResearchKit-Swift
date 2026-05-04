@@ -13,9 +13,16 @@ import OpenAPIURLSession
 public class StudyDataUploader {
 
     private let client: Client
+    private let clientMetadataProvider: () -> StudyUploadClientMetadata
 
-    internal init(client: Client) {
+    internal init(
+        client: Client,
+        clientMetadataProvider: @escaping () -> StudyUploadClientMetadata = {
+            StudyUploadClientMetadata.current()
+        }
+    ) {
         self.client = client
+        self.clientMetadataProvider = clientMetadataProvider
     }
     
     // MARK: - General File Upload -
@@ -47,10 +54,19 @@ public class StudyDataUploader {
                 ),
             ]
 
+            let clientMetadata = clientMetadataProvider()
             let response = try await client.uploadStudyFile(
                 headers: .init(
                     participantIdentifier: userIdentifier,
-                    participantPublicIdentifier: publicUserIdentifier
+                    participantPublicIdentifier: publicUserIdentifier,
+                    clientVersion: clientMetadata.clientVersion,
+                    clientBuild: clientMetadata.clientBuild,
+                    clientPlatform: clientMetadata.clientPlatform,
+                    clientOSVersion: clientMetadata.clientOSVersion,
+                    clientDeviceModel: clientMetadata.clientDeviceModel,
+                    clientTimezone: clientMetadata.clientTimezone,
+                    clientLocale: clientMetadata.clientLocale,
+                    clientLocales: clientMetadata.clientLocales
                 ),
                 body: .multipartForm(multipartBody)
             )
