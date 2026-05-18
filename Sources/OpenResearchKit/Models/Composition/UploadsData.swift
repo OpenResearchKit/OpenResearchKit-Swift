@@ -20,4 +20,6 @@ public protocol UploadsStudyData: GeneralStudy {
     
     func studyDirectory(type: StudyDataDirectoryType) -> URL
     
+    func uploadRemainingPendingFiles() async throws
+    
 }

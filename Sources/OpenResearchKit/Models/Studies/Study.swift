@@ -573,6 +573,10 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
         
     }
     
+    public func uploadRemainingPendingFiles() async throws {
+        try await studyFileManager.uploadStudyFolder(study: self)
+    }
+    
     // MARK: - HasTerminationSurvey
     
     open var terminationBannerView: AnyView {
