@@ -137,7 +137,7 @@ class DataDonationStudyTests: XCTestCase {
             )
             
             let uploadConfig = UploadConfiguration(
-                fileSubmissionServer: URL(string: "https://example.com/upload")!,
+                serverURL: URL(string: "https://example.com/upload")!,
                 uploadFrequency: 3600,
                 apiKey: "TEST_API_KEY"
             )

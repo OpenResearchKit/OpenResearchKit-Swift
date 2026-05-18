@@ -125,11 +125,11 @@ public struct StudyRow: View {
             )
         ),
         uploadConfiguration: .init(
-            fileSubmissionServer: URL(string: "https://example.org")!,
+            serverURL: URL(string: "https://example.org")!,
             uploadFrequency: 0,
             apiKey: ""
         ),
-        introductorySurveyURL: URL(string: "https://one-sec.app/placeholder-survey"),
+        introductorySurveyURL: URL(string: "https://example.org/placeholder-survey"),
         participationIsPossible: true
     )
     

@@ -7,18 +7,16 @@
 
 
 import Foundation
-import UIKit
-import SwiftUI
 
 public struct UploadConfiguration {
-    
-    public let fileSubmissionServer: URL
+
     public let uploadFrequency: TimeInterval
-    public let apiKey: String
-    
-    public init(fileSubmissionServer: URL, uploadFrequency: TimeInterval, apiKey: String) {
-        self.fileSubmissionServer = fileSubmissionServer
+    public let serverURL: URL
+    public let apiKey: String?
+
+    public init(serverURL: URL, uploadFrequency: TimeInterval, apiKey: String) {
         self.uploadFrequency = uploadFrequency
+        self.serverURL = serverURL
         self.apiKey = apiKey
     }
     
@@ -28,5 +26,5 @@ public struct UploadConfiguration {
         }
         return false
     }
-    
+
 }

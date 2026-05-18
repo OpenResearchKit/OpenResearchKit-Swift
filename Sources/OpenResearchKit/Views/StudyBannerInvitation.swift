@@ -193,7 +193,7 @@ fileprivate let study = DataDonationStudy(
         )!
     ),
     uploadConfiguration: UploadConfiguration(
-        fileSubmissionServer: URL(string: "https://example.org")!,
+        serverURL: URL(string: "https://example.org")!,
         uploadFrequency: 60 * 60 * 24,
         apiKey: "some-api-key"
     ),

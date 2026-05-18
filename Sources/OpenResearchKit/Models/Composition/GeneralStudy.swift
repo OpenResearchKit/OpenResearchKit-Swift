@@ -73,6 +73,18 @@ extension GeneralStudy {
         
     }
     
+    public internal(set) var publicUserIdentifier: String? {
+        
+        get {
+            return store.get(Study.Keys.PublicUserIdentifier, type: String.self)
+        }
+        set {
+            store.update(Study.Keys.PublicUserIdentifier, value: newValue)
+            publishChangesOnMain()
+        }
+        
+    }
+    
     public var userConsentDate: Date? {
         store.get(Study.Keys.UserConsentDate, type: Date.self)
     }

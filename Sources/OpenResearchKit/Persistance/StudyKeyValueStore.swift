@@ -9,6 +9,10 @@ import Foundation
 
 typealias OpenResearchDefaults = [String: [String: Any]]
 
+public enum StudyKeyValueStoreError: Error, Equatable {
+    case storedValueIsNotData(key: String)
+}
+
 /// A lightweight wrapper around `UserDefaults` that persists **per-study** values
 /// under a shared top-level dictionary (`"open_research_kit"`).
 ///
@@ -65,6 +69,34 @@ public final class StudyKeyValueStore {
     public func get<T>(_ key: String, type: T.Type) -> T? {
         return values()[key] as? T
     }
+
+    /// Reads and decodes a Codable value for a given key from this study's values.
+    ///
+    /// Codable values are stored as `Data` so they remain compatible with
+    /// `UserDefaults` property-list storage.
+    /// - Parameters:
+    ///   - key: The value key inside the study dictionary.
+    ///   - type: The Codable type to decode.
+    ///   - decoder: The JSON decoder to use. Defaults to a plain `JSONDecoder`.
+    /// - Returns: The decoded value if present, otherwise `nil`.
+    /// - Throws: `StudyKeyValueStoreError.storedValueIsNotData` when the key
+    ///           exists but does not contain `Data`, or any decoding error from
+    ///           the supplied decoder.
+    public func getCodable<T: Decodable>(
+        _ key: String,
+        type: T.Type,
+        decoder: JSONDecoder = JSONDecoder()
+    ) throws -> T? {
+        guard let value = values()[key] else {
+            return nil
+        }
+
+        guard let data = value as? Data else {
+            throw StudyKeyValueStoreError.storedValueIsNotData(key: key)
+        }
+
+        return try decoder.decode(type, from: data)
+    }
     
     /// Replaces **all** stored values for this study.
     ///
@@ -84,6 +116,30 @@ public final class StudyKeyValueStore {
         self.updateValues { values in
             values[key] = value // assigning nil removes the key
         }
+    }
+
+    /// Encodes and stores a Codable value for a given key.
+    ///
+    /// Codable values are encoded to `Data` before storage so the underlying
+    /// `UserDefaults` dictionary only contains property-list-compatible values.
+    /// Passing `nil` removes the key, matching `update(_:value:)`.
+    /// - Parameters:
+    ///   - key: The key to update.
+    ///   - value: The Codable value to encode and store. Pass `nil` to remove.
+    ///   - encoder: The JSON encoder to use. Defaults to a plain `JSONEncoder`.
+    /// - Throws: Any encoding error from the supplied encoder.
+    public func updateCodable<T: Encodable>(
+        _ key: String,
+        value: T?,
+        encoder: JSONEncoder = JSONEncoder()
+    ) throws {
+        guard let value else {
+            update(key, value: nil)
+            return
+        }
+
+        let data = try encoder.encode(value)
+        update(key, value: data)
     }
     
     /// Loads current values, lets the caller mutate them, then saves the result.

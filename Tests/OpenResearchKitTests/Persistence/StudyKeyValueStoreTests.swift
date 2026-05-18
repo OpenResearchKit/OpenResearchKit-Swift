@@ -9,6 +9,13 @@ import XCTest
 @testable import OpenResearchKit
 
 final class StudyKeyValueStoreTests: XCTestCase {
+
+    private struct CodableTestValue: Codable, Equatable {
+        let id: UUID
+        let name: String
+        let createdAt: Date
+        let count: Int
+    }
     
     private var suiteName: String!
     private var defaults: UserDefaults!
@@ -90,6 +97,92 @@ final class StudyKeyValueStoreTests: XCTestCase {
         store.update("a", value: nil)
         XCTAssertNil(store.get("a", type: Int.self))
         XCTAssertEqual(store.values().keys.sorted(), ["b"])
+    }
+
+    func testCodableRoundtrip() throws {
+        let store = StudyKeyValueStore(studyIdentifier: "study-A", appGroup: suiteName)
+        let value = CodableTestValue(
+            id: UUID(),
+            name: "Alice",
+            createdAt: Date(timeIntervalSince1970: 1_746_188_400),
+            count: 3
+        )
+
+        try store.updateCodable("codable", value: value)
+
+        let restored = try store.getCodable("codable", type: CodableTestValue.self)
+        XCTAssertEqual(restored, value)
+        XCTAssertNotNil(store.get("codable", type: Data.self))
+    }
+
+    func testCodableArrayRoundtrip() throws {
+        let store = StudyKeyValueStore(studyIdentifier: "study-A", appGroup: suiteName)
+        let values = [
+            CodableTestValue(
+                id: UUID(),
+                name: "Alice",
+                createdAt: Date(timeIntervalSince1970: 1_746_188_400),
+                count: 3
+            ),
+            CodableTestValue(
+                id: UUID(),
+                name: "Bob",
+                createdAt: Date(timeIntervalSince1970: 1_746_192_000),
+                count: 7
+            )
+        ]
+
+        try store.updateCodable("codableArray", value: values)
+
+        let restored = try store.getCodable("codableArray", type: [CodableTestValue].self)
+        XCTAssertEqual(restored, values)
+    }
+
+    func testMissingCodableKeyReturnsNil() throws {
+        let store = StudyKeyValueStore(studyIdentifier: "study-A", appGroup: suiteName)
+
+        let restored = try store.getCodable("missing", type: CodableTestValue.self)
+
+        XCTAssertNil(restored)
+    }
+
+    func testNilCodableUpdateRemovesKey() throws {
+        let store = StudyKeyValueStore(studyIdentifier: "study-A", appGroup: suiteName)
+        let value = CodableTestValue(
+            id: UUID(),
+            name: "Alice",
+            createdAt: Date(timeIntervalSince1970: 1_746_188_400),
+            count: 3
+        )
+
+        try store.updateCodable("codable", value: value)
+        XCTAssertNotNil(store.get("codable", type: Data.self))
+
+        try store.updateCodable("codable", value: Optional<CodableTestValue>.none)
+
+        XCTAssertNil(store.get("codable", type: Data.self))
+        XCTAssertNil(try store.getCodable("codable", type: CodableTestValue.self))
+    }
+
+    func testCodableGetThrowsWhenStoredValueIsNotData() throws {
+        let store = StudyKeyValueStore(studyIdentifier: "study-A", appGroup: suiteName)
+        store.update("codable", value: "not-data")
+
+        XCTAssertThrowsError(try store.getCodable("codable", type: CodableTestValue.self)) { error in
+            XCTAssertEqual(
+                error as? StudyKeyValueStoreError,
+                .storedValueIsNotData(key: "codable")
+            )
+        }
+    }
+
+    func testCodableGetThrowsDecoderErrorForCorruptData() throws {
+        let store = StudyKeyValueStore(studyIdentifier: "study-A", appGroup: suiteName)
+        store.update("codable", value: Data("not-json".utf8))
+
+        XCTAssertThrowsError(try store.getCodable("codable", type: CodableTestValue.self)) { error in
+            XCTAssertTrue(error is DecodingError)
+        }
     }
     
     func testIsolationBetweenStudies() {
