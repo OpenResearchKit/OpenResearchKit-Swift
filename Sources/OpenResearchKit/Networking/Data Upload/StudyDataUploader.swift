@@ -27,7 +27,7 @@ public class StudyDataUploader {
     
     // MARK: - General File Upload -
 
-    internal func uploadFile(
+    public func uploadFile(
         filePath: URL,
         studyIdentifier: String,
         userIdentifier: String,

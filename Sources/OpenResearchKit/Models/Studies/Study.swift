@@ -24,11 +24,11 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
         Client(baseURL: uploadConfiguration.serverURL, apiKey: uploadConfiguration.apiKey)
     }()
     
-    lazy var uploader: StudyDataUploader = {
+    public lazy var uploader: StudyDataUploader = {
         StudyDataUploader(client: client)
     }()
     
-    lazy var studyFileManager: StudyFileManager = {
+    public lazy var studyFileManager: StudyFileManager = {
         StudyFileManager(uploader: uploader)
     }()
     
@@ -549,11 +549,11 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
         self.updateUploadDate(newDate: newDate)
     }
 
-    public func copyMainJSONToUpload() throws {
+    public func copyMainJSONToUpload(date: Date? = nil) throws {
 
         let fileManager = FileManager.default
         let destination = try studyFileManager
-            .uploadBatchDirectory(study: self)
+            .uploadBatchDirectory(study: self, date: date)
             .appendingPathComponent(mainFileName)
 
         // Check that the main json file already exists

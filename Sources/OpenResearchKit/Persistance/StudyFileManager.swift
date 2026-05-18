@@ -45,7 +45,7 @@ public class StudyFileManager {
     private let fileManager: FileManager = .default
     private let uploader: StudyDataUploader
 
-    internal static func uploadTimestampString(from date: Date) -> String {
+    public static func uploadTimestampString(from date: Date) -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
