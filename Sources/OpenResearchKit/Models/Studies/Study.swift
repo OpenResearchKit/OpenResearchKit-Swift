@@ -637,6 +637,13 @@ extension Study {
         
     }
     
+    public static func filterDismissed(studies: [Study]) -> [Study] {
+        return studies
+            .filter {
+                $0.isDismissedByUser
+            }
+    }
+
 }
 
 // MARK: - Keys -
