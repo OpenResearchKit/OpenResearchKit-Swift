@@ -14,16 +14,36 @@ public struct StudyListScreen: View {
     
     private var availableStudies: [Study]
     private var participatedStudies: [Study]
+    private var dismissedStudies: [Study]
+    private var shouldShowDebugTools: Bool
     
     public init(
         activeStudy: Study?,
         availableStudies: [Study],
-        participatedStudies: [Study]
+        participatedStudies: [Study],
+        dismissedStudies: [Study] = []
     ) {
         
         self.activeStudy = activeStudy
         self.availableStudies = availableStudies
         self.participatedStudies = participatedStudies
+        self.dismissedStudies = dismissedStudies
+        self.shouldShowDebugTools = Bundle.main.isInDebugMode || Bundle.main.isOnTestFlight
+    }
+
+    init(
+        activeStudy: Study?,
+        availableStudies: [Study],
+        participatedStudies: [Study],
+        dismissedStudies: [Study] = [],
+        shouldShowDebugTools: Bool
+    ) {
+
+        self.activeStudy = activeStudy
+        self.availableStudies = availableStudies
+        self.participatedStudies = participatedStudies
+        self.dismissedStudies = dismissedStudies
+        self.shouldShowDebugTools = shouldShowDebugTools
     }
     
     public var body: some View {
@@ -72,11 +92,30 @@ public struct StudyListScreen: View {
                 
             }
             
+            if shouldShowDismissedStudies {
+                Section(header: Text("Dismissed")) {
+                    ForEach(dismissedStudies, id: \.studyIdentifier) { study in
+                        StudyRow(study: study)
+                    }
+                }
+            }
+
         }
         .navigationTitle("Studies")
         
     }
+
+    private var shouldShowDismissedStudies: Bool {
+        Self.shouldShowDismissedStudiesSection(
+            dismissedStudies: dismissedStudies,
+            shouldShowDebugTools: shouldShowDebugTools
+        )
+    }
     
+    static func shouldShowDismissedStudiesSection(dismissedStudies: [Study], shouldShowDebugTools: Bool) -> Bool {
+        shouldShowDebugTools && !dismissedStudies.isEmpty
+    }
+
 }
 
 public struct StudyRow: View {
