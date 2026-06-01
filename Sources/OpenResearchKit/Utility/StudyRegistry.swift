@@ -33,7 +33,11 @@ public class StudyRegistry: ObservableObject {
     public var recommendedStudies: [Study] {
         Study.filterRecommended(studies: studies)
     }
-    
+
+    public var dismissedStudies: [Study] {
+        Study.filterDismissed(studies: studies)
+    }
+
     public private(set) var recommendedStudy: Study?
     
     private var randomNumberGenerator: any RandomNumberGenerator
@@ -100,4 +104,3 @@ public class StudyRegistry: ObservableObject {
     }
     
 }
-
