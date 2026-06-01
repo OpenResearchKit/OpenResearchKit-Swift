@@ -48,6 +48,7 @@ final class StudyRegistryTests: XCTestCase {
         let registry = makeRegistry(studies: [study])
         
         XCTAssertEqual(registry.recommendedStudies.map(\.studyIdentifier), [study.studyIdentifier])
+        XCTAssertTrue(registry.dismissedStudies.isEmpty)
         XCTAssertTrue(registry.recommendedStudy === study)
         
         assertRegistryRefresh(on: registry) {
@@ -56,7 +57,23 @@ final class StudyRegistryTests: XCTestCase {
         
         XCTAssertNil(registry.currentActiveStudy)
         XCTAssertTrue(registry.recommendedStudies.isEmpty)
+        XCTAssertEqual(registry.dismissedStudies.map(\.studyIdentifier), [study.studyIdentifier])
         XCTAssertNil(registry.recommendedStudy)
+    }
+
+    func testDismissedStudiesUpdatesAfterDismissal() {
+        let visibleStudy = makeDataDonationStudy()
+        let dismissedStudy = makeDataDonationStudy()
+        let registry = makeRegistry(studies: [visibleStudy, dismissedStudy])
+
+        XCTAssertTrue(registry.dismissedStudies.isEmpty)
+
+        assertRegistryRefresh(on: registry) {
+            dismissedStudy.isDismissedByUser = true
+        }
+
+        XCTAssertEqual(registry.dismissedStudies.map(\.studyIdentifier), [dismissedStudy.studyIdentifier])
+        XCTAssertEqual(registry.recommendedStudies.map(\.studyIdentifier), [visibleStudy.studyIdentifier])
     }
     
     func testRegistryRefreshesAfterTerminationBeforeCompletion() {

@@ -11,12 +11,20 @@ public struct Signal: Encodable {
     
     public let studyIdentifier: String
     public let userIdentifier: String
+    public let publicUserIdentifier: String?
     public let type: String
     public let payload: [String: String]
     
-    public init(studyIdentifier: String, userIdentifier: String, type: String, payload: [String : String] = [:]) {
+    public init(
+        studyIdentifier: String,
+        userIdentifier: String,
+        publicUserIdentifier: String? = nil,
+        type: String,
+        payload: [String: String] = [:]
+    ) {
         self.studyIdentifier = studyIdentifier
         self.userIdentifier = userIdentifier
+        self.publicUserIdentifier = publicUserIdentifier
         self.type = type
         self.payload = payload
     }

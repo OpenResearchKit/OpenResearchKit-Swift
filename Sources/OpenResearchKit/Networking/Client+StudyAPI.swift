@@ -16,17 +16,20 @@ public extension Client {
         apiKey: String?,
         transport: any ClientTransport = URLSessionTransport()
     ) {
+        var middlewares: [any ClientMiddleware] = [
+            AcceptLanguageMiddleware(),
+            GeneratedHeaderParameterDecodingMiddleware(),
+        ]
+        
+        if let apiKey {
+            middlewares.append(APIKeyMiddleware(apiKey: apiKey))
+        }
+        
         self.init(
             serverURL: serverURL,
             configuration: .init(dateTranscoder: .iso8601WithFractionalSeconds),
             transport: transport,
-            middlewares: [
-                AcceptLanguageMiddleware(),
-                APIKeyMiddleware(apiKeyGenerator: {
-                    apiKey ?? ""
-                }),
-                GeneratedHeaderParameterDecodingMiddleware(),
-            ]
+            middlewares: middlewares
         )
     }
     

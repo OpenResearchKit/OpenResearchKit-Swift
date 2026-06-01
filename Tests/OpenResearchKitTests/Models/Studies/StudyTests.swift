@@ -82,6 +82,16 @@ final class StudyTests: XCTestCase {
         
     }
 
+    private final class QuietLongTermStudy: LongTermStudy {
+        override func shouldHaveNotifications() -> Bool {
+            false
+        }
+
+        override func didTerminateParticipation(terminationDate: Date) {
+
+        }
+    }
+
     // MARK: - Tests
 
     func test_userIdentifier_isGeneratedAndPersisted() {
@@ -145,6 +155,56 @@ final class StudyTests: XCTestCase {
 
         XCTAssertFalse(studyWithoutURL.shouldDisplayIntroductorySurvey, "Should not display intro survey if the URL is nil.")
         
+    }
+
+    func test_filterDismissed_includesOnlyDismissedStudies() {
+        let availableStudy = LongTermDummy.makeStudy(id: "available-\(UUID().uuidString)")
+        let dismissedStudy = LongTermDummy.makeStudy(id: "dismissed-\(UUID().uuidString)")
+
+        dismissedStudy.isDismissedByUser = true
+
+        let dismissedStudies = Study.filterDismissed(studies: [availableStudy, dismissedStudy])
+
+        XCTAssertEqual(dismissedStudies.map(\.studyIdentifier), [dismissedStudy.studyIdentifier])
+
+        try? availableStudy.reset()
+        try? dismissedStudy.reset()
+    }
+
+    func test_filterDismissed_includesDismissedStudiesThatAreCompletedOrTerminated() {
+        let dismissedCompletedStudy = makeQuietLongTermStudy(id: "dismissed-completed-\(UUID().uuidString)")
+        let dismissedTerminatedStudy = makeQuietLongTermStudy(id: "dismissed-terminated-\(UUID().uuidString)")
+        let completedOnlyStudy = makeQuietLongTermStudy(id: "completed-only-\(UUID().uuidString)")
+        let terminatedOnlyStudy = makeQuietLongTermStudy(id: "terminated-only-\(UUID().uuidString)")
+
+        dismissedCompletedStudy.isDismissedByUser = true
+        dismissedCompletedStudy.setCompleted()
+        dismissedTerminatedStudy.isDismissedByUser = true
+        dismissedTerminatedStudy.terminateParticipationImmediately()
+        completedOnlyStudy.setCompleted()
+        terminatedOnlyStudy.terminateParticipationImmediately()
+
+        let dismissedStudies = Study.filterDismissed(
+            studies: [
+                dismissedCompletedStudy,
+                dismissedTerminatedStudy,
+                completedOnlyStudy,
+                terminatedOnlyStudy
+            ]
+        )
+
+        XCTAssertEqual(
+            dismissedStudies.map(\.studyIdentifier),
+            [
+                dismissedCompletedStudy.studyIdentifier,
+                dismissedTerminatedStudy.studyIdentifier
+            ]
+        )
+
+        try? dismissedCompletedStudy.reset()
+        try? dismissedTerminatedStudy.reset()
+        try? completedOnlyStudy.reset()
+        try? terminatedOnlyStudy.reset()
     }
 
     func test_surveyUrl_generation() {
@@ -214,6 +274,26 @@ final class StudyTests: XCTestCase {
 
         let newUserID = study.userIdentifier
         XCTAssertNotEqual(initialUserID, newUserID, "A new user ID should be generated after a reset.")
+    }
+
+    private func makeQuietLongTermStudy(id: String) -> QuietLongTermStudy {
+        QuietLongTermStudy(
+            studyIdentifier: id,
+            studyInformation: StudyInformation(
+                title: "Quiet Long Term Study",
+                subtitle: "",
+                contactEmail: "",
+                image: nil
+            ),
+            uploadConfiguration: UploadConfiguration(
+                serverURL: URL(string: "https://example.com/upload")!,
+                uploadFrequency: 3600,
+                apiKey: "TEST_API_KEY"
+            ),
+            duration: 60 * 60,
+            introductorySurveyURL: URL(string: "https://example.com/intro")!,
+            concludingSurveyURL: URL(string: "https://example.com/conclusion")!
+        )
     }
 
 }

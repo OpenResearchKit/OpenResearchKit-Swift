@@ -15,7 +15,7 @@ class UploadsDataTest: XCTestCase {
 
     func testCopyMainJSONToUpload_CreatesFileInUploadDirectory() throws {
         // Arrange
-        let studyID = "test"
+        let studyID = "CopyStudy-\(UUID().uuidString)"
         let study = TestStudy.makeStudy(id: studyID)
         study.dateGenerator = FixedDateGenerator(date: fixedUploadDate())
 
@@ -25,6 +25,7 @@ class UploadsDataTest: XCTestCase {
             ["event": "another_event", "timestamp": "2023-01-02T00:00:00Z"],
         ]
         study.saveUserConsentHasBeenGiven {}
+        study.markUploadSuccessful(newDate: Date())
         study.appendNewJSONObjects(newObjects: testData)
 
         // Ensure upload directory is clean
@@ -73,6 +74,7 @@ class UploadsDataTest: XCTestCase {
         let study = TestStudy.makeStudy(id: studyID)
         study.dateGenerator = FixedDateGenerator(date: fixedUploadDate())
         study.saveUserConsentHasBeenGiven {}
+        study.markUploadSuccessful(newDate: Date())
 
         // Create initial data
         let initialData = [["event": "initial_event"]]
