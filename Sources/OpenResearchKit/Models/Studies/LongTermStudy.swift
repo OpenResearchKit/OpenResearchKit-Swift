@@ -9,8 +9,8 @@ import Foundation
 
 open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
     
-    public let duration: TimeInterval
-    public let concludingSurveyURL: URL?
+    public private(set) var duration: TimeInterval
+    public private(set) var concludingSurveyURL: URL?
     
     public init(
         studyIdentifier: String,
