@@ -52,9 +52,9 @@ extension HasTerminationSurvey {
     }
     
     public func showCompletionSurvey() {
-        
-        showView(SurveyWebView(surveyType: .completion).environmentObject(self))
-        
+        if let study = self as? Study {
+            self.showView(SurveyWebView(surveyType: .completion, study: study))
+        }
     }
     
     public func completeTerminationSurvey() {

@@ -16,14 +16,15 @@ import UIKit
 /// mid, and completion surveys, and processes metadata returned via URL parameters to persist study state.
 public struct SurveyWebView: View {
     
-    @Environment(\.presentationMode) var presentationMode
-    @EnvironmentObject var study: Study
+    @Environment(\.presentationMode) private var presentationMode
     @State private var isInitialLoading = true
     
     let surveyType: SurveyType
+    let study: Study
     
-    public init(surveyType: SurveyType) {
+    public init(surveyType: SurveyType, study: Study) {
         self.surveyType = surveyType
+        self.study = study
     }
     
     public var body: some View {
