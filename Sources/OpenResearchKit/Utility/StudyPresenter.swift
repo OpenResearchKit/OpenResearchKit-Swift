@@ -19,8 +19,9 @@ public extension StudyPresenter {
         
         let surveyView = UIHostingController(
             rootView: SurveyWebView(
-                surveyType: surveyType
-            ).environmentObject(study)
+                surveyType: surveyType,
+                study: study
+            )
         )
         
         surveyView.modalPresentationStyle = .fullScreen

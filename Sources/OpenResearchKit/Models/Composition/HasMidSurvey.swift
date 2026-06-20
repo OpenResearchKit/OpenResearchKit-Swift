@@ -59,9 +59,9 @@ extension HasMidSurvey {
     }
     
     public func showMidStudySurvey() {
-        
-        self.showView(SurveyWebView(surveyType: .mid).environmentObject(self))
-        
+        if let study = self as? Study {
+            self.showView(SurveyWebView(surveyType: .mid, study: study))
+        }
     }
     
     public func completeMidSurvey() {
