@@ -30,6 +30,15 @@ public struct StudyListScreen: View {
         self.dismissedStudies = dismissedStudies
         self.shouldShowDebugTools = Bundle.main.isInDebugMode || Bundle.main.isOnTestFlight
     }
+    
+    public init(studyRegistry: StudyRegistry) {
+        self.init(
+            activeStudy: studyRegistry.currentActiveStudy,
+            availableStudies: studyRegistry.recommendedStudies,
+            participatedStudies: Study.filterCompleted(studies: studyRegistry.studies),
+            dismissedStudies: studyRegistry.dismissedStudies
+        )
+    }
 
     init(
         activeStudy: Study?,
