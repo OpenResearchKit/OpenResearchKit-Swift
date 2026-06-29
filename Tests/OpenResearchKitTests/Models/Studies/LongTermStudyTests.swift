@@ -185,6 +185,28 @@ final class LongTermStudyTests: XCTestCase {
         XCTAssertFalse(study.isActive)
         
     }
+
+    func testEarlyTerminateAppendsTerminationDataPoint() {
+        let dateGenerator = TimeTraveler()
+        let study = createLongTermStudy(duration: 10)
+        study.dateGenerator = dateGenerator
+
+        study.saveUserConsentHasBeenGiven(completion: {})
+
+        dateGenerator.travel(by: 5)
+        study.terminateParticipationImmediately()
+
+        let terminationDataPoint = study.JSONFile.last
+        XCTAssertEqual(terminationDataPoint?["terminationReason"] as? String, "terminatedByUser")
+
+        guard let timestamp = terminationDataPoint?["timestamp"] as? Double,
+              let terminationDate = study.terminationBeforeCompletionDate else {
+            XCTFail("Expected a termination timestamp and stored termination date")
+            return
+        }
+
+        XCTAssertEqual(timestamp, terminationDate.timeIntervalSince1970, accuracy: 0.001)
+    }
     
     // MARK: - Long Term without Conclusion
     

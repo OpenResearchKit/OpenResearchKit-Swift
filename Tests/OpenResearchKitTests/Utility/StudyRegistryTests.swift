@@ -75,6 +75,15 @@ final class StudyRegistryTests: XCTestCase {
         XCTAssertEqual(registry.dismissedStudies.map(\.studyIdentifier), [dismissedStudy.studyIdentifier])
         XCTAssertEqual(registry.recommendedStudies.map(\.studyIdentifier), [visibleStudy.studyIdentifier])
     }
+
+    func testRegistryExcludesStudiesWithoutIntroSurveyFromRecommendations() {
+        let studyWithoutIntroSurvey = makeDataDonationStudy(introductorySurveyURL: nil)
+        let studyWithIntroSurvey = makeDataDonationStudy()
+        let registry = makeRegistry(studies: [studyWithoutIntroSurvey, studyWithIntroSurvey])
+
+        XCTAssertEqual(registry.recommendedStudies.map(\.studyIdentifier), [studyWithIntroSurvey.studyIdentifier])
+        XCTAssertTrue(registry.recommendedStudy === studyWithIntroSurvey)
+    }
     
     func testRegistryRefreshesAfterTerminationBeforeCompletion() {
         let study = makeDataDonationStudy()
@@ -168,7 +177,9 @@ final class StudyRegistryTests: XCTestCase {
         StudyRegistry(studies: studies, randomNumberGenerator: randomNumberGenerator)
     }
     
-    private func makeDataDonationStudy() -> QuietDataDonationStudy {
+    private func makeDataDonationStudy(
+        introductorySurveyURL: URL? = URL(string: "https://example.com/intro")!
+    ) -> QuietDataDonationStudy {
         let identifier = "study-registry-data-donation-\(UUID().uuidString)"
         
         let study = QuietDataDonationStudy(
@@ -184,7 +195,7 @@ final class StudyRegistryTests: XCTestCase {
                 uploadFrequency: 3600,
                 apiKey: "TEST_API_KEY"
             ),
-            introductorySurveyURL: URL(string: "https://example.com/intro")!,
+            introductorySurveyURL: introductorySurveyURL,
             participationIsPossible: true
         )
         
