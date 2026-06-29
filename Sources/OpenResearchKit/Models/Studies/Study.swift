@@ -619,6 +619,7 @@ extension Study {
         for study in studies {
             if study.isDismissedByUser { continue }
             if study.isCompleted { continue }
+            if study.introductorySurveyURL == nil { continue }
             if study.meetsRecommendationCriteria {
                 result.append(study)
             }
