@@ -13,7 +13,7 @@ public struct StudyDetailInfoScreen: View {
     @EnvironmentObject var activeStudy: Study
     @Environment(\.dismiss) var dismiss
     
-    let study: Study
+    @ObservedObject private var study: Study
     
     public init(study: Study) {
         self.study = study
