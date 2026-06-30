@@ -253,7 +253,7 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
     // MARK: - Callbacks -
     
     open func didTerminateParticipation(terminationDate: Date) {
-        self.appendNewJSONObjects(newObjects: [
+        self.appendNewJSONObjectsIfConsented(newObjects: [
             [
                 "terminationReason": "terminatedByUser",
                 "timestamp": terminationDate.timeIntervalSince1970
@@ -436,14 +436,15 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
     }
     
     public func appendNewJSONObjects(newObjects: [[String: JSONConvertible]]) {
-        
-        if hasUserGivenConsent {
-            // only add data if study is running: user has given consent
-            var existingFile = self.JSONFile
-            existingFile.append(contentsOf: newObjects)
-            self.saveAndUploadIfNeccessary(jsonFile: existingFile)
-        }
-        
+        appendNewJSONObjectsIfConsented(newObjects: newObjects)
+    }
+
+    private func appendNewJSONObjectsIfConsented(newObjects: [[String: JSONConvertible]]) {
+        guard hasUserGivenConsent else { return }
+
+        var existingFile = self.JSONFile
+        existingFile.append(contentsOf: newObjects)
+        self.saveAndUploadIfNeccessary(jsonFile: existingFile)
     }
     
     private func saveAndUploadIfNeccessary(jsonFile: [ [String: Any] ]) {
@@ -619,6 +620,7 @@ extension Study {
         for study in studies {
             if study.isDismissedByUser { continue }
             if study.isCompleted { continue }
+            if study.introductorySurveyURL == nil { continue }
             if study.meetsRecommendationCriteria {
                 result.append(study)
             }
