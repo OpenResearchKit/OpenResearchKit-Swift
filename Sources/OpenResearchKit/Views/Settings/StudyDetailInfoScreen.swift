@@ -21,6 +21,7 @@ public struct StudyDetailInfoScreen: View {
     
     @State var showTerminationDialog = false
     
+    @State private var refreshToken = 0
     @State var lastUploadDate: Date?
     @State var studyData: [ [String: Any] ] = []
     
@@ -56,10 +57,15 @@ public struct StudyDetailInfoScreen: View {
             actions()
             
         }
+        .id(refreshToken)
 //        .navigationBarTitle(study.studyInformation.title)
         .task {
-            self.lastUploadDate = study.lastSuccessfulUploadDate
-            self.studyData = study.JSONFile
+            refreshDerivedStudyState(invalidateScreen: false)
+        }
+        .onReceive(study.objectWillChange) { _ in
+            Task { @MainActor in
+                refreshDerivedStudyState(invalidateScreen: true)
+            }
         }
         
     }
@@ -210,16 +216,10 @@ public struct StudyDetailInfoScreen: View {
     @ViewBuilder
     private func actions() -> some View {
         
-        Section {
-            
-            if !study.hasUserGivenConsent && study.introductorySurveyURL != nil {
-                
-                Button("Start participation") {
-                    StudyPresenter.show(study: study, surveyType: .introductory)
-                }
-                
+        if let action = study.studyDetailStartParticipationAction {
+            Section {
+                action
             }
-            
         }
         
         Section {
@@ -262,6 +262,29 @@ public struct StudyDetailInfoScreen: View {
         guard let url = URL(string: emailformatted) else { return }
         UIApplication.shared.open(url)
         
+    }
+    
+    @MainActor
+    private func refreshDerivedStudyState(invalidateScreen: Bool) {
+        let state = Self.derivedState(for: study)
+        self.lastUploadDate = state.lastUploadDate
+        self.studyData = state.studyData
+        
+        if invalidateScreen {
+            refreshToken += 1
+        }
+    }
+    
+    static func derivedState(for study: Study) -> DerivedState {
+        DerivedState(
+            lastUploadDate: study.lastSuccessfulUploadDate,
+            studyData: study.JSONFile
+        )
+    }
+    
+    struct DerivedState {
+        let lastUploadDate: Date?
+        let studyData: [[String: Any]]
     }
     
     @ViewBuilder

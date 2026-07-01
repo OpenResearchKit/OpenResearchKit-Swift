@@ -10,6 +10,7 @@ import SwiftUI
 struct StudyStatusBadge: View {
     
     @State private var state: ViewState = .loading
+    @State private var refreshToken = 0
     
     let study: Study
     
@@ -37,19 +38,27 @@ struct StudyStatusBadge: View {
             }
             
         }
-        .task {
-            
-            self.state = .loading
-            
-            do {
-                let status = try await study.currentDisplayStatus()
-                self.state = .loaded(status)
-            } catch {
-                self.state = .error
+        .task(id: refreshToken) {
+            await refresh()
+        }
+        .onReceive(study.objectWillChange) { _ in
+            Task { @MainActor in
+                refreshToken += 1
             }
-            
         }
         
+    }
+    
+    @MainActor
+    private func refresh() async {
+        self.state = .loading
+        
+        do {
+            let status = try await study.currentDisplayStatus()
+            self.state = .loaded(status)
+        } catch {
+            self.state = .error
+        }
     }
     
     private enum ViewState {
@@ -59,4 +68,3 @@ struct StudyStatusBadge: View {
     }
     
 }
-

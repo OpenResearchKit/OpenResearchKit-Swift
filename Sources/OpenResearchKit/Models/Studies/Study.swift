@@ -591,6 +591,19 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
     
     // MARK: - Detail View -
     
+    /// Optional action shown in the study detail screen before participation starts.
+    /// Override this for studies that need a custom enrollment flow instead of the default survey presentation.
+    open var studyDetailStartParticipationAction: AnyView? {
+        guard !hasUserGivenConsent, introductorySurveyURL != nil else {
+            return nil
+        }
+        
+        return Button("Start participation") {
+            StudyPresenter.show(study: self, surveyType: .introductory)
+        }
+        .toAnyView()
+    }
+    
     /// Determines if the termination button should be shown in the detail screen of the study in the settings.
     /// Mostly relevant for long-term studies affecting the user experience.
     open var shouldShowTerminationButton: Bool {

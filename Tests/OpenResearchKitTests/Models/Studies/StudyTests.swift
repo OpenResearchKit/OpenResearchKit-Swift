@@ -6,6 +6,7 @@
 //
 
 import XCTest
+import Combine
 
 @testable import OpenResearchKit
 
@@ -155,6 +156,68 @@ final class StudyTests: XCTestCase {
 
         XCTAssertFalse(studyWithoutURL.shouldDisplayIntroductorySurvey, "Should not display intro survey if the URL is nil.")
         
+    }
+
+    func test_studyDetailStartParticipationAction_isShownForUnconsentedStudyWithIntroURL() {
+        
+        XCTAssertNotNil(study.studyDetailStartParticipationAction)
+        
+    }
+    
+    func test_studyDetailStartParticipationAction_isHiddenAfterConsent() {
+        
+        let expectation = XCTestExpectation(description: "Save user consent completion handler called.")
+        
+        study.saveUserConsentHasBeenGiven(consentTimestamp: Date()) {
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 1.0)
+        
+        XCTAssertNil(study.studyDetailStartParticipationAction)
+        
+    }
+    
+    func test_studyDetailStartParticipationAction_isHiddenWithoutIntroURL() {
+        let studyWithoutURL = LongTermDummy.makeStudy(id: "detail-action-no-url-study", introURL: nil)
+        
+        XCTAssertNil(studyWithoutURL.studyDetailStartParticipationAction)
+    }
+    
+    func test_setCompleted_publishesStudyChange() {
+        let expectation = XCTestExpectation(description: "Study published a change.")
+        var cancellable: AnyCancellable?
+        
+        cancellable = study.objectWillChange.sink {
+            expectation.fulfill()
+        }
+        
+        study.setCompleted()
+        
+        wait(for: [expectation], timeout: 1.0)
+        withExtendedLifetime(cancellable) {}
+    }
+    
+    func test_studyDetailDerivedState_readsUpdatedStudyValues() {
+        let consentExpectation = XCTestExpectation(description: "Study consent saved.")
+        
+        study.saveUserConsentHasBeenGiven {
+            consentExpectation.fulfill()
+        }
+        
+        wait(for: [consentExpectation], timeout: 1.0)
+        
+        let initialState = StudyDetailInfoScreen.derivedState(for: study)
+        XCTAssertNil(initialState.lastUploadDate)
+        XCTAssertEqual(initialState.studyData.count, 0)
+        
+        let uploadDate = Date()
+        study.markUploadSuccessful(newDate: uploadDate)
+        study.appendNewJSONObjects(newObjects: [["event": "detail-refresh"]])
+        
+        let updatedState = StudyDetailInfoScreen.derivedState(for: study)
+        XCTAssertEqual(updatedState.studyData.count, 1)
+        XCTAssertEqual(updatedState.lastUploadDate?.timeIntervalSince1970 ?? 0, uploadDate.timeIntervalSince1970, accuracy: 0.001)
     }
 
     func test_filterDismissed_includesOnlyDismissedStudies() {
