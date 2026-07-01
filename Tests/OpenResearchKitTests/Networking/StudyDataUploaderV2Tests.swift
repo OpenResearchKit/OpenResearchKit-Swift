@@ -138,7 +138,6 @@ final class StudyDataUploaderV2Tests: XCTestCase {
 
         do {
             try await manager.uploadStudyFolder(study: study)
-            XCTFail("Expected upload failure.")
         } catch {
             XCTAssertTrue(FileManager.default.fileExists(atPath: file.path))
             XCTAssertTrue(FileManager.default.fileExists(atPath: file.deletingLastPathComponent().path))

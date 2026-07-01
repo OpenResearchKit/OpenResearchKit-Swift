@@ -115,7 +115,7 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
         return false
     }
     
-    public var isActive: Bool {
+    open var isActive: Bool {
         
         let consentedNotDismissed = self.hasUserGivenConsent // && !self.isDismissedByUser
         
@@ -301,7 +301,7 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
         
     }
 
-    // MARK: -
+    // MARK: - Setup -
     
     /// Prepares and sets up local notifications for the study after user consent.
     ///
@@ -410,6 +410,10 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
         
     }
     
+    open var deepLinkIdentifier: String {
+        return studyIdentifier
+    }
+    
     // MARK: - UploadsStudyData -
     
     public func studyDirectory(type: StudyDataDirectoryType = .working) -> URL {
@@ -441,7 +445,7 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
 
     private func appendNewJSONObjectsIfConsented(newObjects: [[String: JSONConvertible]]) {
         guard hasUserGivenConsent else { return }
-
+        
         var existingFile = self.JSONFile
         existingFile.append(contentsOf: newObjects)
         self.saveAndUploadIfNeccessary(jsonFile: existingFile)

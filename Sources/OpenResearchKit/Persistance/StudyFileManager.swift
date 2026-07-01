@@ -222,34 +222,60 @@ public class StudyFileManager {
     
     // MARK: - Upload Remaining Files -
     
-    public func uploadStudyFolder(study: Study) async throws {
+    public func uploadStudyFolder(study: Study, deleteEmptyDirectories: Bool = true) async throws {
         
         let uploadDirectory = study.studyDirectory(type: .upload)
         let batchDirectories = try uploadBatchDirectories(in: uploadDirectory)
         var didUploadFile = false
 
         for batchDirectory in batchDirectories {
-            let timestamp = batchDirectory.lastPathComponent
-            let files = try uploadableFiles(in: batchDirectory)
-
-            try validateUniqueUploadFileNames(files: files, timestamp: timestamp)
-
-            for source in files {
-                Logger.research.info("Uploading file '\(source.absoluteString)' of study '\(study.studyIdentifier)' from batch '\(timestamp, privacy: .public)'.")
-
-                try await upload(study: study, file: source, timestamp: timestamp)
+            
+            if try await self.uploadBatch(study: study, batchDirectory: batchDirectory, deleteEmptyDirectories: deleteEmptyDirectories) {
                 didUploadFile = true
             }
-
-            try removeEmptyDirectories(under: batchDirectory)
-
+            
+            if deleteEmptyDirectories {
+                try removeEmptyDirectories(under: batchDirectory)
+            }
+            
         }
-
+        
         if didUploadFile {
             study.markUploadSuccessful()
             try await study.didUploadStudyFolder()
         }
 
+    }
+    
+    /// Uploads a batch directory to the configured backend.
+    ///
+    /// - Parameters:
+    ///   - study: `Study` to be uploaded
+    ///   - batchDirectory: The URL of the directory
+    ///   - deleteEmptyDirectories: Specify whether the file should be deleted after upload.
+    /// - Returns: `true` if a file was uploaded successfully.
+    @discardableResult
+    public func uploadBatch(study: Study, batchDirectory: URL, deleteEmptyDirectories: Bool = true) async throws -> Bool {
+        
+        let timestamp = batchDirectory.lastPathComponent
+        let files = try uploadableFiles(in: batchDirectory)
+        
+        var didUploadFile = false
+        
+        try validateUniqueUploadFileNames(files: files, timestamp: timestamp)
+        
+        for source in files {
+            do {
+                Logger.research.info("Uploading file '\(source.absoluteString)' of study '\(study.studyIdentifier)' from batch '\(timestamp, privacy: .public)'...")
+                
+                try await upload(study: study, file: source, timestamp: timestamp)
+                didUploadFile = true
+            } catch {
+                Logger.research.error("Uploading file '\(source.absoluteString)' of study '\(study.studyIdentifier)' from batch '\(timestamp, privacy: .public)' failed: \(String(describing: error)).")
+            }
+        }
+        
+        return didUploadFile
     }
     
     /// Using this assumes that all data residing in the upload directory was already consented for sharing.

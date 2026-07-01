@@ -46,7 +46,7 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
         return try await super.currentDisplayStatus()
     }
     
-    public override var isActive: Bool {
+    open override var isActive: Bool {
         
         if wasTerminatedBeforeCompletion {
             return false
