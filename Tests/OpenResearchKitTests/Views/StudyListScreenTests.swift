@@ -10,7 +10,7 @@ import XCTest
 
 final class StudyListScreenTests: XCTestCase {
     
-    func testRegistryInitializerDerivesStudySectionsFromRegistry() {
+    func testRegistryInitializerDerivesStudySectionsFromRegistry() async {
         let activeStudy = makeStudy(identifier: "active")
         let availableStudy = makeStudy(identifier: "available")
         let completedStudy = makeStudy(identifier: "completed")
@@ -18,11 +18,15 @@ final class StudyListScreenTests: XCTestCase {
         let studies = [activeStudy, availableStudy, completedStudy, dismissedStudy]
         defer { studies.forEach { try? $0.reset() } }
         
-        giveConsent(to: activeStudy)
+        await giveConsent(to: activeStudy)
         completedStudy.setCompleted()
         dismissedStudy.isDismissedByUser = true
         
-        let registry = StudyRegistry(studies: studies)
+        let registry = StudyRegistry(
+            studies: studies,
+            studyConfigurationService: StubStudyConfigurationService()
+        )
+        await registry.refreshRecommendations()
         let screen = StudyListScreen(studyRegistry: registry)
         
         XCTAssertTrue(reflectedStudy(named: "activeStudy", in: screen) === registry.currentActiveStudy)
@@ -96,14 +100,14 @@ final class StudyListScreenTests: XCTestCase {
         )
     }
     
-    private func giveConsent(to study: Study) {
+    private func giveConsent(to study: Study) async {
         let expectation = expectation(description: "Study consent saved")
         
         study.saveUserConsentHasBeenGiven {
             expectation.fulfill()
         }
         
-        wait(for: [expectation], timeout: 1)
+        await fulfillment(of: [expectation], timeout: 1)
     }
     
     private func reflectedStudy(named label: String, in screen: StudyListScreen) -> Study? {

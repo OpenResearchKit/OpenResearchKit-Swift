@@ -143,7 +143,7 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
     
     /// A `Study` will only get recommended if and only if the user is eligible via `isEligible` and the `Study` is
     /// not removed from recommendations via `removeFromRecommendations`.
-    private var meetsRecommendationCriteria: Bool {
+    var meetsRecommendationCriteria: Bool {
         return isEligible() && !removeFromRecommendations() && !hasExpired
     }
     
@@ -629,23 +629,6 @@ extension Study {
 
 
 extension Study {
-    
-    public static func filterRecommended(studies: [Study]) -> [Study] {
-        
-        var result: [Study] = []
-        
-        for study in studies {
-            if study.isDismissedByUser { continue }
-            if study.isCompleted { continue }
-            if study.introductorySurveyURL == nil { continue }
-            if study.meetsRecommendationCriteria {
-                result.append(study)
-            }
-        }
-        
-        return result
-            
-    }
     
     public static func filterCompleted(studies: [Study]) -> [Study] {
         
