@@ -609,6 +609,22 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
     open var shouldShowTerminationButton: Bool {
         return false
     }
+
+    /// Determines if study debug actions should be shown in package-provided study detail views.
+    /// Override this in app-specific studies to opt in or out of the default DEBUG/TestFlight behavior.
+    open func shouldShowStudyDebugActions() -> Bool {
+        return Bundle.main.isInDebugMode || Bundle.main.isOnTestFlight
+    }
+
+    /// Determines if users should be able to export local study data from package-provided debug actions.
+    open func shouldShowStudyDataExportAction() -> Bool {
+        return shouldShowStudyDebugActions()
+    }
+
+    /// Determines if users should be able to force-upload staged study data from package-provided debug actions.
+    open func shouldShowStudyDataForceUploadAction() -> Bool {
+        return shouldShowStudyDebugActions()
+    }
     
 }
 
