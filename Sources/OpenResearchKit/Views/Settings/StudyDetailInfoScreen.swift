@@ -56,6 +56,8 @@ public struct StudyDetailInfoScreen: View {
             
             actions()
             
+            studySpecificView()
+            
         }
         .id(refreshToken)
 //        .navigationBarTitle(study.studyInformation.title)
@@ -251,6 +253,15 @@ public struct StudyDetailInfoScreen: View {
                 .foregroundStyle(.red)
                 
             }
+        }
+        
+    }
+    
+    @ViewBuilder
+    private func studySpecificView() -> some View {
+        
+        if let studySpecificView = study.studySpecificInfoView() {
+            studySpecificView
         }
         
     }

@@ -628,6 +628,10 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
         return Bundle.main.isInDebugMode || Bundle.main.isOnTestFlight
     }
     
+    open func studySpecificInfoView() -> AnyView? {
+        return nil
+    }
+    
 }
 
 extension Study {
