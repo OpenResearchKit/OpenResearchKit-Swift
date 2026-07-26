@@ -221,6 +221,8 @@ public struct StudyDetailInfoScreen: View {
                 action
             }
         }
+
+        StudyDetailDebugActionsView(study: study)
         
         Section {
             if study.shouldShowTerminationButton {
