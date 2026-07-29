@@ -22,6 +22,7 @@ final class MidStudySurveyTest: XCTestCase {
         XCTAssertEqual(midSurvey.showAfter, timeInterval)
         XCTAssertEqual(midSurvey.url, url)
         XCTAssertNil(midSurvey.expiresAfter)
+        XCTAssertFalse(midSurvey.hasBeenCompleted)
         
     }
 
@@ -33,6 +34,7 @@ final class MidStudySurveyTest: XCTestCase {
         )
 
         XCTAssertEqual(survey.expiresAfter, 7200)
+        XCTAssertFalse(survey.hasBeenCompleted)
     }
 
     func testOriginalInitializerCanBeUsedAsFunctionValue() {

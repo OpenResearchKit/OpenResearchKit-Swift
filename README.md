@@ -31,6 +31,8 @@ let study = LongTermWithMidSurveyStudy(
 
 Both `showAfter` and the optional `expiresAfter` deadline are measured from participant consent. An expiring survey is available while the elapsed participation time is greater than or equal to `showAfter` and less than `expiresAfter`. It is skipped if it was not completed before that deadline. Omit `expiresAfter` to keep a survey available indefinitely. Surveys are presented chronologically as they become due. For expiring surveys, both intervals must be finite and `expiresAfter` must be greater than `showAfter`. For existing participants, the deadline is calculated from their original consent date, so adding an already-passed deadline makes an incomplete survey expire immediately.
 
+Each value returned by `study.midStudySurveys` exposes its persisted completion state through `hasBeenCompleted`. Because `MidStudySurvey` is a value type, re-read the array after the study publishes a state change. Expired surveys that were never submitted remain incomplete.
+
 The singular `midStudySurvey` initializer remains supported for studies with one mid-study survey.
 
 When updating an existing study from the singular initializer, keep the original survey as the first entry in `midStudySurveys`; that position is used once to migrate existing completion state. Presentation order is still determined by `showAfter`. If a survey's URL or schedule might change in a later release, give it a stable identity:

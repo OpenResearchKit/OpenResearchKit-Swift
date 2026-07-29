@@ -151,6 +151,34 @@ final class LongTermStudyTests: XCTestCase {
         XCTAssertNil(study.surveyUrl(for: .mid))
     }
 
+    func testEachMidSurveyReportsItsOwnCompletionState() {
+        let firstSurvey = makeMidSurvey(path: "mid/first", showAfter: 10)
+        let secondSurvey = makeMidSurvey(path: "mid/second", showAfter: 20)
+        let study = createLongTermMidStudy(
+            midStudySurveys: [firstSurvey, secondSurvey]
+        )
+        defer { try? study.reset() }
+
+        XCTAssertEqual(
+            study.midStudySurveys.map(\.hasBeenCompleted),
+            [false, false]
+        )
+
+        study.completeMidSurvey(identifier: firstSurvey.id)
+
+        XCTAssertEqual(
+            study.midStudySurveys.map(\.hasBeenCompleted),
+            [true, false]
+        )
+
+        study.completeMidSurvey(identifier: secondSurvey.id)
+
+        XCTAssertEqual(
+            study.midStudySurveys.map(\.hasBeenCompleted),
+            [true, true]
+        )
+    }
+
     func testMidSurveyIsAvailableUntilItsExactExpirationBoundary() {
         let survey = makeMidSurvey(
             path: "mid/expiring",
@@ -180,6 +208,7 @@ final class LongTermStudyTests: XCTestCase {
         XCTAssertFalse(study.shouldDisplayMidSurvey)
         XCTAssertNil(study.surveyUrl(for: .mid))
         XCTAssertFalse(study.hasCompletedMidSurvey)
+        XCTAssertFalse(study.midStudySurveys[0].hasBeenCompleted)
         XCTAssertTrue(study.hasResolvedMidStudySurveys)
         XCTAssertFalse(study.isActive)
     }
@@ -288,6 +317,7 @@ final class LongTermStudyTests: XCTestCase {
         dateGenerator.travel(by: 1)
 
         XCTAssertTrue(study.hasCompletedMidSurvey)
+        XCTAssertTrue(study.midStudySurveys[0].hasBeenCompleted)
         XCTAssertTrue(study.hasResolvedMidStudySurveys)
         XCTAssertNil(study.surveyUrl(for: .mid))
     }
@@ -310,6 +340,10 @@ final class LongTermStudyTests: XCTestCase {
 
         study.completeMidSurvey()
 
+        XCTAssertEqual(
+            study.midStudySurveys.map(\.hasBeenCompleted),
+            [false, true, false]
+        )
         XCTAssertTrue(study.shouldDisplayMidSurvey)
         XCTAssertEqual(study.surveyUrl(for: .mid)?.path, "/mid/middle")
 
@@ -394,6 +428,10 @@ final class LongTermStudyTests: XCTestCase {
         )
         defer { try? restoredStudy.reset() }
 
+        XCTAssertEqual(
+            restoredStudy.midStudySurveys.map(\.hasBeenCompleted),
+            [false, true]
+        )
         XCTAssertFalse(restoredStudy.hasCompletedMidSurvey)
         XCTAssertEqual(restoredStudy.surveyUrl(for: .mid)?.path, "/mid/second")
     }
@@ -421,6 +459,7 @@ final class LongTermStudyTests: XCTestCase {
         )
         defer { try? restoredStudy.reset() }
 
+        XCTAssertTrue(restoredStudy.midStudySurveys[0].hasBeenCompleted)
         XCTAssertTrue(restoredStudy.hasCompletedMidSurvey)
         XCTAssertTrue(restoredStudy.hasResolvedMidStudySurveys)
         XCTAssertNil(restoredStudy.surveyUrl(for: .mid))
@@ -439,6 +478,10 @@ final class LongTermStudyTests: XCTestCase {
 
         legacyStudy.store.update(Study.Keys.HasCompletedMidSurvey, value: true)
 
+        XCTAssertEqual(
+            legacyStudy.midStudySurveys.map(\.hasBeenCompleted),
+            [true, false]
+        )
         XCTAssertFalse(legacyStudy.hasCompletedMidSurvey)
         XCTAssertEqual(legacyStudy.surveyUrl(for: .mid)?.path, "/mid/second")
 
@@ -559,7 +602,25 @@ final class LongTermStudyTests: XCTestCase {
         study.completeMidSurvey()
 
         XCTAssertTrue(study.hasCompletedMidSurvey)
+        XCTAssertTrue(
+            study.midStudySurveys.allSatisfy(\.hasBeenCompleted)
+        )
         XCTAssertNil(study.surveyUrl(for: .mid))
+    }
+
+    func testResetClearsReportedMidSurveyCompletionState() throws {
+        let study = createLongTermMidStudy(
+            midStudySurveys: [
+                makeMidSurvey(path: "mid/first", showAfter: 10)
+            ]
+        )
+
+        study.completeMidSurvey()
+        XCTAssertTrue(study.midStudySurveys[0].hasBeenCompleted)
+
+        try study.reset()
+
+        XCTAssertFalse(study.midStudySurveys[0].hasBeenCompleted)
     }
 
     func testSameMidSurveyUrlAtDifferentTimesCreatesDistinctSurveys() {

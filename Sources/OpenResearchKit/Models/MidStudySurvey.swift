@@ -45,6 +45,22 @@ public struct MidStudySurvey: Identifiable, Sendable {
         url: URL,
         expiresAfter: TimeInterval? = nil
     ) {
+        self.init(
+            id: id,
+            showAfter: showAfter,
+            url: url,
+            expiresAfter: expiresAfter,
+            hasBeenCompleted: false
+        )
+    }
+
+    private init(
+        id: String,
+        showAfter: TimeInterval,
+        url: URL,
+        expiresAfter: TimeInterval?,
+        hasBeenCompleted: Bool
+    ) {
         if let expiresAfter {
             precondition(
                 showAfter.isFinite
@@ -58,6 +74,7 @@ public struct MidStudySurvey: Identifiable, Sendable {
         self.showAfter = showAfter
         self.url = url
         self.expiresAfter = expiresAfter
+        self.hasBeenCompleted = hasBeenCompleted
     }
 
     /// An identity used to keep completion state and notifications attached to this
@@ -76,10 +93,25 @@ public struct MidStudySurvey: Identifiable, Sendable {
     /// must be greater than `showAfter`.
     public let expiresAfter: TimeInterval?
 
+    /// Whether this survey has been completed in the study from which this value
+    /// was retrieved. A newly configured survey starts incomplete. Re-read the
+    /// study's `midStudySurveys` after state changes.
+    public let hasBeenCompleted: Bool
+
     /// Stable across launches and array reordering so completion state stays attached to
     /// the configured survey rather than its position in the array.
     var completionIdentifier: String {
         id
+    }
+
+    func reportingCompletion(_ hasBeenCompleted: Bool) -> Self {
+        Self(
+            id: id,
+            showAfter: showAfter,
+            url: url,
+            expiresAfter: expiresAfter,
+            hasBeenCompleted: hasBeenCompleted
+        )
     }
 
     private static func defaultIdentifier(

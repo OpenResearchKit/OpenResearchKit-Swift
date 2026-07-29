@@ -10,7 +10,11 @@ import SwiftUI
 
 open class LongTermWithMidSurveyStudy: LongTermStudy, HasMidSurvey {
 
-    public let midStudySurveys: [MidStudySurvey]
+    let configuredMidStudySurveys: [MidStudySurvey]
+
+    public var midStudySurveys: [MidStudySurvey] {
+        midStudySurveysWithCompletionState
+    }
 
     public init(
         studyIdentifier: String,
@@ -28,7 +32,9 @@ open class LongTermWithMidSurveyStudy: LongTermStudy, HasMidSurvey {
             Self.hasConsistentSurveyIdentities(midStudySurveys),
             "Mid-study surveys with the same ID must use the same URL, showAfter, and expiresAfter values."
         )
-        self.midStudySurveys = midStudySurveys
+        self.configuredMidStudySurveys = midStudySurveys.map {
+            $0.reportingCompletion(false)
+        }
 
         super.init(
             studyIdentifier: studyIdentifier,
@@ -60,7 +66,9 @@ open class LongTermWithMidSurveyStudy: LongTermStudy, HasMidSurvey {
         sharedAppGroupIdentifier: String? = nil,
         additionalQueryItems: @escaping (SurveyType) -> [URLQueryItem] = { _ in [] }
     ) {
-        self.midStudySurveys = [midStudySurvey]
+        self.configuredMidStudySurveys = [
+            midStudySurvey.reportingCompletion(false)
+        ]
 
         super.init(
             studyIdentifier: studyIdentifier,

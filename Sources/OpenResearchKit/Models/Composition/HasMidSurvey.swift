@@ -9,6 +9,8 @@ import SwiftUI
 
 protocol HasMidSurvey: AnyObject, GeneralStudy {
 
+    var configuredMidStudySurveys: [MidStudySurvey] { get }
+
     var midStudySurveys: [MidStudySurvey] { get }
 
     var midSurveyBannerView: AnyView { get }
@@ -32,7 +34,7 @@ extension HasMidSurvey {
     var scheduledMidStudySurveys: [MidStudySurvey] {
         var seenIdentifiers = Set<String>()
 
-        return midStudySurveys
+        return configuredMidStudySurveys
             .enumerated()
             .sorted { lhs, rhs in
                 if lhs.element.showAfter == rhs.element.showAfter {
@@ -85,6 +87,16 @@ extension HasMidSurvey {
         !scheduledMidStudySurveys.isEmpty && pendingMidStudySurveys.isEmpty
     }
 
+    var midStudySurveysWithCompletionState: [MidStudySurvey] {
+        let completedIdentifiers = completedMidStudySurveyIdentifiers
+
+        return configuredMidStudySurveys.map { survey in
+            survey.reportingCompletion(
+                completedIdentifiers.contains(survey.completionIdentifier)
+            )
+        }
+    }
+
     private var completedMidStudySurveyIdentifiers: Set<String> {
         if let identifiers = store.get(
             Study.Keys.CompletedMidStudySurveyIdentifiers,
@@ -99,7 +111,7 @@ extension HasMidSurvey {
         // previously supplied through the singular initializer. Presentation is
         // still sorted independently by `showAfter`.
         if store.get(Study.Keys.HasCompletedMidSurvey, type: Bool.self) == true,
-           let firstSurvey = midStudySurveys.first {
+           let firstSurvey = configuredMidStudySurveys.first {
             identifiers.insert(firstSurvey.completionIdentifier)
         }
 
@@ -168,7 +180,7 @@ extension HasMidSurvey {
             value: completedIdentifiers.sorted()
         )
 
-        if let legacySurvey = midStudySurveys.first {
+        if let legacySurvey = configuredMidStudySurveys.first {
             store.update(
                 Study.Keys.HasCompletedMidSurvey,
                 value: completedIdentifiers.contains(legacySurvey.completionIdentifier)
