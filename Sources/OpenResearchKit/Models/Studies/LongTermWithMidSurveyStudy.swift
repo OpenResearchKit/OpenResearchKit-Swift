@@ -9,9 +9,45 @@ import Foundation
 import SwiftUI
 
 open class LongTermWithMidSurveyStudy: LongTermStudy, HasMidSurvey {
-    
-    let midSurvey: MidStudySurvey
-    
+
+    public let midStudySurveys: [MidStudySurvey]
+
+    public init(
+        studyIdentifier: String,
+        studyInformation: StudyInformation,
+        uploadConfiguration: UploadConfiguration,
+        duration: TimeInterval,
+        introductorySurveyURL: URL,
+        midStudySurveys: [MidStudySurvey],
+        concludingSurveyURL: URL,
+        participationIsPossible: Bool = true,
+        sharedAppGroupIdentifier: String? = nil,
+        additionalQueryItems: @escaping (SurveyType) -> [URLQueryItem] = { _ in [] }
+    ) {
+        precondition(
+            Self.hasConsistentSurveyIdentities(midStudySurveys),
+            "Mid-study surveys with the same ID must use the same URL, showAfter, and expiresAfter values."
+        )
+        self.midStudySurveys = midStudySurveys
+
+        super.init(
+            studyIdentifier: studyIdentifier,
+            studyInformation: studyInformation,
+            uploadConfiguration: uploadConfiguration,
+            duration: duration,
+            introductorySurveyURL: introductorySurveyURL,
+            concludingSurveyURL: concludingSurveyURL,
+            participationIsPossible: participationIsPossible,
+            sharedAppGroupIdentifier: sharedAppGroupIdentifier,
+            additionalQueryItems: additionalQueryItems
+        )
+
+        if hasUserGivenConsent {
+            reconcileMidStudySurveyNotifications()
+        }
+    }
+
+    /// Compatibility initializer for studies that only have one mid-study survey.
     public init(
         studyIdentifier: String,
         studyInformation: StudyInformation,
@@ -24,8 +60,8 @@ open class LongTermWithMidSurveyStudy: LongTermStudy, HasMidSurvey {
         sharedAppGroupIdentifier: String? = nil,
         additionalQueryItems: @escaping (SurveyType) -> [URLQueryItem] = { _ in [] }
     ) {
-        self.midSurvey = midStudySurvey
-        
+        self.midStudySurveys = [midStudySurvey]
+
         super.init(
             studyIdentifier: studyIdentifier,
             studyInformation: studyInformation,
@@ -37,46 +73,145 @@ open class LongTermWithMidSurveyStudy: LongTermStudy, HasMidSurvey {
             sharedAppGroupIdentifier: sharedAppGroupIdentifier,
             additionalQueryItems: additionalQueryItems
         )
+
+        if hasUserGivenConsent {
+            reconcileMidStudySurveyNotifications()
+        }
     }
-    
+
     open override func registerNotifications() {
         super.registerNotifications()
-        
-        let midStudySurvey = getMidSurvey()
-        
-        LocalPushController.shared.sendLocalNotification(
-            in: midStudySurvey.showAfter,
-            title: NSLocalizedString("Mid-Study Survey", bundle: Bundle.module, comment: ""),
-            subtitle: NSLocalizedString("Please fill out our short mid-study survey.", bundle: Bundle.module, comment: ""),
-            body: NSLocalizedString("It only takes 3 minutes to complete this survey.", bundle: Bundle.module, comment: ""),
-            identifier: "mid-study-survey-notification"
-        )
-        
-        LocalPushController.shared.sendLocalNotification(
-            in: midStudySurvey.showAfter + 3 * 24 * 60 * 60,
-            title: "Survey Completion Still Pending",
-            subtitle: "Reminder: Please fill out our short mid-study survey.",
-            body: "It only takes about 3 minutes.",
-            identifier: "mid-study-survey-notification-reminder"
-        )
-        
+
+        reconcileMidStudySurveyNotifications()
     }
-    
+
+    open override func setCompleted() {
+        super.setCompleted()
+        clearMidStudySurveyNotifications()
+    }
+
+    open override func didTerminateParticipation(terminationDate: Date) {
+        clearMidStudySurveyNotifications()
+        super.didTerminateParticipation(terminationDate: terminationDate)
+    }
+
+    open override func reset() throws {
+        clearMidStudySurveyNotifications()
+        try super.reset()
+    }
+
+    private func reconcileMidStudySurveyNotifications() {
+        clearMidStudySurveyNotifications()
+
+        guard let userConsentDate,
+              !wasTerminatedBeforeCompletion,
+              !isCompleted,
+              !isDismissedByUser else {
+            return
+        }
+
+        let now = dateGenerator.generate()
+        let reminderDelay: TimeInterval = 3 * 24 * 60 * 60
+        var registeredIdentifiers: [String] = []
+
+        for midStudySurvey in pendingMidStudySurveys(at: now) {
+            let notificationIdentifier = midStudySurveyNotificationIdentifier(
+                for: midStudySurvey
+            )
+            let notificationDate = userConsentDate.addingTimeInterval(
+                midStudySurvey.showAfter
+            )
+            let notificationInterval = notificationDate.timeIntervalSince(now)
+            let expirationDate = midStudySurveyExpirationDate(for: midStudySurvey)
+            let notificationPrecedesExpiration = expirationDate.map {
+                notificationDate < $0
+            } ?? true
+
+            if notificationInterval >= 1 && notificationPrecedesExpiration {
+                LocalPushController.shared.sendLocalNotification(
+                    in: notificationInterval,
+                    title: NSLocalizedString("Mid-Study Survey", bundle: Bundle.module, comment: ""),
+                    subtitle: NSLocalizedString("Please fill out our short mid-study survey.", bundle: Bundle.module, comment: ""),
+                    body: NSLocalizedString("It only takes 3 minutes to complete this survey.", bundle: Bundle.module, comment: ""),
+                    identifier: notificationIdentifier
+                )
+                registeredIdentifiers.append(notificationIdentifier)
+            }
+
+            let reminderIdentifier = midStudySurveyReminderNotificationIdentifier(
+                for: midStudySurvey
+            )
+            let reminderDate = notificationDate.addingTimeInterval(reminderDelay)
+            let reminderInterval = reminderDate.timeIntervalSince(now)
+            let reminderPrecedesExpiration = expirationDate.map {
+                reminderDate < $0
+            } ?? true
+
+            if reminderInterval >= 1 && reminderPrecedesExpiration {
+                LocalPushController.shared.sendLocalNotification(
+                    in: reminderInterval,
+                    title: "Survey Completion Still Pending",
+                    subtitle: "Reminder: Please fill out our short mid-study survey.",
+                    body: "It only takes about 3 minutes.",
+                    identifier: reminderIdentifier
+                )
+                registeredIdentifiers.append(reminderIdentifier)
+            }
+        }
+
+        store.update(
+            Study.Keys.RegisteredMidStudySurveyNotificationIdentifiers,
+            value: registeredIdentifiers.sorted()
+        )
+    }
+
+    private func clearMidStudySurveyNotifications() {
+        // Remove requests created by versions that only supported one survey.
+        LocalPushController.clearNotifications(with: "mid-study-survey-notification")
+        LocalPushController.clearNotifications(with: "mid-study-survey-notification-reminder")
+
+        for identifier in registeredMidStudySurveyNotificationIdentifiers {
+            LocalPushController.clearNotifications(with: identifier)
+        }
+
+        store.update(
+            Study.Keys.RegisteredMidStudySurveyNotificationIdentifiers,
+            value: [String]()
+        )
+    }
+
+    private static func hasConsistentSurveyIdentities(
+        _ surveys: [MidStudySurvey]
+    ) -> Bool {
+        var configurationByIdentifier: [String: MidStudySurvey] = [:]
+
+        for survey in surveys {
+            if let existingSurvey = configurationByIdentifier[survey.id] {
+                guard existingSurvey.url == survey.url,
+                      existingSurvey.showAfter.bitPattern == survey.showAfter.bitPattern,
+                      existingSurvey.expiresAfter?.bitPattern
+                        == survey.expiresAfter?.bitPattern else {
+                    return false
+                }
+            } else {
+                configurationByIdentifier[survey.id] = survey
+            }
+        }
+
+        return true
+    }
+
     public override var isActive: Bool {
-        
-        return super.isActive && !hasCompletedMidSurvey
-        
+
+        return super.isActive && !hasResolvedMidStudySurveys
+
     }
-    
+
     // MARK: - HasMidSurvey -
-    
-    func getMidSurvey() -> MidStudySurvey {
-        return self.midSurvey
-    }
-    
+
     var midSurveyBannerView: AnyView {
         StudyBannerInvitation(study: self, surveyType: .mid)
             .toAnyView()
     }
-    
+
 }

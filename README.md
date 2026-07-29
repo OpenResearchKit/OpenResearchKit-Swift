@@ -7,6 +7,44 @@ A Swift Package to conduct scientific research in iPhone apps:
 - Collect study data
 - Combine survey replies and study data anonymously
 
+## Multiple mid-study surveys
+
+Configure multiple mid-study surveys with `midStudySurveys`:
+
+```swift
+let study = LongTermWithMidSurveyStudy(
+    // ...
+    midStudySurveys: [
+        .init(
+            showAfter: 7 * 24 * 60 * 60,
+            url: URL(string: "https://example.com/week-one-survey")!,
+            expiresAfter: 10 * 24 * 60 * 60
+        ),
+        .init(
+            showAfter: 14 * 24 * 60 * 60,
+            url: URL(string: "https://example.com/week-two-survey")!
+        )
+    ],
+    // ...
+)
+```
+
+Both `showAfter` and the optional `expiresAfter` deadline are measured from participant consent. An expiring survey is available while the elapsed participation time is greater than or equal to `showAfter` and less than `expiresAfter`. It is skipped if it was not completed before that deadline. Omit `expiresAfter` to keep a survey available indefinitely. Surveys are presented chronologically as they become due. For expiring surveys, both intervals must be finite and `expiresAfter` must be greater than `showAfter`. For existing participants, the deadline is calculated from their original consent date, so adding an already-passed deadline makes an incomplete survey expire immediately.
+
+The singular `midStudySurvey` initializer remains supported for studies with one mid-study survey.
+
+When updating an existing study from the singular initializer, keep the original survey as the first entry in `midStudySurveys`; that position is used once to migrate existing completion state. Presentation order is still determined by `showAfter`. If a survey's URL or schedule might change in a later release, give it a stable identity:
+
+```swift
+.init(
+    id: "week-one",
+    showAfter: 7 * 24 * 60 * 60,
+    url: URL(string: "https://example.com/week-one-survey")!
+)
+```
+
+Use a unique `id` for each logical survey in a study. Identical entries with the same `id` are treated as the same survey; reusing an ID with a different URL or schedule is a configuration error.
+
 ## Study Data Uploads
 
 OpenResearchKit uploads study data through a v2 study API. Create the generated OpenAPI `Client` in the host app and pass it into the upload and enrollment services:
