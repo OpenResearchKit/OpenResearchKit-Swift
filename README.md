@@ -47,6 +47,8 @@ When updating an existing study from the singular initializer, keep the original
 
 Use a unique `id` for each logical survey in a study. Identical entries with the same `id` are treated as the same survey; reusing an ID with a different URL or schedule is a configuration error.
 
+After resolving a URL scheme or deep link to a `Study`, present its introductory survey directly with `study.showIntroSurvey()`.
+
 ## Study Data Uploads
 
 OpenResearchKit uploads study data through a v2 study API. Create the generated OpenAPI `Client` in the host app and pass it into the upload and enrollment services:

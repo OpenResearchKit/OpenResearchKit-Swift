@@ -158,6 +158,12 @@ final class StudyTests: XCTestCase {
         
     }
 
+    func test_showIntroSurvey_isExposedAsURLSchemeAction() {
+        let showIntroSurvey: (() -> Void)? = study.showIntroSurvey
+
+        XCTAssertNotNil(showIntroSurvey)
+    }
+
     func test_studyDetailStartParticipationAction_isShownForUnconsentedStudyWithIntroURL() {
         
         XCTAssertNotNil(study.studyDetailStartParticipationAction)
