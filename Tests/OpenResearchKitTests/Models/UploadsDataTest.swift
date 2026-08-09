@@ -299,6 +299,48 @@ class UploadsDataTest: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: destination.path))
     }
 
+    func testStudyDataArchiveForSharing_IncludesMainJSONSnapshotAndWorkingDirectory() throws {
+        let studyID = "StudyDataShareArchiveStudy-\(UUID().uuidString)"
+        let study = TestStudy.makeStudy(id: studyID)
+        study.dateGenerator = FixedDateGenerator(date: fixedUploadDate())
+
+        let jsonData = try JSONSerialization.data(withJSONObject: [
+            ["event": "openedApp", "timestamp": "2026-04-28T12:00:00Z"]
+        ])
+        try jsonData.write(to: study.jsonDataFilePath)
+
+        let workingDir = study.studyDirectory(type: .working)
+        removeDirectoryIfExists(workingDir)
+        let workingFile = workingDir
+            .appendingPathComponent("nested", isDirectory: true)
+            .appendingPathComponent("note.txt")
+        try FileManager.default.createDirectory(
+            at: workingFile.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try Data("nested note".utf8).write(to: workingFile)
+
+        let archiveURL = try study.studyFileManager.studyDataArchiveForSharing(study: study)
+        let archiveData = try Data(contentsOf: archiveURL)
+        let expectedMainJSONFileName = "study-\(studyID)-\(study.userIdentifier).json"
+        let expectedWorkingJSONFile = workingDir.appendingPathComponent(expectedMainJSONFileName)
+
+        XCTAssertEqual(archiveURL.pathExtension, "zip")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: archiveURL.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: expectedWorkingJSONFile.path))
+        XCTAssertGreaterThan(
+            archiveData.count,
+            22,
+            "The study-data export should not produce an empty ZIP when the main JSON snapshot exists."
+        )
+        XCTAssertTrue(
+            archiveData.starts(with: Data([0x50, 0x4B])),
+            "ZIP archives should start with a PK signature."
+        )
+        XCTAssertNotNil(archiveData.range(of: Data(expectedMainJSONFileName.utf8)))
+        XCTAssertNotNil(archiveData.range(of: Data("nested/note.txt".utf8)))
+    }
+
     func testIsUploadFolderEmpty_ChecksTimestampDirectoriesRecursively() throws {
         let studyID = "RecursiveUploadStudy-\(UUID().uuidString)"
         let study = TestStudy.makeStudy(id: studyID)
