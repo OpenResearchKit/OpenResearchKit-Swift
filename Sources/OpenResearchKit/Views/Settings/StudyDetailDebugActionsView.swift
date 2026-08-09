@@ -83,7 +83,6 @@ public struct StudyDetailDebugActionsView: View {
 
             do {
                 try study.copyMainJSONToUpload(date: Date())
-                try study.studyFileManager.transferWorkingToUpload(study: study)
                 try await study.studyFileManager.uploadStudyFolder(study: study)
 
                 showAlert(
