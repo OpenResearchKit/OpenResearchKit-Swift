@@ -277,6 +277,12 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
     open func didUploadStudyFolder() async throws {
         
     }
+
+    /// Called after an upload attempt when no non-hidden regular files remain in the upload directory.
+    /// Empty directories and hidden files do not prevent this callback.
+    open func didFinishAllPendingUploads() async throws {
+
+    }
     
     // MARK: - Helpers -
     

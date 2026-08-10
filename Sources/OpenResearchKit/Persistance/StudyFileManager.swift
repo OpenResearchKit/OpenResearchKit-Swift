@@ -247,6 +247,10 @@ public class StudyFileManager {
             try await study.didUploadStudyFolder()
         }
 
+        if isUploadFolderEmpty(study: study) {
+            try await study.didFinishAllPendingUploads()
+        }
+
     }
     
     /// Uploads a batch directory to the configured backend.
