@@ -11,6 +11,14 @@ final class UploadTestStudy: DataDonationStudy {
 
     private(set) var didFinishAllPendingUploadsCallCount = 0
 
+    @MainActor
+    private(set) var willUploadStudyFileNames: [[String]] = []
+
+    @MainActor
+    override func willUploadStudyFiles(_ files: [URL]) {
+        willUploadStudyFileNames.append(files.map(\.lastPathComponent))
+    }
+
     override func didFinishAllPendingUploads() async throws {
         didFinishAllPendingUploadsCallCount += 1
     }

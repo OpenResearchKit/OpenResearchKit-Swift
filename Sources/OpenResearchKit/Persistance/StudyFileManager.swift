@@ -202,6 +202,7 @@ public class StudyFileManager {
     
     public func upload(study: Study, file: URL) async throws {
         let timestamp = try uploadTimestamp(for: file, study: study)
+        await study.willUploadStudyFiles([file])
         try await upload(study: study, file: file, timestamp: timestamp)
     }
 
@@ -269,6 +270,10 @@ public class StudyFileManager {
         var didUploadFile = false
         
         try validateUniqueUploadFileNames(files: files, timestamp: timestamp)
+
+        if !files.isEmpty {
+            await study.willUploadStudyFiles(files)
+        }
         
         for source in files {
             do {

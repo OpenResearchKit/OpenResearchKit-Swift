@@ -81,6 +81,8 @@ final class StudyDataUploaderV2Tests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: file.deletingLastPathComponent().path))
         XCTAssertNotNil(study.lastSuccessfulUploadDate)
         XCTAssertEqual(study.didFinishAllPendingUploadsCallCount, 1)
+        let willUploadStudyFileNames = await study.willUploadStudyFileNames
+        XCTAssertEqual(willUploadStudyFileNames, [["upload.json"]])
         let requestCount = await state.requestCount()
         XCTAssertEqual(requestCount, 1)
     }
@@ -119,6 +121,15 @@ final class StudyDataUploaderV2Tests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: firstBatch.path))
         XCTAssertFalse(FileManager.default.fileExists(atPath: secondBatch.path))
         XCTAssertNotNil(study.lastSuccessfulUploadDate)
+
+        let willUploadStudyFileNames = await study.willUploadStudyFileNames
+        XCTAssertEqual(
+            willUploadStudyFileNames,
+            [
+                ["first-upload.json", "second-upload.json"],
+                ["third-upload.json"]
+            ]
+        )
 
         let requests = await state.requests
         XCTAssertEqual(requests.count, 3)

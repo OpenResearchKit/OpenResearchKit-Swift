@@ -278,6 +278,12 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
         
     }
 
+    /// Called with the files that will be uploaded before the first upload starts.
+    @MainActor
+    open func willUploadStudyFiles(_ files: [URL]) {
+
+    }
+
     /// Called after an upload attempt when no non-hidden regular files remain in the upload directory.
     /// Empty directories and hidden files do not prevent this callback.
     open func didFinishAllPendingUploads() async throws {
