@@ -198,6 +198,93 @@ final class StudyKeyValueStoreTests: XCTestCase {
         XCTAssertEqual(b.get("onlyB", type: Bool.self), true)
         XCTAssertNil(b.get("onlyA", type: Bool.self))
     }
+
+    func testConcurrentUpdatesPreserveDifferentStudies() {
+        let a = StudyKeyValueStore(studyIdentifier: "study-A", appGroup: suiteName)
+        let b = StudyKeyValueStore(studyIdentifier: "study-B", appGroup: suiteName)
+        let condition = NSCondition()
+        var waitingUpdates = 0
+
+        func waitForConcurrentUpdate() {
+            condition.lock()
+            waitingUpdates += 1
+
+            if waitingUpdates == 2 {
+                condition.broadcast()
+            } else {
+                let deadline = Date().addingTimeInterval(0.25)
+                while waitingUpdates < 2, condition.wait(until: deadline) {}
+            }
+
+            condition.unlock()
+        }
+
+        let updatesFinished = expectation(description: "Concurrent store updates finished")
+        updatesFinished.expectedFulfillmentCount = 2
+
+        Thread {
+            a.updateValues { values in
+                waitForConcurrentUpdate()
+                values["onlyA"] = true
+            }
+            updatesFinished.fulfill()
+        }.start()
+
+        Thread {
+            b.updateValues { values in
+                waitForConcurrentUpdate()
+                values["onlyB"] = true
+            }
+            updatesFinished.fulfill()
+        }.start()
+
+        wait(for: [updatesFinished], timeout: 2)
+
+        XCTAssertEqual(a.get("onlyA", type: Bool.self), true)
+        XCTAssertEqual(b.get("onlyB", type: Bool.self), true)
+    }
+
+    func testConcurrentAtomicUpdatesPreserveSameStudyValue() {
+        let store = StudyKeyValueStore(studyIdentifier: "study-A", appGroup: suiteName)
+        let updateCount = 50
+        let updatesFinished = expectation(description: "Atomic value updates finished")
+        updatesFinished.expectedFulfillmentCount = updateCount
+
+        for _ in 0..<updateCount {
+            Thread {
+                store.updateValue("count", type: Int.self) { count in
+                    count = (count ?? 0) + 1
+                }
+                updatesFinished.fulfill()
+            }.start()
+        }
+
+        wait(for: [updatesFinished], timeout: 2)
+
+        XCTAssertEqual(store.get("count", type: Int.self), updateCount)
+    }
+
+    func testConcurrentAtomicCodableUpdatesPreserveSameStudyValue() throws {
+        let store = StudyKeyValueStore(studyIdentifier: "study-A", appGroup: suiteName)
+        let updateCount = 20
+        let updatesFinished = expectation(description: "Atomic Codable updates finished")
+        updatesFinished.expectedFulfillmentCount = updateCount
+
+        for value in 0..<updateCount {
+            Thread {
+                try? store.updateCodableValue("values", type: [Int].self) { values in
+                    values = (values ?? []) + [value]
+                }
+                updatesFinished.fulfill()
+            }.start()
+        }
+
+        wait(for: [updatesFinished], timeout: 2)
+
+        let values = try store.getCodable("values", type: [Int].self)
+        XCTAssertEqual(values?.count, updateCount)
+        XCTAssertEqual(values?.sorted(), Array(0..<updateCount))
+    }
     
     func testDeleteAllValuesRemovesStudyDictionary() {
         let store = StudyKeyValueStore(studyIdentifier: "study-A", appGroup: suiteName)
