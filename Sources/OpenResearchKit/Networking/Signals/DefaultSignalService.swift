@@ -103,7 +103,8 @@ open class DefaultSignalService: SignalService {
         )
         let signal = Components.Schemas.GenericSignal(
             _type: signal.type,
-            data: data
+            data: data,
+            occurredAt: signal.occurredAt
         )
         
         return Components.Schemas.StoreSignalRequest.genericSignal(signal)

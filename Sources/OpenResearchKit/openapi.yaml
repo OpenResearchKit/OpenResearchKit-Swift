@@ -506,6 +506,11 @@ components:
             - emergency_bypass
         data:
           $ref: '#/components/schemas/EmergencyBypassSignalPayload'
+        occurred_at:
+          description: 'When the signal occurred on the device. The server receipt time is used when omitted.'
+          type: string
+          format: date-time
+          example: '2026-04-27T10:05:00.000000Z'
       type: object
     EmergencyBypassSignalPayload:
       required:
@@ -536,6 +541,11 @@ components:
             source: shortcut
             count: 1
           additionalProperties: true
+        occurred_at:
+          description: 'When the signal occurred on the device. The server receipt time is used when omitted.'
+          type: string
+          format: date-time
+          example: '2026-04-27T10:05:00.000000Z'
       type: object
     StoreSignalRequest:
       description: 'Typed signal request. Reserved signal types use dedicated schemas; all other events use the generic signal schema.'
@@ -554,6 +564,7 @@ components:
         - participant_identifier
         - type
         - data
+        - occurred_at
         - created_at
       properties:
         id:
@@ -577,6 +588,11 @@ components:
             source: shortcut
             count: 1
           additionalProperties: true
+        occurred_at:
+          type: string
+          format: date-time
+          example: '2026-04-27T10:05:00.000000Z'
+          nullable: true
         created_at:
           type: string
           format: date-time

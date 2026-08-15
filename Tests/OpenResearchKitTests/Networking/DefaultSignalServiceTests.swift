@@ -26,7 +26,8 @@ final class DefaultSignalServiceTests: XCTestCase {
                 type: "completedHealthExportUpload",
                 payload: [
                     "status": "completed"
-                ]
+                ],
+                occurredAt: Date(timeIntervalSince1970: 1_777_284_300)
             )
         )
         
@@ -44,6 +45,7 @@ final class DefaultSignalServiceTests: XCTestCase {
         XCTAssertEqual(recordedRequest.request.headerFields[HTTPField.Name("Participant-Identifier")!], "study-123-user")
         XCTAssertEqual(recordedRequest.request.headerFields[HTTPField.Name("Participant-Public-Identifier")!], "participant-123")
         XCTAssertEqual(bodyObject["type"] as? String, "completedHealthExportUpload")
+        XCTAssertEqual(bodyObject["occurred_at"] as? String, "2026-04-27T10:05:00.000Z")
         XCTAssertEqual(dataObject["status"] as? String, "completed")
     }
     

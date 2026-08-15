@@ -14,19 +14,22 @@ public struct Signal: Encodable {
     public let publicUserIdentifier: String?
     public let type: String
     public let payload: [String: String]
+    public let occurredAt: Date?
     
     public init(
         studyIdentifier: String,
         userIdentifier: String,
         publicUserIdentifier: String? = nil,
         type: String,
-        payload: [String: String] = [:]
+        payload: [String: String] = [:],
+        occurredAt: Date? = nil
     ) {
         self.studyIdentifier = studyIdentifier
         self.userIdentifier = userIdentifier
         self.publicUserIdentifier = publicUserIdentifier
         self.type = type
         self.payload = payload
+        self.occurredAt = occurredAt
     }
     
     enum CodingKeys: String, CodingKey {
@@ -34,6 +37,7 @@ public struct Signal: Encodable {
         case userIdentifier = "user_identifier"
         case type = "type"
         case payload = "payload"
+        case occurredAt = "occurred_at"
     }
     
 }
