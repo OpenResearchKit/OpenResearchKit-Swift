@@ -492,6 +492,11 @@ components:
         is_current_participant:
           type: boolean
           example: false
+        last_activity_at:
+          type: string
+          format: date-time
+          example: '2026-04-27T10:05:00.000000Z'
+          nullable: true
       type: object
     EmergencyBypassSignal:
       required:
