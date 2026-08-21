@@ -281,6 +281,18 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
     open func didUploadStudyFolder() async throws {
         
     }
+
+    /// Called with the files that will be uploaded before the first upload starts.
+    @MainActor
+    open func willUploadStudyFiles(_ files: [URL]) {
+
+    }
+
+    /// Called after an upload attempt when no non-hidden regular files remain in the upload directory.
+    /// Empty directories and hidden files do not prevent this callback.
+    open func didFinishAllPendingUploads() async throws {
+
+    }
     
     // MARK: - Helpers -
     
@@ -560,26 +572,34 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
 
     public func copyMainJSONToUpload(date: Date? = nil) throws {
 
-        let fileManager = FileManager.default
-        let destination = try studyFileManager
+        let destinationDirectory = try studyFileManager
             .uploadBatchDirectory(study: self, date: date)
-            .appendingPathComponent(mainFileName)
 
-        // Check that the main json file already exists
-        if fileManager.fileExists(atPath: jsonDataFilePath.path) {
-
-            // If a file with the same name already exists in the folder, we delete it first
-            if fileManager.fileExists(atPath: destination.path) {
-                try fileManager.removeItem(at: destination)
-            }
-            
-            // Copy the file over
-            try fileManager.copyItem(at: jsonDataFilePath, to: destination)
-            
-        } else {
-            Logger.research.warning("The main json files does not exist currently. Maybe you forgot giving the user consent before trying to copy?")
-        }
+        try copyMainJSON(to: destinationDirectory)
         
+    }
+
+    internal func copyMainJSONToWorkingDirectory() throws {
+
+        try copyMainJSON(to: studyDirectory(type: .working))
+
+    }
+
+    private func copyMainJSON(to destinationDirectory: URL) throws {
+
+        let fileManager = FileManager.default
+        let destination = destinationDirectory.appendingPathComponent(mainFileName)
+
+        if fileManager.fileExists(atPath: destination.path) {
+            try fileManager.removeItem(at: destination)
+        }
+
+        if fileManager.fileExists(atPath: jsonDataFilePath.path) {
+            try fileManager.copyItem(at: jsonDataFilePath, to: destination)
+        } else {
+            Logger.research.warning("The main JSON file does not exist currently. Maybe you forgot giving the user consent before trying to copy?")
+        }
+
     }
     
     public func uploadRemainingPendingFiles() async throws {
@@ -612,6 +632,20 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
     /// Mostly relevant for long-term studies affecting the user experience.
     open var shouldShowTerminationButton: Bool {
         return false
+    }
+
+    /// Determines if users should be able to export local study data from package-provided debug actions.
+    open func shouldShowStudyDataExportAction() -> Bool {
+        return Bundle.main.isInDebugMode || Bundle.main.isOnTestFlight
+    }
+
+    /// Determines if users should be able to force-upload staged study data from package-provided debug actions.
+    open func shouldShowStudyDataForceUploadAction() -> Bool {
+        return Bundle.main.isInDebugMode || Bundle.main.isOnTestFlight
+    }
+    
+    open func studySpecificInfoView() -> AnyView? {
+        return nil
     }
     
 }

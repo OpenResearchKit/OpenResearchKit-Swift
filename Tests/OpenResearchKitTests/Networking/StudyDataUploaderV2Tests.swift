@@ -80,6 +80,9 @@ final class StudyDataUploaderV2Tests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: file.path))
         XCTAssertFalse(FileManager.default.fileExists(atPath: file.deletingLastPathComponent().path))
         XCTAssertNotNil(study.lastSuccessfulUploadDate)
+        XCTAssertEqual(study.didFinishAllPendingUploadsCallCount, 1)
+        let willUploadStudyFileNames = await study.willUploadStudyFileNames
+        XCTAssertEqual(willUploadStudyFileNames, [["upload.json"]])
         let requestCount = await state.requestCount()
         XCTAssertEqual(requestCount, 1)
     }
@@ -119,6 +122,15 @@ final class StudyDataUploaderV2Tests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: secondBatch.path))
         XCTAssertNotNil(study.lastSuccessfulUploadDate)
 
+        let willUploadStudyFileNames = await study.willUploadStudyFileNames
+        XCTAssertEqual(
+            willUploadStudyFileNames,
+            [
+                ["first-upload.json", "second-upload.json"],
+                ["third-upload.json"]
+            ]
+        )
+
         let requests = await state.requests
         XCTAssertEqual(requests.count, 3)
         let bodyStrings = requests.compactMap { request in
@@ -136,13 +148,12 @@ final class StudyDataUploaderV2Tests: XCTestCase {
         let study = UploadTestStudy.makeStudy(id: "FailedUploadStudy-\(UUID().uuidString)")
         let file = try createUploadFile(study: study, timestamp: "20260428_120000", name: "upload.json")
 
-        do {
-            try await manager.uploadStudyFolder(study: study)
-        } catch {
-            XCTAssertTrue(FileManager.default.fileExists(atPath: file.path))
-            XCTAssertTrue(FileManager.default.fileExists(atPath: file.deletingLastPathComponent().path))
-            XCTAssertNil(study.lastSuccessfulUploadDate)
-        }
+        try await manager.uploadStudyFolder(study: study)
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: file.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: file.deletingLastPathComponent().path))
+        XCTAssertNil(study.lastSuccessfulUploadDate)
+        XCTAssertEqual(study.didFinishAllPendingUploadsCallCount, 0)
     }
 
     func testUploadFile_MapsGeneratedErrorResponsesToHTTPStatusErrors() async throws {
@@ -325,29 +336,6 @@ private struct RecordingTransport: ClientTransport {
 
         return (response, HTTPBody(Data(state.responseBody.utf8)))
 
-    }
-
-}
-
-private final class UploadTestStudy: DataDonationStudy {
-
-    static func makeStudy(id: String) -> UploadTestStudy {
-        UploadTestStudy(
-            studyIdentifier: id,
-            studyInformation: StudyInformation(
-                title: "Upload Test",
-                subtitle: "Upload Test",
-                contactEmail: "test@example.com",
-                image: nil
-            ),
-            uploadConfiguration: UploadConfiguration(
-                serverURL: URL("https://example.org")!,
-                uploadFrequency: 3600,
-                apiKey: ""
-            ),
-            introductorySurveyURL: nil,
-            participationIsPossible: true
-        )
     }
 
 }

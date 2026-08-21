@@ -25,12 +25,14 @@ public enum StudyKeyValueStoreError: Error, Equatable {
 /// - Remain compatible with `App Group` containers (via `suiteName`).
 ///
 /// ### Threading
-/// This type does **not** perform internal synchronization. If you update from multiple
-/// threads concurrently, coordinate access externally (e.g., via an actor or serial queue).
+/// Access is synchronized within the current process. This makes each operation,
+/// including read-modify-write updates, atomic across all store instances.
+/// This does not coordinate access from other processes.
 public final class StudyKeyValueStore {
     
     /// Top-level key in `UserDefaults` that holds all study dictionaries.
     private static let key = "open_research_kit"
+    private static let accessLock = NSLock()
     
     private let defaults: UserDefaults
     private let studyIdentifier: String
@@ -54,8 +56,10 @@ public final class StudyKeyValueStore {
     /// If no values exist, an empty dictionary is returned.
     /// - Returns: `[String: Any]` for this study.
     func values() -> [String: Any] {
-        let studyValues = defaults.dictionary(forKey: Self.key) as? OpenResearchDefaults ?? [:]
-        return studyValues[studyIdentifier] ?? [:]
+        Self.withLock {
+            let studyValues = defaults.dictionary(forKey: Self.key) as? OpenResearchDefaults ?? [:]
+            return studyValues[studyIdentifier] ?? [:]
+        }
     }
     
     /// Reads a **typed** value for a given key from this study’s values.
@@ -102,9 +106,11 @@ public final class StudyKeyValueStore {
     ///
     /// - Parameter values: The entire dictionary to persist for this study.
     func replaceValues(_ values: [String: Any]) {
-        var currentDefaults = defaults.dictionary(forKey: Self.key) as? OpenResearchDefaults ?? [:]
-        currentDefaults[studyIdentifier] = values
-        defaults.set(currentDefaults, forKey: Self.key)
+        Self.withLock {
+            var currentDefaults = defaults.dictionary(forKey: Self.key) as? OpenResearchDefaults ?? [:]
+            currentDefaults[studyIdentifier] = values
+            defaults.set(currentDefaults, forKey: Self.key)
+        }
     }
     
     /// Sets or removes a **single** key in this study’s values and persists the change.
@@ -115,6 +121,31 @@ public final class StudyKeyValueStore {
     public func update(_ key: String, value: Any?) {
         self.updateValues { values in
             values[key] = value // assigning nil removes the key
+        }
+    }
+
+    /// Atomically reads, changes, and stores one typed value.
+    ///
+    /// Use this method when a new value depends on the stored value. A separate
+    /// `get` followed by `update(_:value:)` is not one atomic operation.
+    ///
+    /// Do not access this store from the update closure.
+    /// - Parameters:
+    ///   - key: The key to update.
+    ///   - type: The expected value type.
+    ///   - update: A synchronous closure that changes the stored value.
+    /// - Returns: The result returned by the update closure.
+    @discardableResult
+    public func updateValue<T, Result>(
+        _ key: String,
+        type: T.Type,
+        _ update: (inout T?) -> Result
+    ) -> Result {
+        updateValues { values in
+            var value = values[key] as? T
+            let result = update(&value)
+            values[key] = value
+            return result
         }
     }
 
@@ -141,6 +172,41 @@ public final class StudyKeyValueStore {
         let data = try encoder.encode(value)
         update(key, value: data)
     }
+
+    /// Atomically reads, changes, and stores one Codable value.
+    ///
+    /// Use this method when a new Codable value depends on the stored value.
+    /// Do not access this store from the update closure.
+    /// - Parameters:
+    ///   - key: The key to update.
+    ///   - type: The Codable value type.
+    ///   - decoder: The JSON decoder to use.
+    ///   - encoder: The JSON encoder to use.
+    ///   - update: A synchronous closure that changes the decoded value.
+    /// - Returns: The result returned by the update closure.
+    @discardableResult
+    public func updateCodableValue<T: Codable, Result>(
+        _ key: String,
+        type: T.Type,
+        decoder: JSONDecoder = JSONDecoder(),
+        encoder: JSONEncoder = JSONEncoder(),
+        _ update: (inout T?) throws -> Result
+    ) throws -> Result {
+        try updateValues { values in
+            var value: T?
+
+            if let storedValue = values[key] {
+                guard let data = storedValue as? Data else {
+                    throw StudyKeyValueStoreError.storedValueIsNotData(key: key)
+                }
+                value = try decoder.decode(type, from: data)
+            }
+
+            let result = try update(&value)
+            values[key] = try value.map(encoder.encode)
+            return result
+        }
+    }
     
     /// Loads current values, lets the caller mutate them, then saves the result.
     ///
@@ -149,14 +215,18 @@ public final class StudyKeyValueStore {
     ///
     /// - Parameter update: An inout closure that receives the current values
     ///                     (or an empty dict) to modify in place.
-    func updateValues(_ update: (inout [String: Any]) -> Void) {
-        var allDefaults = defaults.dictionary(forKey: Self.key) as? OpenResearchDefaults ?? [:]
-        var studyDefaults = allDefaults[studyIdentifier] ?? [:]
-        
-        update(&studyDefaults)
-        
-        allDefaults[studyIdentifier] = studyDefaults
-        defaults.set(allDefaults, forKey: Self.key)
+    @discardableResult
+    func updateValues<Result>(_ update: (inout [String: Any]) throws -> Result) rethrows -> Result {
+        try Self.withLock {
+            var allDefaults = defaults.dictionary(forKey: Self.key) as? OpenResearchDefaults ?? [:]
+            var studyDefaults = allDefaults[studyIdentifier] ?? [:]
+
+            let result = try update(&studyDefaults)
+
+            allDefaults[studyIdentifier] = studyDefaults
+            defaults.set(allDefaults, forKey: Self.key)
+            return result
+        }
     }
     
     /// Deletes **all** stored values for this study.
@@ -164,8 +234,16 @@ public final class StudyKeyValueStore {
     /// This removes the entire entry at:
     /// `open_research_kit[studyIdentifier]`.
     func deleteAllValues() {
-        var allDefaults = defaults.dictionary(forKey: Self.key) as? OpenResearchDefaults ?? [:]
-        allDefaults.removeValue(forKey: studyIdentifier)
-        defaults.set(allDefaults, forKey: Self.key)
+        Self.withLock {
+            var allDefaults = defaults.dictionary(forKey: Self.key) as? OpenResearchDefaults ?? [:]
+            allDefaults.removeValue(forKey: studyIdentifier)
+            defaults.set(allDefaults, forKey: Self.key)
+        }
+    }
+
+    private static func withLock<T>(_ operation: () throws -> T) rethrows -> T {
+        accessLock.lock()
+        defer { accessLock.unlock() }
+        return try operation()
     }
 }

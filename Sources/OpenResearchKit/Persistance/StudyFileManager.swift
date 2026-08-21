@@ -7,6 +7,7 @@
 
 import Foundation
 import OSLog
+import ZIPFoundation
 
 public enum FileTransferMode {
     
@@ -27,6 +28,7 @@ public enum StudyFileError: Error {
     case duplicateUploadFileNames(timestamp: String, fileNames: [String])
     case flatUploadFileFound(URL)
     case invalidUploadBatchDirectory(URL)
+    case cannotCreateZipArchive(URL, String)
 }
 
 public class StudyFileManager {
@@ -200,6 +202,7 @@ public class StudyFileManager {
     
     public func upload(study: Study, file: URL) async throws {
         let timestamp = try uploadTimestamp(for: file, study: study)
+        await study.willUploadStudyFiles([file])
         try await upload(study: study, file: file, timestamp: timestamp)
     }
 
@@ -245,6 +248,10 @@ public class StudyFileManager {
             try await study.didUploadStudyFolder()
         }
 
+        if isUploadFolderEmpty(study: study) {
+            try await study.didFinishAllPendingUploads()
+        }
+
     }
     
     /// Uploads a batch directory to the configured backend.
@@ -263,6 +270,10 @@ public class StudyFileManager {
         var didUploadFile = false
         
         try validateUniqueUploadFileNames(files: files, timestamp: timestamp)
+
+        if !files.isEmpty {
+            await study.willUploadStudyFiles(files)
+        }
         
         for source in files {
             do {
@@ -310,6 +321,23 @@ public class StudyFileManager {
             
         }
     }
+
+    public func studyDataArchiveForSharing(study: Study, date: Date? = nil) throws -> URL {
+        let timestamp = Self.uploadTimestampString(from: date ?? study.dateGenerator.generate())
+        let exportDirectory = fileManager.temporaryDirectory
+            .appendingPathComponent("OpenResearchKitExports", isDirectory: true)
+            .appendingPathComponent(study.studyIdentifier, isDirectory: true)
+        let workingDirectory = study.studyDirectory(type: .working)
+        let destination = try sharingArchiveDestination(
+            exportDirectory: exportDirectory,
+            fileName: "\(study.studyIdentifier)-\(study.userIdentifier)-study-data-\(timestamp).zip"
+        )
+
+        try study.copyMainJSONToWorkingDirectory()
+        try zipDirectoryContents(sourceDirectory: workingDirectory, destination: destination)
+
+        return destination
+    }
     
     // MARK: - Helpers -
     
@@ -319,7 +347,32 @@ public class StudyFileManager {
         let parentPath = parent.resolvingSymlinksInPath().standardizedFileURL.path
         return childPath.hasPrefix(parentPath.hasSuffix("/") ? parentPath : parentPath + "/")
     }
-    
+
+    private func sharingArchiveDestination(exportDirectory: URL, fileName: String) throws -> URL {
+        try fileManager.createDirectory(at: exportDirectory, withIntermediateDirectories: true)
+
+        let destination = exportDirectory.appendingPathComponent(fileName)
+
+        if fileManager.fileExists(atPath: destination.path) {
+            try fileManager.removeItem(at: destination)
+        }
+
+        return destination
+    }
+
+    private func zipDirectoryContents(sourceDirectory: URL, destination: URL) throws {
+        do {
+            try fileManager.zipItem(
+                at: sourceDirectory,
+                to: destination,
+                shouldKeepParent: false,
+                compressionMethod: .deflate
+            )
+        } catch {
+            throw StudyFileError.cannotCreateZipArchive(sourceDirectory, error.localizedDescription)
+        }
+    }
+
     /// Returns the path of `child` relative to `parent` (both resolved). Returns nil if not contained.
     private func relativePath(of child: URL, from parent: URL) -> String? {
         let childURL  = child.resolvingSymlinksInPath().standardizedFileURL
