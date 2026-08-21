@@ -70,7 +70,10 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
         
     }
     
-    func surveyUrl(for surveyType: SurveyType) -> URL? {
+    func surveyUrl(
+        for surveyType: SurveyType,
+        midStudySurveyIdentifier: String? = nil
+    ) -> URL? {
         
         let additionalQueryItems: [URLQueryItem] = self.additionalQueryItems(surveyType)
         
@@ -100,8 +103,9 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
                 
         case .mid:
             
-            if let study = self as? (any HasMidSurvey) {
-                return study.getMidSurvey().url
+            if let study = self as? (any HasMidSurvey),
+               let midStudySurvey = study.midStudySurvey(identifier: midStudySurveyIdentifier) {
+                return midStudySurvey.url
                     .appendingQueryItem(name: "uuid", value: self.userIdentifier)
                     .appendingQueryItems(additionalQueryItems)
             } else {
@@ -689,6 +693,8 @@ extension Study {
     struct Keys {
         static let UserConsentDate = "userConsentDate"
         static let HasCompletedMidSurvey = "hasCompletedMidSurvey"
+        static let CompletedMidStudySurveyIdentifiers = "completedMidStudySurveyIdentifiers"
+        static let RegisteredMidStudySurveyNotificationIdentifiers = "registeredMidStudySurveyNotificationIdentifiers"
         static let IsDismissedByUser = "isDismissedByUser"
         static let TerminatedByUserDate = "terminatedByUserDate"
         static let HasCompletedTerminationSurvey = "hasCompletedTerminationSurvey"

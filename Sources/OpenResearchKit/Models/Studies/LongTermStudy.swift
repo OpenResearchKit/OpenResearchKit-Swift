@@ -36,6 +36,52 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
             additionalQueryItems: additionalQueryItems
         )
     }
+
+    /// Creates a long-term study whose end is configured as a fixed date.
+    ///
+    /// OpenResearchKit stores study durations relative to participant consent. This
+    /// initializer performs that conversion using a persisted consent date when one
+    /// exists, or the initialization date for a participant who has not consented yet.
+    public convenience init(
+        studyIdentifier: String,
+        studyInformation: StudyInformation,
+        uploadConfiguration: UploadConfiguration,
+        studyEndDate: Date,
+        introductorySurveyURL: URL?,
+        concludingSurveyURL: URL?,
+        participationIsPossible: Bool = true,
+        sharedAppGroupIdentifier: String? = nil,
+        additionalQueryItems: @escaping (SurveyType) -> [URLQueryItem] = { _ in [] }
+    ) {
+        let referenceDate = Self.absoluteScheduleReferenceDate(
+            studyIdentifier: studyIdentifier,
+            sharedAppGroupIdentifier: sharedAppGroupIdentifier
+        )
+
+        self.init(
+            studyIdentifier: studyIdentifier,
+            studyInformation: studyInformation,
+            uploadConfiguration: uploadConfiguration,
+            duration: studyEndDate.timeIntervalSince(referenceDate),
+            introductorySurveyURL: introductorySurveyURL,
+            concludingSurveyURL: concludingSurveyURL,
+            participationIsPossible: participationIsPossible,
+            sharedAppGroupIdentifier: sharedAppGroupIdentifier,
+            additionalQueryItems: additionalQueryItems
+        )
+    }
+
+    static func absoluteScheduleReferenceDate(
+        studyIdentifier: String,
+        sharedAppGroupIdentifier: String?
+    ) -> Date {
+        let store = StudyKeyValueStore(
+            studyIdentifier: studyIdentifier,
+            appGroup: sharedAppGroupIdentifier
+        )
+
+        return store.get(Study.Keys.UserConsentDate, type: Date.self) ?? .now
+    }
     
     open override func currentDisplayStatus() async throws -> StudyStatus {
         

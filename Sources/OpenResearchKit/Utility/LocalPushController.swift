@@ -21,6 +21,9 @@ class LocalPushController {
         identifier: String,
         sound: UNNotificationSound = UNNotificationSound.default
     ) {
+        if Bundle.main.isRunningUnitTests {
+            return
+        }
         
         let notificationContent = UNMutableNotificationContent()
         notificationContent.title = title
@@ -112,5 +115,4 @@ class LocalPushController {
     }
     
 }
-
 
