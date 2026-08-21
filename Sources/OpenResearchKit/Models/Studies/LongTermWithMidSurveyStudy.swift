@@ -209,12 +209,6 @@ open class LongTermWithMidSurveyStudy: LongTermStudy, HasMidSurvey {
         return true
     }
 
-    public override var isActive: Bool {
-
-        return super.isActive && !hasResolvedMidStudySurveys
-
-    }
-
     // MARK: - HasMidSurvey -
 
     var midSurveyBannerView: AnyView {

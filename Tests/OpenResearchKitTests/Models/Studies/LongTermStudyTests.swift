@@ -210,6 +210,30 @@ final class LongTermStudyTests: XCTestCase {
         XCTAssertFalse(study.hasCompletedMidSurvey)
         XCTAssertFalse(study.midStudySurveys[0].hasBeenCompleted)
         XCTAssertTrue(study.hasResolvedMidStudySurveys)
+        XCTAssertTrue(study.isActive)
+    }
+
+    func testCompletingAllMidSurveysDoesNotDeactivateStudy() {
+        let survey = makeMidSurvey(path: "mid", showAfter: 10)
+        let study = createLongTermMidStudy(
+            duration: 100,
+            midStudySurveys: [survey]
+        )
+        defer { try? study.reset() }
+        let dateGenerator = TimeTraveler()
+
+        giveConsent(to: study, using: dateGenerator)
+        dateGenerator.travel(by: 10)
+        study.completeMidSurvey()
+
+        XCTAssertTrue(study.hasCompletedMidSurvey)
+        XCTAssertTrue(study.hasResolvedMidStudySurveys)
+        XCTAssertTrue(study.isActive)
+
+        dateGenerator.travel(by: 91)
+        XCTAssertTrue(study.isActive)
+
+        study.completeTerminationSurvey()
         XCTAssertFalse(study.isActive)
     }
 
