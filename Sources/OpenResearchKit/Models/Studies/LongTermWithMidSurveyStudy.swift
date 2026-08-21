@@ -53,6 +53,56 @@ open class LongTermWithMidSurveyStudy: LongTermStudy, HasMidSurvey {
         }
     }
 
+    /// Creates a long-term study with a fixed end date and fixed mid-study survey dates.
+    ///
+    /// The dates are converted to OpenResearchKit's relative representation using a
+    /// persisted consent date when available, keeping the resulting schedule stable
+    /// when the study is recreated on subsequent app launches.
+    public init(
+        studyIdentifier: String,
+        studyInformation: StudyInformation,
+        uploadConfiguration: UploadConfiguration,
+        studyEndDate: Date,
+        introductorySurveyURL: URL,
+        midStudySurveys: [AbsoluteDateMidStudySurvey],
+        concludingSurveyURL: URL,
+        participationIsPossible: Bool = true,
+        sharedAppGroupIdentifier: String? = nil,
+        additionalQueryItems: @escaping (SurveyType) -> [URLQueryItem] = { _ in [] }
+    ) {
+        let referenceDate = Self.absoluteScheduleReferenceDate(
+            studyIdentifier: studyIdentifier,
+            sharedAppGroupIdentifier: sharedAppGroupIdentifier
+        )
+        let relativeMidStudySurveys = midStudySurveys.map {
+            $0.relative(to: referenceDate)
+        }
+
+        precondition(
+            Self.hasConsistentSurveyIdentities(relativeMidStudySurveys),
+            "Mid-study surveys with the same ID must use the same URL, showAt, and expiresAt values."
+        )
+        self.configuredMidStudySurveys = relativeMidStudySurveys.map {
+            $0.reportingCompletion(false)
+        }
+
+        super.init(
+            studyIdentifier: studyIdentifier,
+            studyInformation: studyInformation,
+            uploadConfiguration: uploadConfiguration,
+            duration: studyEndDate.timeIntervalSince(referenceDate),
+            introductorySurveyURL: introductorySurveyURL,
+            concludingSurveyURL: concludingSurveyURL,
+            participationIsPossible: participationIsPossible,
+            sharedAppGroupIdentifier: sharedAppGroupIdentifier,
+            additionalQueryItems: additionalQueryItems
+        )
+
+        if hasUserGivenConsent {
+            reconcileMidStudySurveyNotifications()
+        }
+    }
+
     /// Compatibility initializer for studies that only have one mid-study survey.
     public init(
         studyIdentifier: String,

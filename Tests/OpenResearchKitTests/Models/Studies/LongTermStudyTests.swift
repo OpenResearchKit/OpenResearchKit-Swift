@@ -32,6 +32,28 @@ final class LongTermStudyTests: XCTestCase {
         XCTAssertEqual(study.uploadConfiguration.apiKey, "test")
         XCTAssertEqual(study.uploadConfiguration.uploadFrequency, 60)
     }
+
+    func testLongTermStudyAbsoluteDateInitializerUsesPersistedConsentDate() {
+        let studyIdentifier = UUID().uuidString
+        let consentDate = Date(timeIntervalSinceReferenceDate: 1_000)
+        let store = StudyKeyValueStore(
+            studyIdentifier: studyIdentifier,
+            appGroup: nil
+        )
+        store.update(Study.Keys.UserConsentDate, value: consentDate)
+
+        let study = LongTermStudy(
+            studyIdentifier: studyIdentifier,
+            studyInformation: makeStudyInformation(),
+            uploadConfiguration: uploadConfiguration,
+            studyEndDate: consentDate.addingTimeInterval(100),
+            introductorySurveyURL: URL(string: "https://example.com/intro")!,
+            concludingSurveyURL: URL(string: "https://example.com/conclusion")!
+        )
+        defer { try? study.reset() }
+
+        XCTAssertEqual(study.duration, 100)
+    }
     
     func testEmptyAdditionalQueryItems() {
         let study = createLongTermStudy()
@@ -80,6 +102,83 @@ final class LongTermStudyTests: XCTestCase {
         XCTAssertEqual(study.midStudySurveys.count, 2)
         XCTAssertEqual(study.midStudySurveys.map(\.url), surveys.map(\.url))
         XCTAssertEqual(study.midStudySurveys.map(\.showAfter), surveys.map(\.showAfter))
+    }
+
+    func testAbsoluteDateInitializerUsesPersistedConsentDateAsReference() {
+        let studyIdentifier = UUID().uuidString
+        let consentDate = Date(timeIntervalSinceReferenceDate: 1_000)
+        let firstSurveyDate = consentDate.addingTimeInterval(10)
+        let firstSurveyExpirationDate = consentDate.addingTimeInterval(15)
+        let secondSurveyDate = consentDate.addingTimeInterval(20)
+        let studyEndDate = consentDate.addingTimeInterval(100)
+        let store = StudyKeyValueStore(
+            studyIdentifier: studyIdentifier,
+            appGroup: nil
+        )
+        store.update(Study.Keys.UserConsentDate, value: consentDate)
+
+        let study = LongTermWithMidSurveyStudy(
+            studyIdentifier: studyIdentifier,
+            studyInformation: makeStudyInformation(),
+            uploadConfiguration: uploadConfiguration,
+            studyEndDate: studyEndDate,
+            introductorySurveyURL: URL(string: "https://example.com/intro")!,
+            midStudySurveys: [
+                AbsoluteDateMidStudySurvey(
+                    id: "first",
+                    showAt: firstSurveyDate,
+                    url: URL(string: "https://example.com/mid/first")!,
+                    expiresAt: firstSurveyExpirationDate
+                ),
+                AbsoluteDateMidStudySurvey(
+                    id: "second",
+                    showAt: secondSurveyDate,
+                    url: URL(string: "https://example.com/mid/second")!
+                )
+            ],
+            concludingSurveyURL: URL(string: "https://example.com/conclusion")!
+        )
+        defer { try? study.reset() }
+
+        XCTAssertEqual(study.duration, 100)
+        XCTAssertEqual(study.midStudySurveys.map(\.id), ["first", "second"])
+        XCTAssertEqual(study.midStudySurveys.map(\.showAfter), [10, 20])
+        XCTAssertEqual(study.midStudySurveys.map(\.expiresAfter), [15, nil])
+    }
+
+    func testAbsoluteDateInitializerUsesInitializationDateBeforeConsent() {
+        let studyIdentifier = UUID().uuidString
+        let beforeInitialization = Date.now
+        let firstSurveyDate = beforeInitialization.addingTimeInterval(100)
+        let studyEndDate = beforeInitialization.addingTimeInterval(200)
+
+        let study = LongTermWithMidSurveyStudy(
+            studyIdentifier: studyIdentifier,
+            studyInformation: makeStudyInformation(),
+            uploadConfiguration: uploadConfiguration,
+            studyEndDate: studyEndDate,
+            introductorySurveyURL: URL(string: "https://example.com/intro")!,
+            midStudySurveys: [
+                AbsoluteDateMidStudySurvey(
+                    showAt: firstSurveyDate,
+                    url: URL(string: "https://example.com/mid")!
+                )
+            ],
+            concludingSurveyURL: URL(string: "https://example.com/conclusion")!
+        )
+        defer { try? study.reset() }
+        let afterInitialization = Date.now
+
+        let derivedReferenceDate = firstSurveyDate.addingTimeInterval(
+            -study.midStudySurveys[0].showAfter
+        )
+        XCTAssertGreaterThanOrEqual(derivedReferenceDate, beforeInitialization)
+        XCTAssertLessThanOrEqual(derivedReferenceDate, afterInitialization)
+        XCTAssertEqual(
+            study.duration - study.midStudySurveys[0].showAfter,
+            studyEndDate.timeIntervalSince(firstSurveyDate),
+            accuracy: 0.001
+        )
     }
 
     func testSingularMidSurveyInitializerWrapsSurveyForCompatibility() {
