@@ -29,7 +29,7 @@ open class LongTermWithMidSurveyStudy: LongTermStudy, HasMidSurvey {
         additionalQueryItems: @escaping (SurveyType) -> [URLQueryItem] = { _ in [] }
     ) {
         precondition(
-            Self.hasConsistentSurveyIdentities(midStudySurveys),
+            midStudySurveys.hasConsistentSurveyIdentities(),
             "Mid-study surveys with the same ID must use the same URL, showAfter, and expiresAfter values."
         )
         self.configuredMidStudySurveys = midStudySurveys.map {
@@ -79,7 +79,7 @@ open class LongTermWithMidSurveyStudy: LongTermStudy, HasMidSurvey {
         }
 
         precondition(
-            Self.hasConsistentSurveyIdentities(relativeMidStudySurveys),
+            relativeMidStudySurveys.hasConsistentSurveyIdentities(),
             "Mid-study surveys with the same ID must use the same URL, showAt, and expiresAt values."
         )
         self.configuredMidStudySurveys = relativeMidStudySurveys.map {
@@ -236,27 +236,6 @@ open class LongTermWithMidSurveyStudy: LongTermStudy, HasMidSurvey {
             Study.Keys.RegisteredMidStudySurveyNotificationIdentifiers,
             value: [String]()
         )
-    }
-
-    private static func hasConsistentSurveyIdentities(
-        _ surveys: [MidStudySurvey]
-    ) -> Bool {
-        var configurationByIdentifier: [String: MidStudySurvey] = [:]
-
-        for survey in surveys {
-            if let existingSurvey = configurationByIdentifier[survey.id] {
-                guard existingSurvey.url == survey.url,
-                      existingSurvey.showAfter.bitPattern == survey.showAfter.bitPattern,
-                      existingSurvey.expiresAfter?.bitPattern
-                        == survey.expiresAfter?.bitPattern else {
-                    return false
-                }
-            } else {
-                configurationByIdentifier[survey.id] = survey
-            }
-        }
-
-        return true
     }
 
     // MARK: - HasMidSurvey -
