@@ -187,7 +187,8 @@ open class LongTermWithMidSurveyStudy: LongTermStudy, HasMidSurvey {
                     title: NSLocalizedString("Mid-Study Survey", bundle: Bundle.module, comment: ""),
                     subtitle: NSLocalizedString("Please fill out our short mid-study survey.", bundle: Bundle.module, comment: ""),
                     body: NSLocalizedString("It only takes 3 minutes to complete this survey.", bundle: Bundle.module, comment: ""),
-                    identifier: notificationIdentifier
+                    identifier: notificationIdentifier,
+                    categoryIdentifier: StudySurveyNotification.categoryIdentifier
                 )
                 registeredIdentifiers.append(notificationIdentifier)
             }
@@ -212,7 +213,8 @@ open class LongTermWithMidSurveyStudy: LongTermStudy, HasMidSurvey {
                     title: "Survey Completion Still Pending",
                     subtitle: "Reminder: Please fill out our short mid-study survey.",
                     body: "It only takes about 3 minutes.",
-                    identifier: reminderIdentifier
+                    identifier: reminderIdentifier,
+                    categoryIdentifier: StudySurveyNotification.categoryIdentifier
                 )
                 registeredIdentifiers.append(reminderIdentifier)
             }

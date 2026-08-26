@@ -29,4 +29,25 @@ extension Study {
         return nil
     }
 
+    /// Presents the survey that is due now, using the shared banner priority.
+    @discardableResult
+    public func showDueSurveyIfNeeded(at date: Date? = nil) -> Bool {
+        switch surveyBanner(at: date ?? dateGenerator.generate()) {
+        case .mid(let survey):
+            StudyPresenter.show(
+                study: self,
+                midStudySurvey: survey
+            )
+        case .completion:
+            StudyPresenter.show(
+                study: self,
+                surveyType: .completion
+            )
+        case nil:
+            return false
+        }
+
+        return true
+    }
+
 }

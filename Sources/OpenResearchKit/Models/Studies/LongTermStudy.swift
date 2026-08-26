@@ -194,7 +194,8 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
             title: NSLocalizedString("Concluding the study", bundle: Bundle.module, comment: ""),
             subtitle: NSLocalizedString("Thanks for participating. Please fill out one last survey.", bundle: Bundle.module, comment: ""),
             body: NSLocalizedString("It only takes 3 minutes to complete this survey.", bundle: Bundle.module, comment: ""),
-            identifier: "survey-completion-notification"
+            identifier: "survey-completion-notification",
+            categoryIdentifier: StudySurveyNotification.categoryIdentifier
         )
         
         // Additional Survey Completion Reminder (after 3 days)
@@ -203,7 +204,8 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
             title: "Survey Completion Still Pending",
             subtitle: "Thanks for participating. You can complete the exit survey at any time.",
             body: "It only takes about 3 minutes.",
-            identifier: "survey-completion-notification-reminder"
+            identifier: "survey-completion-notification-reminder",
+            categoryIdentifier: StudySurveyNotification.categoryIdentifier
         )
         
     }

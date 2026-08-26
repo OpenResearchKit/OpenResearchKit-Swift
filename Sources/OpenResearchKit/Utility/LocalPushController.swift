@@ -19,6 +19,7 @@ class LocalPushController {
         subtitle: String,
         body: String,
         identifier: String,
+        categoryIdentifier: String? = nil,
         sound: UNNotificationSound = UNNotificationSound.default
     ) {
         if Bundle.main.isRunningUnitTests {
@@ -29,7 +30,7 @@ class LocalPushController {
         notificationContent.title = title
         notificationContent.subtitle = subtitle
         notificationContent.body = body
-        notificationContent.categoryIdentifier = identifier
+        notificationContent.categoryIdentifier = categoryIdentifier ?? identifier
         notificationContent.sound = sound
         
         var notificationTrigger: UNTimeIntervalNotificationTrigger? = nil
@@ -115,4 +116,3 @@ class LocalPushController {
     }
     
 }
-
