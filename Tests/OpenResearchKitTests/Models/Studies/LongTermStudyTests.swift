@@ -211,7 +211,7 @@ final class LongTermStudyTests: XCTestCase {
 
         XCTAssertTrue(study.isActive)
         XCTAssertFalse(study.hasCompletedMidSurvey)
-        XCTAssertFalse(study.shouldDisplayMidSurvey)
+        XCTAssertNil(study.midStudySurveyToDisplay)
         XCTAssertNil(study.surveyUrl(for: .mid))
     }
 
@@ -224,29 +224,29 @@ final class LongTermStudyTests: XCTestCase {
 
         giveConsent(to: study, using: dateGenerator)
 
-        XCTAssertFalse(study.shouldDisplayMidSurvey)
+        XCTAssertNil(study.midStudySurveyToDisplay)
         XCTAssertFalse(study.hasCompletedMidSurvey)
 
         dateGenerator.travel(by: 9)
-        XCTAssertFalse(study.shouldDisplayMidSurvey)
+        XCTAssertNil(study.midStudySurveyToDisplay)
 
         dateGenerator.travel(by: 1)
-        XCTAssertTrue(study.shouldDisplayMidSurvey)
+        XCTAssertEqual(study.midStudySurveyToDisplay?.id, firstSurvey.id)
         XCTAssertEqual(study.surveyUrl(for: .mid)?.path, "/mid/first")
 
         study.completeMidSurvey()
 
         XCTAssertFalse(study.hasCompletedMidSurvey)
-        XCTAssertFalse(study.shouldDisplayMidSurvey)
+        XCTAssertNil(study.midStudySurveyToDisplay)
         XCTAssertEqual(study.surveyUrl(for: .mid)?.path, "/mid/second")
 
         dateGenerator.travel(by: 10)
-        XCTAssertTrue(study.shouldDisplayMidSurvey)
+        XCTAssertEqual(study.midStudySurveyToDisplay?.id, secondSurvey.id)
 
         study.completeMidSurvey()
 
         XCTAssertTrue(study.hasCompletedMidSurvey)
-        XCTAssertFalse(study.shouldDisplayMidSurvey)
+        XCTAssertNil(study.midStudySurveyToDisplay)
         XCTAssertNil(study.surveyUrl(for: .mid))
     }
 
@@ -294,17 +294,17 @@ final class LongTermStudyTests: XCTestCase {
         giveConsent(to: study, using: dateGenerator)
 
         dateGenerator.travel(by: 9)
-        XCTAssertFalse(study.shouldDisplayMidSurvey)
+        XCTAssertNil(study.midStudySurveyToDisplay)
 
         dateGenerator.travel(by: 1)
-        XCTAssertTrue(study.shouldDisplayMidSurvey)
+        XCTAssertEqual(study.midStudySurveyToDisplay?.id, survey.id)
         XCTAssertEqual(study.surveyUrl(for: .mid)?.path, "/mid/expiring")
 
         dateGenerator.travel(by: 9)
-        XCTAssertTrue(study.shouldDisplayMidSurvey)
+        XCTAssertEqual(study.midStudySurveyToDisplay?.id, survey.id)
 
         dateGenerator.travel(by: 1)
-        XCTAssertFalse(study.shouldDisplayMidSurvey)
+        XCTAssertNil(study.midStudySurveyToDisplay)
         XCTAssertNil(study.surveyUrl(for: .mid))
         XCTAssertFalse(study.hasCompletedMidSurvey)
         XCTAssertFalse(study.midStudySurveys[0].hasBeenCompleted)
@@ -355,7 +355,7 @@ final class LongTermStudyTests: XCTestCase {
         study.dateGenerator = dateGenerator
         study.store.update(Study.Keys.UserConsentDate, value: consentDate)
 
-        XCTAssertTrue(study.shouldDisplayMidSurvey)
+        XCTAssertNotNil(study.midStudySurveyToDisplay)
         XCTAssertEqual(dateGenerator.generationCount, 1)
     }
 
@@ -380,12 +380,12 @@ final class LongTermStudyTests: XCTestCase {
         giveConsent(to: study, using: dateGenerator)
         dateGenerator.travel(by: 15)
 
-        XCTAssertFalse(study.shouldDisplayMidSurvey)
+        XCTAssertNil(study.midStudySurveyToDisplay)
         XCTAssertEqual(study.surveyUrl(for: .mid)?.path, "/mid/next")
 
         dateGenerator.travel(by: 5)
 
-        XCTAssertTrue(study.shouldDisplayMidSurvey)
+        XCTAssertEqual(study.midStudySurveyToDisplay?.id, secondSurvey.id)
         XCTAssertEqual(study.surveyUrl(for: .mid)?.path, "/mid/next")
     }
 
@@ -458,7 +458,7 @@ final class LongTermStudyTests: XCTestCase {
         giveConsent(to: study, using: dateGenerator)
         dateGenerator.travel(by: 31)
 
-        XCTAssertTrue(study.shouldDisplayMidSurvey)
+        XCTAssertEqual(study.midStudySurveyToDisplay?.id, earlySurvey.id)
         XCTAssertEqual(study.surveyUrl(for: .mid)?.path, "/mid/early")
 
         study.completeMidSurvey()
@@ -467,18 +467,18 @@ final class LongTermStudyTests: XCTestCase {
             study.midStudySurveys.map(\.hasBeenCompleted),
             [false, true, false]
         )
-        XCTAssertTrue(study.shouldDisplayMidSurvey)
+        XCTAssertEqual(study.midStudySurveyToDisplay?.id, middleSurvey.id)
         XCTAssertEqual(study.surveyUrl(for: .mid)?.path, "/mid/middle")
 
         study.completeMidSurvey()
 
-        XCTAssertTrue(study.shouldDisplayMidSurvey)
+        XCTAssertEqual(study.midStudySurveyToDisplay?.id, lateSurvey.id)
         XCTAssertEqual(study.surveyUrl(for: .mid)?.path, "/mid/late")
 
         study.completeMidSurvey()
 
         XCTAssertTrue(study.hasCompletedMidSurvey)
-        XCTAssertFalse(study.shouldDisplayMidSurvey)
+        XCTAssertNil(study.midStudySurveyToDisplay)
         XCTAssertNil(study.surveyUrl(for: .mid))
     }
 

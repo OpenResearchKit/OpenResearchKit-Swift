@@ -34,15 +34,25 @@ public struct SurveyWebView: View {
         }
     }
 
+    init(study: Study, midStudySurvey: MidStudySurvey) {
+        self.surveyType = .mid
+        self.study = study
+        self.midStudySurveyIdentifier = midStudySurvey.completionIdentifier
+    }
+
+    var surveyURL: URL? {
+        study.surveyUrl(
+            for: surveyType,
+            midStudySurveyIdentifier: midStudySurveyIdentifier
+        )
+    }
+
     public var body: some View {
         NavigationView {
-            if let surveyUrl = study.surveyUrl(
-                for: surveyType,
-                midStudySurveyIdentifier: midStudySurveyIdentifier
-            ) {
+            if let surveyURL {
                 ZStack {
                     ResearchWebView(
-                        url: surveyUrl,
+                        url: surveyURL,
                         completion: { (success, parameters) in
 
                             if surveyType == .introductory {

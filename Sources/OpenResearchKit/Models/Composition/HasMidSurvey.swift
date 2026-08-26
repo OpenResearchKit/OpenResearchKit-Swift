@@ -13,15 +13,13 @@ protocol HasMidSurvey: AnyObject, GeneralStudy {
 
     var midStudySurveys: [MidStudySurvey] { get }
 
-    var midSurveyBannerView: AnyView { get }
+    func midSurveyBannerView(for survey: MidStudySurvey) -> AnyView
 
     /// Whether every configured mid-study survey has been completed.
     /// This remains `false` when no mid-study surveys are configured.
     var hasCompletedMidSurvey: Bool { get }
 
-    /// A mid-study survey should be displayed after consent as soon as the
-    /// next incomplete survey's `showAfter` interval has elapsed.
-    var shouldDisplayMidSurvey: Bool { get }
+    var midStudySurveyToDisplay: MidStudySurvey? { get }
 
     func showMidStudySurvey()
 
@@ -125,26 +123,43 @@ extension HasMidSurvey {
         return identifiers
     }
 
-    public var shouldDisplayMidSurvey: Bool {
-        let now = dateGenerator.generate()
+    /// The due mid-study survey that should be displayed, or `nil` when no
+    /// survey is eligible for presentation.
+    ///
+    /// - Complexity: O(*n* log *n*), where *n* is the number of configured
+    ///   mid-study surveys.
+    public var midStudySurveyToDisplay: MidStudySurvey? {
+        midStudySurveyToDisplay(at: dateGenerator.generate())
+    }
+
+    func midStudySurveyToDisplay(at date: Date) -> MidStudySurvey? {
+        guard !wasTerminatedBeforeCompletion,
+              !isCompleted,
+              !isDismissedByUser else {
+            return nil
+        }
 
         guard let userConsentDate,
-              let nextMidStudySurvey = pendingMidStudySurveys(at: now).first else {
-            return false
+              let nextMidStudySurvey = pendingMidStudySurveys(at: date).first else {
+            return nil
         }
 
         let showAfterDate = userConsentDate.addingTimeInterval(nextMidStudySurvey.showAfter)
-        return showAfterDate <= now
+        return showAfterDate <= date ? nextMidStudySurvey : nil
     }
 
     public func showMidStudySurvey() {
-        guard nextMidStudySurvey != nil else {
+        guard let midStudySurvey = nextMidStudySurvey,
+              let study = self as? Study else {
             return
         }
 
-        if let study = self as? Study {
-            self.showView(SurveyWebView(surveyType: .mid, study: study))
-        }
+        showView(
+            SurveyWebView(
+                study: study,
+                midStudySurvey: midStudySurvey
+            )
+        )
     }
 
     public func completeMidSurvey() {

@@ -43,14 +43,17 @@ extension HasTerminationSurvey {
     }
     
     public var shouldDisplayTerminationSurvey: Bool {
+        shouldDisplayTerminationSurvey(at: dateGenerator.generate())
+    }
+
+    func shouldDisplayTerminationSurvey(at date: Date) -> Bool {
         if let actualStudyEndDate {
-            let now = dateGenerator.generate()
-            let actualStudyEndIsPast = actualStudyEndDate < now
+            let actualStudyEndIsPast = actualStudyEndDate <= date
             return actualStudyEndIsPast && !hasCompletedTerminationSurvey && !isDismissedByUser
         }
         return false
     }
-    
+
     public func showCompletionSurvey() {
         if let study = self as? Study {
             self.showView(SurveyWebView(surveyType: .completion, study: study))

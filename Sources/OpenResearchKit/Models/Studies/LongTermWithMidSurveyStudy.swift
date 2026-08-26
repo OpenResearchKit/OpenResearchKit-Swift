@@ -240,8 +240,12 @@ open class LongTermWithMidSurveyStudy: LongTermStudy, HasMidSurvey {
 
     // MARK: - HasMidSurvey -
 
-    var midSurveyBannerView: AnyView {
-        StudyBannerInvitation(study: self, surveyType: .mid)
+    func midSurveyBannerView(for survey: MidStudySurvey) -> AnyView {
+        StudyBannerInvitation(
+            study: self,
+            surveyType: .mid,
+            midStudySurvey: survey
+        )
             .toAnyView()
     }
 

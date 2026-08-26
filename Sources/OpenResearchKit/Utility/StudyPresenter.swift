@@ -14,19 +14,33 @@ public enum StudyPresenter {
 }
 
 public extension StudyPresenter {
-    
+
+    /// Presents the selected survey for a study.
     static func show(study: Study, surveyType: SurveyType) {
-        
-        let surveyView = UIHostingController(
-            rootView: SurveyWebView(
+        present(
+            SurveyWebView(
                 surveyType: surveyType,
                 study: study
             )
         )
-        
+    }
+
+    internal static func show(
+        study: Study,
+        midStudySurvey: MidStudySurvey
+    ) {
+        present(
+            SurveyWebView(
+                study: study,
+                midStudySurvey: midStudySurvey
+            )
+        )
+    }
+
+    private static func present(_ survey: SurveyWebView) {
+        let surveyView = UIHostingController(rootView: survey)
         surveyView.modalPresentationStyle = .fullScreen
         UIViewController.topViewController()?.present(surveyView, animated: true)
-        
     }
-    
+
 }
