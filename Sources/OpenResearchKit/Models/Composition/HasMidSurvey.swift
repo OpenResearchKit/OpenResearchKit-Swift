@@ -28,26 +28,58 @@ protocol HasMidSurvey: AnyObject, GeneralStudy {
 extension HasMidSurvey {
 
     /// Mid-study surveys in chronological order. Surveys with the same identity are
-    /// treated as one logical survey.
+    /// treated as one logical survey. Before consent, schedules on one timeline are
+    /// ordered by their configured boundary. A mixed timeline keeps configuration
+    /// order until the consent date lets both schedule kinds resolve to dates.
     var scheduledMidStudySurveys: [MidStudySurvey] {
         var seenIdentifiers = Set<String>()
 
-        return configuredMidStudySurveys
+        let uniqueSurveys: [MidStudySurvey] = configuredMidStudySurveys.compactMap {
+            survey -> MidStudySurvey? in
+            guard seenIdentifiers.insert(survey.completionIdentifier).inserted else {
+                return nil
+            }
+
+            return survey
+        }
+
+        guard userConsentDate != nil else {
+            guard let firstSurvey = uniqueSurveys.first,
+                  uniqueSurveys.dropFirst().allSatisfy({
+                    firstSurvey.schedule.compareAvailability(to: $0.schedule) != nil
+                  }) else {
+                return uniqueSurveys
+            }
+
+            return uniqueSurveys
+                .enumerated()
+                .sorted { lhs, rhs in
+                    switch lhs.element.schedule.compareAvailability(
+                        to: rhs.element.schedule
+                    ) {
+                    case .orderedAscending:
+                        return true
+                    case .orderedDescending:
+                        return false
+                    case .orderedSame, nil:
+                        return lhs.offset < rhs.offset
+                    }
+                }
+                .map { $0.element }
+        }
+
+        return uniqueSurveys
             .enumerated()
             .sorted { lhs, rhs in
-                if lhs.element.showAfter == rhs.element.showAfter {
+                guard let lhsDate = midStudySurveyAvailabilityDate(for: lhs.element),
+                      let rhsDate = midStudySurveyAvailabilityDate(for: rhs.element),
+                      lhsDate != rhsDate else {
                     return lhs.offset < rhs.offset
                 }
 
-                return lhs.element.showAfter < rhs.element.showAfter
+                return lhsDate < rhsDate
             }
-            .compactMap { _, survey in
-                guard seenIdentifiers.insert(survey.completionIdentifier).inserted else {
-                    return nil
-                }
-
-                return survey
-            }
+            .map { $0.element }
     }
 
     /// Surveys that still need a response and have not reached their deadline.
@@ -107,7 +139,7 @@ extension HasMidSurvey {
 
         // The first configured entry is the compatibility slot for the survey
         // previously supplied through the singular initializer. Presentation is
-        // still sorted independently by `showAfter`.
+        // still sorted independently by the resolved availability date.
         if store.get(Study.Keys.HasCompletedMidSurvey, type: Bool.self) == true,
            let firstSurvey = configuredMidStudySurveys.first {
             identifiers.insert(firstSurvey.completionIdentifier)
@@ -139,13 +171,14 @@ extension HasMidSurvey {
             return nil
         }
 
-        guard let userConsentDate,
-              let nextMidStudySurvey = pendingMidStudySurveys(at: date).first else {
+        guard let nextMidStudySurvey = pendingMidStudySurveys(at: date).first,
+              let availabilityDate = midStudySurveyAvailabilityDate(
+                for: nextMidStudySurvey
+              ) else {
             return nil
         }
 
-        let showAfterDate = userConsentDate.addingTimeInterval(nextMidStudySurvey.showAfter)
-        return showAfterDate <= date ? nextMidStudySurvey : nil
+        return availabilityDate <= date ? nextMidStudySurvey : nil
     }
 
     public func showMidStudySurvey() {
@@ -240,12 +273,22 @@ extension HasMidSurvey {
         return hasMidStudySurveyExpired(survey) ? nil : survey
     }
 
+    func midStudySurveyAvailabilityDate(for survey: MidStudySurvey) -> Date? {
+        midStudySurveyWindow(for: survey)?.availableAt
+    }
+
     func midStudySurveyExpirationDate(for survey: MidStudySurvey) -> Date? {
-        guard let userConsentDate, let expiresAfter = survey.expiresAfter else {
+        midStudySurveyWindow(for: survey)?.expiresAt
+    }
+
+    private func midStudySurveyWindow(
+        for survey: MidStudySurvey
+    ) -> MidStudySurveyWindow? {
+        guard let userConsentDate else {
             return nil
         }
 
-        return userConsentDate.addingTimeInterval(expiresAfter)
+        return survey.schedule.resolved(relativeTo: userConsentDate)
     }
 
     func hasMidStudySurveyExpired(_ survey: MidStudySurvey) -> Bool {

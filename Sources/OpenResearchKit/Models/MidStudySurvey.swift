@@ -11,14 +11,16 @@ import Foundation
 
 
 
-/// A survey that becomes available after a given amount of time in a study.
+/// A survey that becomes available during a study according to one schedule.
 public struct MidStudySurvey: Identifiable, Sendable {
 
     public init(showAfter: TimeInterval, url: URL) {
         self.init(
-            showAfter: showAfter,
-            url: url,
-            expiresAfter: nil
+            schedule: .relativeToConsent(
+                availableAfter: showAfter,
+                expiresAfter: nil
+            ),
+            url: url
         )
     }
 
@@ -28,13 +30,22 @@ public struct MidStudySurvey: Identifiable, Sendable {
         expiresAfter: TimeInterval?
     ) {
         self.init(
-            id: Self.defaultIdentifier(
-                showAfter: showAfter,
-                url: url
+            schedule: .relativeToConsent(
+                availableAfter: showAfter,
+                expiresAfter: expiresAfter
             ),
-            showAfter: showAfter,
-            url: url,
-            expiresAfter: expiresAfter
+            url: url
+        )
+    }
+
+    public init(
+        schedule: MidStudySurveySchedule,
+        url: URL
+    ) {
+        self.init(
+            id: Self.defaultIdentifier(schedule: schedule, url: url),
+            schedule: schedule,
+            url: url
         )
     }
 
@@ -49,33 +60,37 @@ public struct MidStudySurvey: Identifiable, Sendable {
     ) {
         self.init(
             id: id,
-            showAfter: showAfter,
+            schedule: .relativeToConsent(
+                availableAfter: showAfter,
+                expiresAfter: expiresAfter
+            ),
+            url: url
+        )
+    }
+
+    /// Creates a survey with one explicit schedule and a stable identity.
+    public init(
+        id: String,
+        schedule: MidStudySurveySchedule,
+        url: URL
+    ) {
+        self.init(
+            id: id,
+            schedule: schedule,
             url: url,
-            expiresAfter: expiresAfter,
             hasBeenCompleted: false
         )
     }
 
     private init(
         id: String,
-        showAfter: TimeInterval,
+        schedule: MidStudySurveySchedule,
         url: URL,
-        expiresAfter: TimeInterval?,
         hasBeenCompleted: Bool
     ) {
-        if let expiresAfter {
-            precondition(
-                showAfter.isFinite
-                    && expiresAfter.isFinite
-                    && expiresAfter > showAfter,
-                "showAfter and expiresAfter must be finite, and expiresAfter must be greater than showAfter."
-            )
-        }
-
         self.id = id
-        self.showAfter = showAfter
+        self.schedule = schedule.validated()
         self.url = url
-        self.expiresAfter = expiresAfter
         self.hasBeenCompleted = hasBeenCompleted
     }
 
@@ -84,16 +99,11 @@ public struct MidStudySurvey: Identifiable, Sendable {
     /// the same ID are treated as the same logical survey.
     public let id: String
 
-    /// The time from the participant's consent date until this survey becomes available.
-    public let showAfter: TimeInterval
+    /// The single rule that determines this survey's availability window.
+    public let schedule: MidStudySurveySchedule
 
     /// The base URL that is opened for this survey.
     public let url: URL
-
-    /// The optional time from participant consent after which this survey is no
-    /// longer available. This value and `showAfter` must be finite, and this value
-    /// must be greater than `showAfter`.
-    public let expiresAfter: TimeInterval?
 
     /// Whether this survey has been completed in the study from which this value
     /// was retrieved. A newly configured survey starts incomplete. Re-read the
@@ -109,18 +119,17 @@ public struct MidStudySurvey: Identifiable, Sendable {
     func reportingCompletion(_ hasBeenCompleted: Bool) -> Self {
         Self(
             id: id,
-            showAfter: showAfter,
+            schedule: schedule,
             url: url,
-            expiresAfter: expiresAfter,
             hasBeenCompleted: hasBeenCompleted
         )
     }
 
     private static func defaultIdentifier(
-        showAfter: TimeInterval,
+        schedule: MidStudySurveySchedule,
         url: URL
     ) -> String {
-        let configuration = "\(url.absoluteString)|\(showAfter.bitPattern)"
+        let configuration = "\(url.absoluteString)|\(schedule.defaultIdentifierComponent)"
         return stableDigest(configuration)
     }
 

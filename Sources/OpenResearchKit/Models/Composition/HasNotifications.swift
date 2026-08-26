@@ -47,8 +47,8 @@ import UIKit
 ///         )
 ///
 ///         // Schedule mid-study survey reminder
-///         if let midSurvey = midStudySurvey {
-///             let reminderDate = studyStartDate.addingTimeInterval(midSurvey.showAfter)
+///         if let midSurvey = midStudySurvey,
+///            let reminderDate = midStudySurveyAvailabilityDate(for: midSurvey) {
 ///             LocalPushController.shared.sendLocalNotification(
 ///                 at: reminderDate,
 ///                 title: "Mid-Study Survey",
@@ -141,8 +141,8 @@ public protocol HasNotifications: GeneralStudy {
     ///     )
     ///
     ///     // Mid-study reminder (if applicable)
-    ///     if let midSurvey = midStudySurvey {
-    ///         let midDate = Date().addingTimeInterval(midSurvey.showAfter)
+    ///     if let midSurvey = midStudySurvey,
+    ///        let midDate = midStudySurveyAvailabilityDate(for: midSurvey) {
     ///         LocalPushController.shared.sendLocalNotification(
     ///             at: midDate,
     ///             title: "Mid-Study Survey",

@@ -19,9 +19,14 @@ final class MidStudySurveyTest: XCTestCase {
         
         let midSurvey = MidStudySurvey(showAfter: timeInterval, url: url)
         
-        XCTAssertEqual(midSurvey.showAfter, timeInterval)
+        XCTAssertEqual(
+            midSurvey.schedule,
+            .relativeToConsent(
+                availableAfter: timeInterval,
+                expiresAfter: nil
+            )
+        )
         XCTAssertEqual(midSurvey.url, url)
-        XCTAssertNil(midSurvey.expiresAfter)
         XCTAssertFalse(midSurvey.hasBeenCompleted)
         
     }
@@ -33,8 +38,33 @@ final class MidStudySurveyTest: XCTestCase {
             expiresAfter: 7200
         )
 
-        XCTAssertEqual(survey.expiresAfter, 7200)
+        XCTAssertEqual(
+            survey.schedule,
+            .relativeToConsent(
+                availableAfter: 3600,
+                expiresAfter: 7200
+            )
+        )
         XCTAssertFalse(survey.hasBeenCompleted)
+    }
+
+    func testRelativeExpirationStartsWhenSurveyBecomesAvailable() {
+        let consentDate = Date(timeIntervalSinceReferenceDate: 1_000)
+        let survey = MidStudySurvey(
+            schedule: .relativeToConsent(
+                availableAfter: 500,
+                expiresAfter: 100
+            ),
+            url: URL(string: "https://example.com/mid-survey")!
+        )
+
+        XCTAssertEqual(
+            survey.schedule.resolved(relativeTo: consentDate),
+            MidStudySurveyWindow(
+                availableAt: consentDate.addingTimeInterval(500),
+                expiresAt: consentDate.addingTimeInterval(600)
+            )
+        )
     }
 
     func testOriginalInitializerCanBeUsedAsFunctionValue() {
@@ -44,9 +74,14 @@ final class MidStudySurveyTest: XCTestCase {
 
         let survey = initializer(3600, url)
 
-        XCTAssertEqual(survey.showAfter, 3600)
+        XCTAssertEqual(
+            survey.schedule,
+            .relativeToConsent(
+                availableAfter: 3600,
+                expiresAfter: nil
+            )
+        )
         XCTAssertEqual(survey.url, url)
-        XCTAssertNil(survey.expiresAfter)
     }
 
     func testCompletionIdentifierIsDeterministicForSameConfiguration() {
@@ -88,6 +123,32 @@ final class MidStudySurveyTest: XCTestCase {
         XCTAssertEqual(
             surveyWithoutExpiration.completionIdentifier,
             expiringSurvey.completionIdentifier
+        )
+    }
+
+    func testFixedScheduleIsStoredAsOneValue() {
+        let availableAt = Date(timeIntervalSinceReferenceDate: 1_000)
+        let survey = MidStudySurvey(
+            schedule: .fixedDates(
+                availableAt: availableAt,
+                expiresAfter: 500
+            ),
+            url: URL(string: "https://example.com/mid-survey")!
+        )
+
+        XCTAssertEqual(
+            survey.schedule,
+            .fixedDates(
+                availableAt: availableAt,
+                expiresAfter: 500
+            )
+        )
+        XCTAssertEqual(
+            survey.schedule.resolved(relativeTo: .distantPast),
+            MidStudySurveyWindow(
+                availableAt: availableAt,
+                expiresAt: availableAt.addingTimeInterval(500)
+            )
         )
     }
 

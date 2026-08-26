@@ -101,14 +101,15 @@ final class LongTermStudyTests: XCTestCase {
 
         XCTAssertEqual(study.midStudySurveys.count, 2)
         XCTAssertEqual(study.midStudySurveys.map(\.url), surveys.map(\.url))
-        XCTAssertEqual(study.midStudySurveys.map(\.showAfter), surveys.map(\.showAfter))
+        XCTAssertEqual(study.midStudySurveys.map(\.schedule), surveys.map(\.schedule))
     }
 
-    func testAbsoluteDateInitializerUsesPersistedConsentDateAsReference() {
+    func testFixedDateInitializerUsesPersistedConsentDateAsReference() {
         let studyIdentifier = UUID().uuidString
         let consentDate = Date(timeIntervalSinceReferenceDate: 1_000)
         let firstSurveyDate = consentDate.addingTimeInterval(10)
         let firstSurveyExpirationDate = consentDate.addingTimeInterval(15)
+        let firstSurveyDuration = firstSurveyExpirationDate.timeIntervalSince(firstSurveyDate)
         let secondSurveyDate = consentDate.addingTimeInterval(20)
         let studyEndDate = consentDate.addingTimeInterval(100)
         let store = StudyKeyValueStore(
@@ -124,15 +125,20 @@ final class LongTermStudyTests: XCTestCase {
             studyEndDate: studyEndDate,
             introductorySurveyURL: URL(string: "https://example.com/intro")!,
             midStudySurveys: [
-                AbsoluteDateMidStudySurvey(
+                MidStudySurvey(
                     id: "first",
-                    showAt: firstSurveyDate,
-                    url: URL(string: "https://example.com/mid/first")!,
-                    expiresAt: firstSurveyExpirationDate
+                    schedule: .fixedDates(
+                        availableAt: firstSurveyDate,
+                        expiresAfter: firstSurveyDuration
+                    ),
+                    url: URL(string: "https://example.com/mid/first")!
                 ),
-                AbsoluteDateMidStudySurvey(
+                MidStudySurvey(
                     id: "second",
-                    showAt: secondSurveyDate,
+                    schedule: .fixedDates(
+                        availableAt: secondSurveyDate,
+                        expiresAfter: nil
+                    ),
                     url: URL(string: "https://example.com/mid/second")!
                 )
             ],
@@ -142,15 +148,27 @@ final class LongTermStudyTests: XCTestCase {
 
         XCTAssertEqual(study.duration, 100)
         XCTAssertEqual(study.midStudySurveys.map(\.id), ["first", "second"])
-        XCTAssertEqual(study.midStudySurveys.map(\.showAfter), [10, 20])
-        XCTAssertEqual(study.midStudySurveys.map(\.expiresAfter), [15, nil])
+        XCTAssertEqual(
+            study.midStudySurveys.map(\.schedule),
+            [
+                .fixedDates(
+                    availableAt: firstSurveyDate,
+                    expiresAfter: firstSurveyDuration
+                ),
+                .fixedDates(
+                    availableAt: secondSurveyDate,
+                    expiresAfter: nil
+                )
+            ]
+        )
     }
 
-    func testAbsoluteDateInitializerUsesInitializationDateBeforeConsent() {
+    func testFixedDateInitializerKeepsConfiguredDatesAfterConsent() {
         let studyIdentifier = UUID().uuidString
-        let beforeInitialization = Date.now
-        let firstSurveyDate = beforeInitialization.addingTimeInterval(100)
-        let studyEndDate = beforeInitialization.addingTimeInterval(200)
+        let initializationDate = Date.now
+        let consentDate = initializationDate.addingTimeInterval(25)
+        let firstSurveyDate = initializationDate.addingTimeInterval(100)
+        let studyEndDate = initializationDate.addingTimeInterval(200)
 
         let study = LongTermWithMidSurveyStudy(
             studyIdentifier: studyIdentifier,
@@ -159,26 +177,26 @@ final class LongTermStudyTests: XCTestCase {
             studyEndDate: studyEndDate,
             introductorySurveyURL: URL(string: "https://example.com/intro")!,
             midStudySurveys: [
-                AbsoluteDateMidStudySurvey(
-                    showAt: firstSurveyDate,
+                MidStudySurvey(
+                    schedule: .fixedDates(
+                        availableAt: firstSurveyDate,
+                        expiresAfter: nil
+                    ),
                     url: URL(string: "https://example.com/mid")!
                 )
             ],
             concludingSurveyURL: URL(string: "https://example.com/conclusion")!
         )
         defer { try? study.reset() }
-        let afterInitialization = Date.now
+        study.store.update(Study.Keys.UserConsentDate, value: consentDate)
 
-        let derivedReferenceDate = firstSurveyDate.addingTimeInterval(
-            -study.midStudySurveys[0].showAfter
-        )
-        XCTAssertGreaterThanOrEqual(derivedReferenceDate, beforeInitialization)
-        XCTAssertLessThanOrEqual(derivedReferenceDate, afterInitialization)
         XCTAssertEqual(
-            study.duration - study.midStudySurveys[0].showAfter,
-            studyEndDate.timeIntervalSince(firstSurveyDate),
-            accuracy: 0.001
+            study.midStudySurveyAvailabilityDate(
+                for: study.midStudySurveys[0]
+            ),
+            firstSurveyDate
         )
+        XCTAssertEqual(study.intendedStudyEndDate, studyEndDate)
     }
 
     func testSingularMidSurveyInitializerWrapsSurveyForCompatibility() {
@@ -196,7 +214,7 @@ final class LongTermStudyTests: XCTestCase {
 
         XCTAssertEqual(study.midStudySurveys.count, 1)
         XCTAssertEqual(study.midStudySurveys.first?.url, survey.url)
-        XCTAssertEqual(study.midStudySurveys.first?.showAfter, survey.showAfter)
+        XCTAssertEqual(study.midStudySurveys.first?.schedule, survey.schedule)
     }
 
     func testEmptyMidSurveyArrayBehavesLikeLongTermStudyWithoutMidSurveys() {
@@ -282,7 +300,7 @@ final class LongTermStudyTests: XCTestCase {
         let survey = makeMidSurvey(
             path: "mid/expiring",
             showAfter: 10,
-            expiresAfter: 20
+            expiresAfter: 10
         )
         let study = createLongTermMidStudy(
             duration: 100,
@@ -363,12 +381,12 @@ final class LongTermStudyTests: XCTestCase {
         let firstSurvey = makeMidSurvey(
             path: "mid/expired",
             showAfter: 10,
-            expiresAfter: 15
+            expiresAfter: 5
         )
         let secondSurvey = makeMidSurvey(
             path: "mid/next",
             showAfter: 20,
-            expiresAfter: 30
+            expiresAfter: 10
         )
         let study = createLongTermMidStudy(
             duration: 100,
@@ -393,7 +411,7 @@ final class LongTermStudyTests: XCTestCase {
         let firstSurvey = makeMidSurvey(
             path: "mid/expired",
             showAfter: 10,
-            expiresAfter: 15
+            expiresAfter: 5
         )
         let secondSurvey = makeMidSurvey(path: "mid/next", showAfter: 20)
         let study = createLongTermMidStudy(
@@ -425,7 +443,7 @@ final class LongTermStudyTests: XCTestCase {
         let survey = makeMidSurvey(
             path: "mid/expiring",
             showAfter: 10,
-            expiresAfter: 20
+            expiresAfter: 10
         )
         let study = createLongTermMidStudy(
             duration: 100,
@@ -673,6 +691,7 @@ final class LongTermStudyTests: XCTestCase {
         let studyIdentifier = UUID().uuidString
         let originalStudy = createLongTermMidStudy(
             studyIdentifier: studyIdentifier,
+            duration: 10 * 24 * 60 * 60,
             midStudySurveys: [
                 MidStudySurvey(
                     id: "original",
@@ -692,6 +711,7 @@ final class LongTermStudyTests: XCTestCase {
         )
         let restoredStudy = createLongTermMidStudy(
             studyIdentifier: studyIdentifier,
+            duration: 10 * 24 * 60 * 60,
             midStudySurveys: [replacementSurvey],
             resetStoredState: false
         )
@@ -804,7 +824,7 @@ final class LongTermStudyTests: XCTestCase {
             id: "expiring",
             showAfter: 60 * 60,
             url: URL(string: "https://example.com/mid/expiring")!,
-            expiresAfter: 60 * 60 + reminderDelay
+            expiresAfter: reminderDelay
         )
         let study = createLongTermMidStudy(
             duration: 10 * 24 * 60 * 60,
@@ -839,7 +859,7 @@ final class LongTermStudyTests: XCTestCase {
         study.registerNotifications()
         XCTAssertFalse(study.registeredMidStudySurveyNotificationIdentifiers.isEmpty)
 
-        dateGenerator.travel(by: 2 * 24 * 60 * 60)
+        dateGenerator.travel(by: 60 * 60 + 2 * 24 * 60 * 60)
         study.registerNotifications()
 
         XCTAssertTrue(study.registeredMidStudySurveyNotificationIdentifiers.isEmpty)
@@ -877,6 +897,7 @@ final class LongTermStudyTests: XCTestCase {
 
     func testCompletingStudyClearsTrackedMidSurveyNotifications() {
         let study = createLongTermMidStudy(
+            duration: 10 * 24 * 60 * 60,
             midStudySurveys: [
                 makeMidSurvey(path: "mid/first", showAfter: 60 * 60)
             ]

@@ -11,6 +11,7 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
     
     open private(set) var duration: TimeInterval
     open private(set) var concludingSurveyURL: URL?
+    private var configuredStudyEndDate: Date? = nil
     
     public init(
         studyIdentifier: String,
@@ -42,7 +43,7 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
     /// OpenResearchKit stores study durations relative to participant consent. This
     /// initializer performs that conversion using a persisted consent date when one
     /// exists, or the initialization date for a participant who has not consented yet.
-    public convenience init(
+    public init(
         studyIdentifier: String,
         studyInformation: StudyInformation,
         uploadConfiguration: UploadConfiguration,
@@ -58,17 +59,27 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
             sharedAppGroupIdentifier: sharedAppGroupIdentifier
         )
 
-        self.init(
+        self.duration = studyEndDate.timeIntervalSince(referenceDate)
+        self.concludingSurveyURL = concludingSurveyURL
+        self.configuredStudyEndDate = studyEndDate
+
+        super.init(
             studyIdentifier: studyIdentifier,
             studyInformation: studyInformation,
             uploadConfiguration: uploadConfiguration,
-            duration: studyEndDate.timeIntervalSince(referenceDate),
             introductorySurveyURL: introductorySurveyURL,
-            concludingSurveyURL: concludingSurveyURL,
             participationIsPossible: participationIsPossible,
             sharedAppGroupIdentifier: sharedAppGroupIdentifier,
             additionalQueryItems: additionalQueryItems
         )
+    }
+
+    public var intendedStudyEndDate: Date? {
+        guard hasUserGivenConsent else {
+            return nil
+        }
+
+        return configuredStudyEndDate ?? userConsentDate?.addingTimeInterval(duration)
     }
 
     static func absoluteScheduleReferenceDate(
@@ -161,11 +172,21 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
     open override func registerNotifications() {
         
         super.registerNotifications()
-        
-        var pushDuration = self.duration
-#if DEBUG
+
+        var pushDuration = duration
+        #if DEBUG
         pushDuration = 10
-#endif
+        #endif
+
+        if let configuredStudyEndDate {
+            pushDuration = configuredStudyEndDate.timeIntervalSince(
+                dateGenerator.generate()
+            )
+        }
+
+        guard pushDuration >= 1 else {
+            return
+        }
         
         // Survey Completion Reminder after Study duration has ellapsed
         LocalPushController.shared.sendLocalNotification(

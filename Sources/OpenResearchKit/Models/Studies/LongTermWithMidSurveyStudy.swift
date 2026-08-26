@@ -30,7 +30,7 @@ open class LongTermWithMidSurveyStudy: LongTermStudy, HasMidSurvey {
     ) {
         precondition(
             midStudySurveys.hasConsistentSurveyIdentities(),
-            "Mid-study surveys with the same ID must use the same URL, showAfter, and expiresAfter values."
+            "Mid-study surveys with the same ID must use the same URL and schedule."
         )
         self.configuredMidStudySurveys = midStudySurveys.map {
             $0.reportingCompletion(false)
@@ -53,36 +53,24 @@ open class LongTermWithMidSurveyStudy: LongTermStudy, HasMidSurvey {
         }
     }
 
-    /// Creates a long-term study with a fixed end date and fixed mid-study survey dates.
-    ///
-    /// The dates are converted to OpenResearchKit's relative representation using a
-    /// persisted consent date when available, keeping the resulting schedule stable
-    /// when the study is recreated on subsequent app launches.
+    /// Creates a long-term study with a fixed end date.
     public init(
         studyIdentifier: String,
         studyInformation: StudyInformation,
         uploadConfiguration: UploadConfiguration,
         studyEndDate: Date,
         introductorySurveyURL: URL,
-        midStudySurveys: [AbsoluteDateMidStudySurvey],
+        midStudySurveys: [MidStudySurvey],
         concludingSurveyURL: URL,
         participationIsPossible: Bool = true,
         sharedAppGroupIdentifier: String? = nil,
         additionalQueryItems: @escaping (SurveyType) -> [URLQueryItem] = { _ in [] }
     ) {
-        let referenceDate = Self.absoluteScheduleReferenceDate(
-            studyIdentifier: studyIdentifier,
-            sharedAppGroupIdentifier: sharedAppGroupIdentifier
-        )
-        let relativeMidStudySurveys = midStudySurveys.map {
-            $0.relative(to: referenceDate)
-        }
-
         precondition(
-            relativeMidStudySurveys.hasConsistentSurveyIdentities(),
-            "Mid-study surveys with the same ID must use the same URL, showAt, and expiresAt values."
+            midStudySurveys.hasConsistentSurveyIdentities(),
+            "Mid-study surveys with the same ID must use the same URL and schedule."
         )
-        self.configuredMidStudySurveys = relativeMidStudySurveys.map {
+        self.configuredMidStudySurveys = midStudySurveys.map {
             $0.reportingCompletion(false)
         }
 
@@ -90,7 +78,7 @@ open class LongTermWithMidSurveyStudy: LongTermStudy, HasMidSurvey {
             studyIdentifier: studyIdentifier,
             studyInformation: studyInformation,
             uploadConfiguration: uploadConfiguration,
-            duration: studyEndDate.timeIntervalSince(referenceDate),
+            studyEndDate: studyEndDate,
             introductorySurveyURL: introductorySurveyURL,
             concludingSurveyURL: concludingSurveyURL,
             participationIsPossible: participationIsPossible,
@@ -161,7 +149,7 @@ open class LongTermWithMidSurveyStudy: LongTermStudy, HasMidSurvey {
     private func reconcileMidStudySurveyNotifications() {
         clearMidStudySurveyNotifications()
 
-        guard let userConsentDate,
+        guard hasUserGivenConsent,
               !wasTerminatedBeforeCompletion,
               !isCompleted,
               !isDismissedByUser else {
@@ -173,19 +161,27 @@ open class LongTermWithMidSurveyStudy: LongTermStudy, HasMidSurvey {
         var registeredIdentifiers: [String] = []
 
         for midStudySurvey in pendingMidStudySurveys(at: now) {
+            guard let notificationDate = midStudySurveyAvailabilityDate(
+                for: midStudySurvey
+            ) else {
+                continue
+            }
+
             let notificationIdentifier = midStudySurveyNotificationIdentifier(
                 for: midStudySurvey
-            )
-            let notificationDate = userConsentDate.addingTimeInterval(
-                midStudySurvey.showAfter
             )
             let notificationInterval = notificationDate.timeIntervalSince(now)
             let expirationDate = midStudySurveyExpirationDate(for: midStudySurvey)
             let notificationPrecedesExpiration = expirationDate.map {
                 notificationDate < $0
             } ?? true
+            let notificationPrecedesStudyEnd = actualStudyEndDate.map {
+                notificationDate < $0
+            } ?? true
 
-            if notificationInterval >= 1 && notificationPrecedesExpiration {
+            if notificationInterval >= 1,
+               notificationPrecedesExpiration,
+               notificationPrecedesStudyEnd {
                 LocalPushController.shared.sendLocalNotification(
                     in: notificationInterval,
                     title: NSLocalizedString("Mid-Study Survey", bundle: Bundle.module, comment: ""),
@@ -204,8 +200,13 @@ open class LongTermWithMidSurveyStudy: LongTermStudy, HasMidSurvey {
             let reminderPrecedesExpiration = expirationDate.map {
                 reminderDate < $0
             } ?? true
+            let reminderPrecedesStudyEnd = actualStudyEndDate.map {
+                reminderDate < $0
+            } ?? true
 
-            if reminderInterval >= 1 && reminderPrecedesExpiration {
+            if reminderInterval >= 1,
+               reminderPrecedesExpiration,
+               reminderPrecedesStudyEnd {
                 LocalPushController.shared.sendLocalNotification(
                     in: reminderInterval,
                     title: "Survey Completion Still Pending",

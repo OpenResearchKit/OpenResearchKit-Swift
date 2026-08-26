@@ -14,9 +14,7 @@ extension Collection where Element == MidStudySurvey {
         for survey in self {
             if let existingSurvey = configurationByIdentifier[survey.id] {
                 guard existingSurvey.url == survey.url,
-                      existingSurvey.showAfter.bitPattern == survey.showAfter.bitPattern,
-                      existingSurvey.expiresAfter?.bitPattern
-                        == survey.expiresAfter?.bitPattern else {
+                      existingSurvey.schedule == survey.schedule else {
                     return false
                 }
             } else {
