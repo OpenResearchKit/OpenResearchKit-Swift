@@ -13,10 +13,16 @@ public struct StudyBannerInvitation: View {
     
     let surveyType: SurveyType
     let study: Study
+    let midStudySurvey: MidStudySurvey?
     
-    init(study: Study, surveyType: SurveyType) {
+    init(
+        study: Study,
+        surveyType: SurveyType,
+        midStudySurvey: MidStudySurvey? = nil
+    ) {
         self.surveyType = surveyType
         self.study = study
+        self.midStudySurvey = midStudySurvey
     }
     
     public var body: some View {
@@ -25,14 +31,31 @@ public struct StudyBannerInvitation: View {
             studyMetadata: study.studyInformation,
             studyDuration: studyDuration,
             surveyType: surveyType,
-            dismissStudy: {
-                study.isDismissedByUser = true
-            },
-            primaryAction: {
-                StudyPresenter.show(study: study, surveyType: surveyType)
-            }
+            dismissStudy: dismissStudy,
+            primaryAction: showSurvey
         )
         
+    }
+
+    private var dismissStudy: (() -> Void)? {
+        guard surveyType.canDismissStudyFromBanner else {
+            return nil
+        }
+
+        return {
+            study.isDismissedByUser = true
+        }
+    }
+
+    private func showSurvey() {
+        if surveyType == .mid, let midStudySurvey {
+            StudyPresenter.show(
+                study: study,
+                midStudySurvey: midStudySurvey
+            )
+        } else {
+            StudyPresenter.show(study: study, surveyType: surveyType)
+        }
     }
     
     var studyDuration: TimeInterval? {
@@ -52,14 +75,14 @@ public struct DefaultStudyView: View {
     public var studyMetadata: StudyInformation
     public var studyDuration: TimeInterval?
     public var surveyType: SurveyType
-    public var dismissStudy: () -> Void = { }
+    public var dismissStudy: (() -> Void)?
     public var primaryAction: () -> Void = { }
     
     public init(
         studyMetadata: StudyInformation,
         studyDuration: TimeInterval?,
         surveyType: SurveyType,
-        dismissStudy: @escaping () -> Void,
+        dismissStudy: (() -> Void)? = nil,
         primaryAction: @escaping () -> Void
     ) {
         self.studyMetadata = studyMetadata
@@ -72,14 +95,11 @@ public struct DefaultStudyView: View {
         
         VStack(alignment: .leading, spacing: 2) {
             
-            HStack {
-                
-                Spacer()
-                
-                DismissButton(action: {
-                    dismissStudy()
-                })
-                
+            if let dismissStudy {
+                HStack {
+                    Spacer()
+                    DismissButton(action: dismissStudy)
+                }
             }
             
             if let image = studyMetadata.image?() {

@@ -11,6 +11,7 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
     
     open private(set) var duration: TimeInterval
     open private(set) var concludingSurveyURL: URL?
+    private var configuredStudyEndDate: Date? = nil
     
     public init(
         studyIdentifier: String,
@@ -35,6 +36,62 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
             sharedAppGroupIdentifier: sharedAppGroupIdentifier,
             additionalQueryItems: additionalQueryItems
         )
+    }
+
+    /// Creates a long-term study whose end is configured as a fixed date.
+    ///
+    /// OpenResearchKit stores study durations relative to participant consent. This
+    /// initializer performs that conversion using a persisted consent date when one
+    /// exists, or the initialization date for a participant who has not consented yet.
+    public init(
+        studyIdentifier: String,
+        studyInformation: StudyInformation,
+        uploadConfiguration: UploadConfiguration,
+        studyEndDate: Date,
+        introductorySurveyURL: URL?,
+        concludingSurveyURL: URL?,
+        participationIsPossible: Bool = true,
+        sharedAppGroupIdentifier: String? = nil,
+        additionalQueryItems: @escaping (SurveyType) -> [URLQueryItem] = { _ in [] }
+    ) {
+        let referenceDate = Self.absoluteScheduleReferenceDate(
+            studyIdentifier: studyIdentifier,
+            sharedAppGroupIdentifier: sharedAppGroupIdentifier
+        )
+
+        self.duration = studyEndDate.timeIntervalSince(referenceDate)
+        self.concludingSurveyURL = concludingSurveyURL
+        self.configuredStudyEndDate = studyEndDate
+
+        super.init(
+            studyIdentifier: studyIdentifier,
+            studyInformation: studyInformation,
+            uploadConfiguration: uploadConfiguration,
+            introductorySurveyURL: introductorySurveyURL,
+            participationIsPossible: participationIsPossible,
+            sharedAppGroupIdentifier: sharedAppGroupIdentifier,
+            additionalQueryItems: additionalQueryItems
+        )
+    }
+
+    public var intendedStudyEndDate: Date? {
+        guard hasUserGivenConsent else {
+            return nil
+        }
+
+        return configuredStudyEndDate ?? userConsentDate?.addingTimeInterval(duration)
+    }
+
+    static func absoluteScheduleReferenceDate(
+        studyIdentifier: String,
+        sharedAppGroupIdentifier: String?
+    ) -> Date {
+        let store = StudyKeyValueStore(
+            studyIdentifier: studyIdentifier,
+            appGroup: sharedAppGroupIdentifier
+        )
+
+        return store.get(Study.Keys.UserConsentDate, type: Date.self) ?? .now
     }
     
     open override func currentDisplayStatus() async throws -> StudyStatus {
@@ -115,11 +172,21 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
     open override func registerNotifications() {
         
         super.registerNotifications()
-        
-        var pushDuration = self.duration
-#if DEBUG
+
+        var pushDuration = duration
+        #if DEBUG
         pushDuration = 10
-#endif
+        #endif
+
+        if let configuredStudyEndDate {
+            pushDuration = configuredStudyEndDate.timeIntervalSince(
+                dateGenerator.generate()
+            )
+        }
+
+        guard pushDuration >= 1 else {
+            return
+        }
         
         // Survey Completion Reminder after Study duration has ellapsed
         LocalPushController.shared.sendLocalNotification(
@@ -127,7 +194,8 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
             title: NSLocalizedString("Concluding the study", bundle: Bundle.module, comment: ""),
             subtitle: NSLocalizedString("Thanks for participating. Please fill out one last survey.", bundle: Bundle.module, comment: ""),
             body: NSLocalizedString("It only takes 3 minutes to complete this survey.", bundle: Bundle.module, comment: ""),
-            identifier: "survey-completion-notification"
+            identifier: "survey-completion-notification",
+            categoryIdentifier: StudySurveyNotification.categoryIdentifier
         )
         
         // Additional Survey Completion Reminder (after 3 days)
@@ -136,7 +204,8 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
             title: "Survey Completion Still Pending",
             subtitle: "Thanks for participating. You can complete the exit survey at any time.",
             body: "It only takes about 3 minutes.",
-            identifier: "survey-completion-notification-reminder"
+            identifier: "survey-completion-notification-reminder",
+            categoryIdentifier: StudySurveyNotification.categoryIdentifier
         )
         
     }

@@ -10,3 +10,11 @@ public enum SurveyType: CaseIterable {
     case introductory, mid, completion
     
 }
+
+extension SurveyType {
+
+    var canDismissStudyFromBanner: Bool {
+        self == .introductory
+    }
+
+}

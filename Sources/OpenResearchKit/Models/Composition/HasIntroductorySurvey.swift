@@ -19,6 +19,10 @@ public protocol HasIntroductorySurvey: GeneralStudy {
     var introductionSurveyCompletionDate: Date? { get }
     
     func completeIntroductionSurvey()
+
+    /// Presents the introductory survey directly. This is useful when the host
+    /// app resolves a URL scheme or deep link to this study.
+    func showIntroSurvey()
     
 }
 
@@ -35,6 +39,12 @@ extension HasIntroductorySurvey {
     
     public var completedIntroductionSurvey: Bool {
         return introductionSurveyCompletionDate != nil
+    }
+
+    public func showIntroSurvey() {
+        if let study = self as? Study {
+            showView(SurveyWebView(surveyType: .introductory, study: study))
+        }
     }
     
     public func completeIntroductionSurvey() {

@@ -15,30 +15,50 @@ import UIKit
 /// them in a native WebView instead of Safari. It handles the display and dismissal of introductory,
 /// mid, and completion surveys, and processes metadata returned via URL parameters to persist study state.
 public struct SurveyWebView: View {
-    
+
     @Environment(\.presentationMode) private var presentationMode
     @State private var isInitialLoading = true
-    
+
     let surveyType: SurveyType
     let study: Study
-    
+    let midStudySurveyIdentifier: String?
+
     public init(surveyType: SurveyType, study: Study) {
         self.surveyType = surveyType
         self.study = study
+
+        if surveyType == .mid, let midSurveyStudy = study as? (any HasMidSurvey) {
+            self.midStudySurveyIdentifier = midSurveyStudy.nextMidStudySurveyIdentifier
+        } else {
+            self.midStudySurveyIdentifier = nil
+        }
     }
-    
+
+    init(study: Study, midStudySurvey: MidStudySurvey) {
+        self.surveyType = .mid
+        self.study = study
+        self.midStudySurveyIdentifier = midStudySurvey.completionIdentifier
+    }
+
+    var surveyURL: URL? {
+        study.surveyUrl(
+            for: surveyType,
+            midStudySurveyIdentifier: midStudySurveyIdentifier
+        )
+    }
+
     public var body: some View {
         NavigationView {
-            if let surveyUrl = study.surveyUrl(for: surveyType) {
+            if let surveyURL {
                 ZStack {
                     ResearchWebView(
-                        url: surveyUrl,
+                        url: surveyURL,
                         completion: { (success, parameters) in
-                            
+
                             if surveyType == .introductory {
-                                
+
                                 study.completeIntroductionSurvey()
-                                
+
                                 study.handleIntroductionSurveyResults(
                                     consented: success,
                                     parameters: parameters,
@@ -46,32 +66,32 @@ public struct SurveyWebView: View {
                                         presentationMode.wrappedValue.dismiss()
                                     }
                                 )
-                                
+
                             } else if surveyType == .completion {
-                                
+
                                 presentationMode.wrappedValue.dismiss()
-                                
+
                                 if let study = study as? (any HasTerminationSurvey) {
                                     study.completeTerminationSurvey()
                                 }
-                                
+
                                 study.setCompleted()
-                                
+
                             } else if surveyType == .mid {
-                                
+
                                 presentationMode.wrappedValue.dismiss()
-                                
-                                if let study = study as? (any HasMidSurvey) {
-                                    study.completeMidSurvey()
+
+                                if success, let study = study as? (any HasMidSurvey) {
+                                    study.completeMidSurvey(identifier: midStudySurveyIdentifier)
                                 }
-                                
+
                             }
                         },
                         onInitialLoadStateChange: { isLoading in
                             isInitialLoading = isLoading
                         }
                     )
-                    
+
                     if isInitialLoading {
                         ProgressView()
                             .controlSize(.large)
@@ -91,5 +111,5 @@ public struct SurveyWebView: View {
             }
         }
     }
-    
+
 }
