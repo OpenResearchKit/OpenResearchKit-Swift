@@ -25,9 +25,9 @@ public enum StudyKeyValueStoreError: Error, Equatable {
 /// - Remain compatible with `App Group` containers (via `suiteName`).
 ///
 /// ### Threading
-/// Access is synchronized within the current process. This makes each operation,
-/// including read-modify-write updates, atomic across all store instances.
-/// This does not coordinate access from other processes.
+/// Writes share a lock so concurrent updates cannot overwrite each other's changes.
+/// Reads use UserDefaults directly and may return the previous values during an update.
+/// The lock does not coordinate writes from other processes, such as app extensions.
 public final class StudyKeyValueStore {
     
     /// Top-level key in `UserDefaults` that holds all study dictionaries.
@@ -56,10 +56,12 @@ public final class StudyKeyValueStore {
     /// If no values exist, an empty dictionary is returned.
     /// - Returns: `[String: Any]` for this study.
     func values() -> [String: Any] {
-        Self.withLock {
-            let studyValues = defaults.dictionary(forKey: Self.key) as? OpenResearchDefaults ?? [:]
-            return studyValues[studyIdentifier] ?? [:]
-        }
+        // Do not take accessLock here. A background update can hold it while
+        // UserDefaults notifies SwiftUI observers and waits for SwiftUI's lock.
+        // If SwiftUI reads this store while rendering, taking accessLock would
+        // make the main and background threads wait for each other.
+        let studyValues = defaults.dictionary(forKey: Self.key) as? OpenResearchDefaults ?? [:]
+        return studyValues[studyIdentifier] ?? [:]
     }
     
     /// Reads a **typed** value for a given key from this study’s values.
