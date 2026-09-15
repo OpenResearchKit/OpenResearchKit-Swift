@@ -199,6 +199,40 @@ final class StudyKeyValueStoreTests: XCTestCase {
         XCTAssertNil(b.get("onlyA", type: Bool.self))
     }
 
+    func testReadsReturnStoredSnapshotWhileUpdateIsInProgress() {
+        let writer = StudyKeyValueStore(studyIdentifier: "study-A", appGroup: suiteName)
+        let reader = StudyKeyValueStore(studyIdentifier: "study-A", appGroup: suiteName)
+        writer.update("count", value: 1)
+
+        let updateStarted = expectation(description: "Update is in progress")
+        let readFinished = expectation(description: "Read finishes before the update is released")
+        let operationsFinished = expectation(description: "Reader and writer finished")
+        operationsFinished.expectedFulfillmentCount = 2
+        let finishUpdate = DispatchSemaphore(value: 0)
+
+        Thread {
+            writer.updateValues { values in
+                values["count"] = 2
+                updateStarted.fulfill()
+                finishUpdate.wait()
+            }
+            operationsFinished.fulfill()
+        }.start()
+
+        wait(for: [updateStarted], timeout: 2)
+        Thread {
+            XCTAssertEqual(reader.get("count", type: Int.self), 1)
+            readFinished.fulfill()
+            operationsFinished.fulfill()
+        }.start()
+
+        let readResult = XCTWaiter.wait(for: [readFinished], timeout: 2)
+        finishUpdate.signal()
+        wait(for: [operationsFinished], timeout: 2)
+        XCTAssertEqual(readResult, .completed, "Reads must not wait for an in-progress update")
+        XCTAssertEqual(reader.get("count", type: Int.self), 2)
+    }
+
     func testConcurrentUpdatesPreserveDifferentStudies() {
         let a = StudyKeyValueStore(studyIdentifier: "study-A", appGroup: suiteName)
         let b = StudyKeyValueStore(studyIdentifier: "study-B", appGroup: suiteName)
