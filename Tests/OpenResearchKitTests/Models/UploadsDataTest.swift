@@ -54,18 +54,73 @@ class UploadsDataTest: XCTestCase {
         XCTAssertEqual(uploadedJSON?[1]["event"] as? String, "another_event")
     }
 
-    func testCopyMainJSONToUpload_DoesNotThrowWhenMainFileDoesNotExist() throws {
+    func testCopyMainJSONToUpload_CreatesEmptyJSONArrayWhenMainFileDoesNotExist() throws {
         // Arrange
         let studyID = "NoFileStudy-\(UUID().uuidString)"
         let study = TestStudy.makeStudy(id: studyID)
+        study.dateGenerator = FixedDateGenerator(date: fixedUploadDate())
 
-        // Ensure no main JSON file exists
-        let mainFilePath = study.jsonDataFilePath
-        
-        XCTAssertNoThrow(
-            removeFileIfExists(mainFilePath),
-            "Should not throw a file system error but handle it gracefully by only logging it."
-        )
+        removeFileIfExists(study.jsonDataFilePath)
+        removeDirectoryIfExists(study.studyDirectory(type: .upload))
+
+        // Act
+        try study.copyMainJSONToUpload()
+
+        // Assert
+        let expectedFile = study.studyDirectory(type: .upload)
+            .appendingPathComponent("20260428_120000", isDirectory: true)
+            .appendingPathComponent("study-\(studyID)-\(study.userIdentifier).json")
+
+        XCTAssertEqual(try Data(contentsOf: expectedFile), Data("[]".utf8))
+    }
+
+    func testCopyMainJSONToUpload_AllowsSubsequentEventReadAndWriteAfterEmptySnapshot() throws {
+        // Arrange
+        let studyID = "EmptyThenPopulatedStudy-\(UUID().uuidString)"
+        let study = TestStudy.makeStudy(id: studyID)
+        let emptySnapshotDate = fixedUploadDate()
+        let populatedSnapshotDate = emptySnapshotDate.addingTimeInterval(1)
+        let uploadDirectory = study.studyDirectory(type: .upload)
+        let fileName = "study-\(studyID)-\(study.userIdentifier).json"
+
+        removeFileIfExists(study.jsonDataFilePath)
+        removeDirectoryIfExists(uploadDirectory)
+
+        try study.copyMainJSONToUpload(date: emptySnapshotDate)
+
+        let emptySnapshotFile = uploadDirectory
+            .appendingPathComponent("20260428_120000", isDirectory: true)
+            .appendingPathComponent(fileName)
+        let emptySnapshot = try JSONSerialization.jsonObject(
+            with: Data(contentsOf: emptySnapshotFile)
+        ) as? [[String: Any]]
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: study.jsonDataFilePath.path))
+        XCTAssertEqual(emptySnapshot?.count, 0)
+        XCTAssertTrue(study.JSONFile.isEmpty)
+
+        // Act
+        study.setConsent(true)
+        study.markUploadSuccessful(newDate: Date())
+        study.appendNewJSONObjects(newObjects: [["event": "configured_intervention"]])
+
+        // Assert
+        XCTAssertTrue(FileManager.default.fileExists(atPath: study.jsonDataFilePath.path))
+        XCTAssertEqual(study.JSONFile.count, 1)
+        XCTAssertEqual(study.JSONFile.first?["event"] as? String, "configured_intervention")
+
+        try study.copyMainJSONToUpload(date: populatedSnapshotDate)
+
+        let populatedSnapshotFile = uploadDirectory
+            .appendingPathComponent("20260428_120001", isDirectory: true)
+            .appendingPathComponent(fileName)
+        let populatedSnapshot = try JSONSerialization.jsonObject(
+            with: Data(contentsOf: populatedSnapshotFile)
+        ) as? [[String: Any]]
+
+        XCTAssertEqual(populatedSnapshot?.count, 1)
+        XCTAssertEqual(populatedSnapshot?.first?["event"] as? String, "configured_intervention")
+        XCTAssertEqual(try Data(contentsOf: emptySnapshotFile), Data("[]".utf8))
     }
 
     func testCopyMainJSONToUpload_OverwritesExistingFileInUploadDirectory() throws {
