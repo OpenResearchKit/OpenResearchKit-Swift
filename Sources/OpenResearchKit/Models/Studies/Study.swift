@@ -154,8 +154,17 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
     // MARK: - Persistence -
     
     public lazy var store: StudyKeyValueStore = {
-        StudyKeyValueStore(studyIdentifier: self.studyIdentifier, appGroup: self.sharedAppGroupIdentifier)
+        StudyKeyValueStore(
+            studyIdentifier: self.studyIdentifier,
+            appGroup: self.sharedAppGroupIdentifier,
+            valuesDidChange: { [weak self] in
+                self?.didChangePersistedValues()
+            }
+        )
     }()
+
+    /// Called after this study's persisted values change and the store lock is released.
+    open func didChangePersistedValues() {}
     
     // MARK: - Actions -
     
