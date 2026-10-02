@@ -363,5 +363,21 @@ final class StudyKeyValueStoreTests: XCTestCase {
         XCTAssertTrue(a.values().isEmpty)
         XCTAssertEqual(b.get("onlyB", type: Bool.self), true, "Other studies must remain intact")
     }
+
+    func testValuesDidChangeRunsAfterEveryWriteAndDeletion() {
+        var observedCounts: [Int?] = []
+        var store: StudyKeyValueStore!
+        store = StudyKeyValueStore(
+            studyIdentifier: "study-A",
+            appGroup: suiteName,
+            valuesDidChange: { observedCounts.append(store.get("count", type: Int.self)) }
+        )
+
+        store.replaceValues(["count": 1])
+        store.update("count", value: 2)
+        store.deleteAllValues()
+
+        XCTAssertEqual(observedCounts, [1, 2, nil])
+    }
     
 }

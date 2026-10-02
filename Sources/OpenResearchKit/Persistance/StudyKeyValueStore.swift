@@ -36,14 +36,20 @@ public final class StudyKeyValueStore {
     
     private let defaults: UserDefaults
     private let studyIdentifier: String
+    private let valuesDidChange: (() -> Void)?
     
     /// Creates a key-value store scoped to a specific study.
     /// - Parameters:
     ///   - studyIdentifier: Identifier used to namespace this study’s values.
     ///   - appGroup: Optional App Group identifier; when provided, a shared
     ///               `UserDefaults(suiteName:)` is used. Otherwise `.standard`.
-    init(studyIdentifier: String, appGroup: String?) {
+    init(
+        studyIdentifier: String,
+        appGroup: String?,
+        valuesDidChange: (() -> Void)? = nil
+    ) {
         self.studyIdentifier = studyIdentifier
+        self.valuesDidChange = valuesDidChange
         if let appGroup {
             self.defaults = UserDefaults(suiteName: appGroup)!
         } else {
@@ -113,6 +119,7 @@ public final class StudyKeyValueStore {
             currentDefaults[studyIdentifier] = values
             defaults.set(currentDefaults, forKey: Self.key)
         }
+        valuesDidChange?()
     }
     
     /// Sets or removes a **single** key in this study’s values and persists the change.
@@ -219,7 +226,7 @@ public final class StudyKeyValueStore {
     ///                     (or an empty dict) to modify in place.
     @discardableResult
     func updateValues<Result>(_ update: (inout [String: Any]) throws -> Result) rethrows -> Result {
-        try Self.withLock {
+        let result = try Self.withLock {
             var allDefaults = defaults.dictionary(forKey: Self.key) as? OpenResearchDefaults ?? [:]
             var studyDefaults = allDefaults[studyIdentifier] ?? [:]
 
@@ -229,6 +236,8 @@ public final class StudyKeyValueStore {
             defaults.set(allDefaults, forKey: Self.key)
             return result
         }
+        valuesDidChange?()
+        return result
     }
     
     /// Deletes **all** stored values for this study.
@@ -241,6 +250,7 @@ public final class StudyKeyValueStore {
             allDefaults.removeValue(forKey: studyIdentifier)
             defaults.set(allDefaults, forKey: Self.key)
         }
+        valuesDidChange?()
     }
 
     private static func withLock<T>(_ operation: () throws -> T) rethrows -> T {
