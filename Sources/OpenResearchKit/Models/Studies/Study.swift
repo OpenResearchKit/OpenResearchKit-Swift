@@ -20,9 +20,9 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
     public let sharedAppGroupIdentifier: String?
     public var additionalQueryItems: (SurveyType) -> [URLQueryItem] = { _ in [] }
     
-    lazy var client: Client = {
-        Client(baseURL: uploadConfiguration.serverURL, apiKey: uploadConfiguration.apiKey)
-    }()
+    private let clientFactory: (UploadConfiguration) -> any APIProtocol
+
+    lazy var client: any APIProtocol = clientFactory(uploadConfiguration)
     
     public lazy var uploader: StudyDataUploader = {
         StudyDataUploader(client: client)
@@ -32,6 +32,8 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
         StudyFileManager(uploader: uploader)
     }()
     
+    /// Creates a study without creating its upload client.
+    /// - Parameter clientFactory: Called on first client access with the current upload configuration.
     public init(
         studyIdentifier: String,
         studyInformation: StudyInformation,
@@ -39,11 +41,15 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
         introductorySurveyURL: URL?,
         participationIsPossible: Bool = true,
         sharedAppGroupIdentifier: String? = nil,
+        clientFactory: @escaping (UploadConfiguration) -> any APIProtocol = {
+            Client(baseURL: $0.serverURL, apiKey: $0.apiKey)
+        },
         additionalQueryItems: @escaping (SurveyType) -> [URLQueryItem] = { _ in [] }
     ) {
         self.studyIdentifier = studyIdentifier
         self.studyInformation = studyInformation
         self.uploadConfiguration = uploadConfiguration
+        self.clientFactory = clientFactory
         
         
         self.introductorySurveyURL = introductorySurveyURL

@@ -26,6 +26,9 @@ open class LongTermWithMidSurveyStudy: LongTermStudy, HasMidSurvey {
         concludingSurveyURL: URL,
         participationIsPossible: Bool = true,
         sharedAppGroupIdentifier: String? = nil,
+        clientFactory: @escaping (UploadConfiguration) -> any APIProtocol = {
+            Client(baseURL: $0.serverURL, apiKey: $0.apiKey)
+        },
         additionalQueryItems: @escaping (SurveyType) -> [URLQueryItem] = { _ in [] }
     ) {
         precondition(
@@ -45,6 +48,7 @@ open class LongTermWithMidSurveyStudy: LongTermStudy, HasMidSurvey {
             concludingSurveyURL: concludingSurveyURL,
             participationIsPossible: participationIsPossible,
             sharedAppGroupIdentifier: sharedAppGroupIdentifier,
+            clientFactory: clientFactory,
             additionalQueryItems: additionalQueryItems
         )
 
@@ -64,6 +68,9 @@ open class LongTermWithMidSurveyStudy: LongTermStudy, HasMidSurvey {
         concludingSurveyURL: URL,
         participationIsPossible: Bool = true,
         sharedAppGroupIdentifier: String? = nil,
+        clientFactory: @escaping (UploadConfiguration) -> any APIProtocol = {
+            Client(baseURL: $0.serverURL, apiKey: $0.apiKey)
+        },
         additionalQueryItems: @escaping (SurveyType) -> [URLQueryItem] = { _ in [] }
     ) {
         precondition(
@@ -83,6 +90,7 @@ open class LongTermWithMidSurveyStudy: LongTermStudy, HasMidSurvey {
             concludingSurveyURL: concludingSurveyURL,
             participationIsPossible: participationIsPossible,
             sharedAppGroupIdentifier: sharedAppGroupIdentifier,
+            clientFactory: clientFactory,
             additionalQueryItems: additionalQueryItems
         )
 
@@ -102,6 +110,9 @@ open class LongTermWithMidSurveyStudy: LongTermStudy, HasMidSurvey {
         concludingSurveyURL: URL,
         participationIsPossible: Bool = true,
         sharedAppGroupIdentifier: String? = nil,
+        clientFactory: @escaping (UploadConfiguration) -> any APIProtocol = {
+            Client(baseURL: $0.serverURL, apiKey: $0.apiKey)
+        },
         additionalQueryItems: @escaping (SurveyType) -> [URLQueryItem] = { _ in [] }
     ) {
         self.configuredMidStudySurveys = [
@@ -117,6 +128,7 @@ open class LongTermWithMidSurveyStudy: LongTermStudy, HasMidSurvey {
             concludingSurveyURL: concludingSurveyURL,
             participationIsPossible: participationIsPossible,
             sharedAppGroupIdentifier: sharedAppGroupIdentifier,
+            clientFactory: clientFactory,
             additionalQueryItems: additionalQueryItems
         )
 
