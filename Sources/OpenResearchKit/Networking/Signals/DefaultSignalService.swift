@@ -35,7 +35,7 @@ public enum StoreSignalError: LocalizedError {
 
 open class DefaultSignalService: SignalService {
     
-    private let client: Client
+    private let client: any APIProtocol
     
     public init(baseURL: URL, session: URLSession = .shared) {
         self.client = Client(
@@ -51,7 +51,8 @@ open class DefaultSignalService: SignalService {
         )
     }
     
-    public init(client: Client) {
+    /// Uses a generated client or an application-provided API mock.
+    public init(client: any APIProtocol) {
         self.client = client
     }
     

@@ -13,14 +13,15 @@ import OpenAPIURLSession
 
 public class RemoteEnrollmentService: EnrollmentService {
 
-    private let client: Client
+    private let client: any APIProtocol
     private let logger: Logger = Logger(subsystem: "org.openresearchkit", category: "Enrollment")
 
-    public init(client: Client) {
+    /// Uses a generated client or an application-provided API mock.
+    public init(client: any APIProtocol) {
         self.client = client
     }
 
-    @available(*, deprecated, message: "Create a generated Client at app level and pass it to init(client:).")
+    @available(*, deprecated, message: "Pass an APIProtocol implementation to init(client:).")
     public convenience init(
         serverURL: URL,
         apiKey: String,
@@ -35,7 +36,7 @@ public class RemoteEnrollmentService: EnrollmentService {
         )
     }
 
-    @available(*, deprecated, message: "Use init(serverURL:apiKey:) or pass a generated Client to init(client:).")
+    @available(*, deprecated, message: "Pass an APIProtocol implementation to init(client:).")
     public convenience init(serverURL: URL) {
         self.init(serverURL: serverURL, apiKey: "")
     }

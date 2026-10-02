@@ -117,7 +117,31 @@ flowchart LR
     F --> G[Cache client and use it for uploads]
 ```
 
-The factory controls study file uploads, including automatic `uploadIfNecessary()` calls. Enrollment, signals, and remote study configuration use separate clients.
+The study factory controls file uploads, including automatic `uploadIfNecessary()` calls. Enrollment, signals, and remote study configuration each accept an `APIProtocol` implementation separately:
+
+```swift
+let mock = MockClient()
+let enrollmentService = RemoteEnrollmentService(client: mock)
+let signalService = DefaultSignalService(client: mock)
+let configurationService = RemoteStudyConfigurationService(client: mock)
+let registry = StudyRegistry(
+    studies: [study],
+    studyConfigurationService: configurationService
+)
+```
+
+Implement the enrollment, signal, and configuration operations in the mock when the test calls those services. Each service uses the provided client for all its calls. Existing code that passes a generated `Client` still works.
+
+`RemoteStudyConfigurationService()` keeps its default behavior: it creates a client for each check from that study's current upload configuration. To provide a client factory instead, use `RemoteStudyConfigurationService(clientFactory: { configuration in ... })`. The factory is called during each check; it is not called during service initialization and its result is not cached.
+
+```mermaid
+flowchart LR
+    A[Study clientFactory] --> E[any APIProtocol]
+    B[Enrollment client] --> E
+    C[Signal client] --> E
+    D[Configuration client or factory] --> E
+    E --> F[Generated Client or application mock]
+```
 
 `UploadConfiguration` sets the default client's connection details and the upload frequency:
 
