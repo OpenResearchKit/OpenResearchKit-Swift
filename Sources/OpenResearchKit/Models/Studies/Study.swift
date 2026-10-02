@@ -606,7 +606,8 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
         if fileManager.fileExists(atPath: jsonDataFilePath.path) {
             try fileManager.copyItem(at: jsonDataFilePath, to: destination)
         } else {
-            Logger.research.warning("The main JSON file does not exist currently. Maybe you forgot giving the user consent before trying to copy?")
+            try Data("[]".utf8).write(to: destination, options: .atomic)
+            Logger.research.info("Created an empty main JSON snapshot because the study has no recorded data yet.")
         }
 
     }
