@@ -12,11 +12,11 @@ import OpenAPIURLSession
 
 public class StudyDataUploader {
 
-    private let client: Client
+    private let client: any APIProtocol
     private let clientMetadataProvider: () -> StudyUploadClientMetadata
 
     internal init(
-        client: Client,
+        client: any APIProtocol,
         clientMetadataProvider: @escaping () -> StudyUploadClientMetadata = {
             StudyUploadClientMetadata.current()
         }

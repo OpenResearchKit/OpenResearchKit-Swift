@@ -10,15 +10,24 @@ import OSLog
 
 public struct RemoteStudyConfigurationService: StudyConfigurationService {
 
-    public init() {
+    private let clientFactory: (UploadConfiguration) -> any APIProtocol
 
+    /// Calls the factory for each check with the study's current upload configuration.
+    public init(
+        clientFactory: @escaping (UploadConfiguration) -> any APIProtocol = {
+            Client(baseURL: $0.serverURL, apiKey: $0.apiKey)
+        }
+    ) {
+        self.clientFactory = clientFactory
+    }
+
+    /// Uses the same generated client or API mock for all study configuration checks.
+    public init(client: any APIProtocol) {
+        self.clientFactory = { _ in client }
     }
 
     public func isAvailable(for study: Study) async throws -> Bool? {
-        let client = Client(
-            baseURL: study.uploadConfiguration.serverURL,
-            apiKey: study.uploadConfiguration.apiKey
-        )
+        let client = clientFactory(study.uploadConfiguration)
         let response = try await client.showStudyConfiguration(
             path: Operations.ShowStudyConfiguration.Input.Path(
                 studyIdentifier: study.studyIdentifier

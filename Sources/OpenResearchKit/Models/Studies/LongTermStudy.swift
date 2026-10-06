@@ -22,6 +22,9 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
         concludingSurveyURL: URL?,
         participationIsPossible: Bool = true,
         sharedAppGroupIdentifier: String? = nil,
+        clientFactory: @escaping (UploadConfiguration) -> any APIProtocol = {
+            Client(baseURL: $0.serverURL, apiKey: $0.apiKey)
+        },
         additionalQueryItems: @escaping (SurveyType) -> [URLQueryItem] = { _ in [] }
     ) {
         self.duration = duration
@@ -34,6 +37,7 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
             introductorySurveyURL: introductorySurveyURL,
             participationIsPossible: participationIsPossible,
             sharedAppGroupIdentifier: sharedAppGroupIdentifier,
+            clientFactory: clientFactory,
             additionalQueryItems: additionalQueryItems
         )
     }
@@ -52,6 +56,9 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
         concludingSurveyURL: URL?,
         participationIsPossible: Bool = true,
         sharedAppGroupIdentifier: String? = nil,
+        clientFactory: @escaping (UploadConfiguration) -> any APIProtocol = {
+            Client(baseURL: $0.serverURL, apiKey: $0.apiKey)
+        },
         additionalQueryItems: @escaping (SurveyType) -> [URLQueryItem] = { _ in [] }
     ) {
         let referenceDate = Self.absoluteScheduleReferenceDate(
@@ -70,6 +77,7 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
             introductorySurveyURL: introductorySurveyURL,
             participationIsPossible: participationIsPossible,
             sharedAppGroupIdentifier: sharedAppGroupIdentifier,
+            clientFactory: clientFactory,
             additionalQueryItems: additionalQueryItems
         )
     }
