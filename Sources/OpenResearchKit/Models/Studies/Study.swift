@@ -219,17 +219,19 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
         
     }
     
+    /// Resets the research files in both working and upload directory and the main study file and all user identifiers locally.
+    ///
+    /// Attention: when overriding call `super.reset()` last to make sure that user identifiers that are potentially
+    /// used for additional storage still exist.
     open func reset() throws {
         
-        // Reset state variables (e.g. study identifier, all dates, etc.)
-        self.store.deleteAllValues()
-        
-        try self.resetLocalJSONFile()
-        
-        // Delete all files
-        
+        // Delete all files (order is important because the files rely on identifiers saved in the `store`)
+        try resetLocalJSONFile()
         try studyFileManager.deleteAllFiles(study: self, type: .working)
         try studyFileManager.deleteAllFiles(study: self, type: .upload)
+        
+        // Reset state variables (e.g. study identifier, all dates, etc.)
+        store.deleteAllValues()
     }
     
     open func handleIntroductionSurveyResults(consented: Bool, parameters: [String: String], dismissView: @escaping () -> Void) {
