@@ -20,6 +20,8 @@ public struct StudyDetailInfoScreen: View {
     }
     
     @State var showTerminationDialog = false
+    @State private var showResetConfirmation = false
+    @State private var resetErrorMessage: String?
     
     @State private var refreshToken = 0
     @State var lastUploadDate: Date?
@@ -68,6 +70,16 @@ public struct StudyDetailInfoScreen: View {
             Task { @MainActor in
                 refreshDerivedStudyState(invalidateScreen: true)
             }
+        }
+        .alert(Text("Error", bundle: .module), isPresented: Binding(
+            get: { resetErrorMessage != nil },
+            set: { if !$0 { resetErrorMessage = nil } }
+        )) {
+            Button(role: .cancel) { } label: {
+                Text("Okay", bundle: .module)
+            }
+        } message: {
+            Text(resetErrorMessage ?? "")
         }
         
     }
@@ -246,11 +258,30 @@ public struct StudyDetailInfoScreen: View {
         if shouldShowDebugTools {
             Section {
                 
-                ThrowingButton("Reset study data") {
-                    try study.reset()
-                    dismiss()
+                Button(role: .destructive) {
+                    showResetConfirmation = true
+                } label: {
+                    Text("Reset study data", bundle: .module)
                 }
-                .foregroundStyle(.red)
+                .alert(Text("Reset study data?", bundle: .module), isPresented: $showResetConfirmation) {
+                    Button(role: .destructive) {
+                        do {
+                            try study.reset()
+                            dismiss()
+                        } catch {
+                            Task { @MainActor in
+                                resetErrorMessage = error.localizedDescription
+                            }
+                        }
+                    } label: {
+                        Text("Reset", bundle: .module)
+                    }
+                    Button(role: .cancel) { } label: {
+                        Text("Cancel", bundle: .module)
+                    }
+                } message: {
+                    Text("This resets local data and setup for this study. Uploaded data is not deleted.", bundle: .module)
+                }
                 
             }
         }

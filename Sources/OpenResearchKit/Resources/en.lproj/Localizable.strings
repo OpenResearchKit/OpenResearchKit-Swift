@@ -4,4 +4,8 @@
 //
 //  Created by Frederik Riedel on 09.09.24.
 //
-
+"Reset study data" = "Reset study data";
+"Reset study data?" = "Reset study data?";
+"Reset" = "Reset";
+"Cancel" = "Cancel";
+"This resets local data and setup for this study. Uploaded data is not deleted." = "This resets local data and setup for this study. Uploaded data is not deleted.";
