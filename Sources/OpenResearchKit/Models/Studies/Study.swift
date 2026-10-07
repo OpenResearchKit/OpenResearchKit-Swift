@@ -446,6 +446,16 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
     open var deepLinkIdentifier: String {
         return studyIdentifier
     }
+
+    /// Query parameter that identifies the participant in a study activation link.
+    open var deepLinkParticipantQueryParameter: String {
+        return "uuid"
+    }
+
+    /// Stored participant identifier used to recognize repeated study activation links.
+    open var deepLinkParticipantIdentifier: String? {
+        return publicUserIdentifier
+    }
     
     // MARK: - UploadsStudyData -
     
