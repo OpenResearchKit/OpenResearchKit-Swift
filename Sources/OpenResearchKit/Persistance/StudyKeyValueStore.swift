@@ -30,11 +30,12 @@ public enum StudyKeyValueStoreError: Error, Equatable {
 /// The lock does not coordinate writes from other processes, such as app extensions.
 public final class StudyKeyValueStore {
     
-    /// Top-level key in `UserDefaults` that holds all study dictionaries.
-    private static let key = "open_research_kit"
+    /// Default top-level key in `UserDefaults` that holds all study dictionaries.
+    static let defaultRootKey = "open_research_kit"
     private static let accessLock = NSLock()
     
     private let defaults: UserDefaults
+    private let rootKey: String
     private let studyIdentifier: String
     private let valuesDidChange: (() -> Void)?
     
@@ -43,12 +44,15 @@ public final class StudyKeyValueStore {
     ///   - studyIdentifier: Identifier used to namespace this study’s values.
     ///   - appGroup: Optional App Group identifier; when provided, a shared
     ///               `UserDefaults(suiteName:)` is used. Otherwise `.standard`.
+    ///   - rootKey: Top-level `UserDefaults` key that holds the study dictionaries.
     init(
         studyIdentifier: String,
         appGroup: String?,
+        rootKey: String = StudyKeyValueStore.defaultRootKey,
         valuesDidChange: (() -> Void)? = nil
     ) {
         self.studyIdentifier = studyIdentifier
+        self.rootKey = rootKey
         self.valuesDidChange = valuesDidChange
         if let appGroup {
             self.defaults = UserDefaults(suiteName: appGroup)!
@@ -66,7 +70,7 @@ public final class StudyKeyValueStore {
         // UserDefaults notifies SwiftUI observers and waits for SwiftUI's lock.
         // If SwiftUI reads this store while rendering, taking accessLock would
         // make the main and background threads wait for each other.
-        let studyValues = defaults.dictionary(forKey: Self.key) as? OpenResearchDefaults ?? [:]
+        let studyValues = defaults.dictionary(forKey: rootKey) as? OpenResearchDefaults ?? [:]
         return studyValues[studyIdentifier] ?? [:]
     }
     
@@ -115,9 +119,9 @@ public final class StudyKeyValueStore {
     /// - Parameter values: The entire dictionary to persist for this study.
     func replaceValues(_ values: [String: Any]) {
         Self.withLock {
-            var currentDefaults = defaults.dictionary(forKey: Self.key) as? OpenResearchDefaults ?? [:]
+            var currentDefaults = defaults.dictionary(forKey: rootKey) as? OpenResearchDefaults ?? [:]
             currentDefaults[studyIdentifier] = values
-            defaults.set(currentDefaults, forKey: Self.key)
+            defaults.set(currentDefaults, forKey: rootKey)
         }
         valuesDidChange?()
     }
@@ -227,13 +231,13 @@ public final class StudyKeyValueStore {
     @discardableResult
     func updateValues<Result>(_ update: (inout [String: Any]) throws -> Result) rethrows -> Result {
         let result = try Self.withLock {
-            var allDefaults = defaults.dictionary(forKey: Self.key) as? OpenResearchDefaults ?? [:]
+            var allDefaults = defaults.dictionary(forKey: rootKey) as? OpenResearchDefaults ?? [:]
             var studyDefaults = allDefaults[studyIdentifier] ?? [:]
 
             let result = try update(&studyDefaults)
 
             allDefaults[studyIdentifier] = studyDefaults
-            defaults.set(allDefaults, forKey: Self.key)
+            defaults.set(allDefaults, forKey: rootKey)
             return result
         }
         valuesDidChange?()
@@ -246,9 +250,9 @@ public final class StudyKeyValueStore {
     /// `open_research_kit[studyIdentifier]`.
     func deleteAllValues() {
         Self.withLock {
-            var allDefaults = defaults.dictionary(forKey: Self.key) as? OpenResearchDefaults ?? [:]
+            var allDefaults = defaults.dictionary(forKey: rootKey) as? OpenResearchDefaults ?? [:]
             allDefaults.removeValue(forKey: studyIdentifier)
-            defaults.set(allDefaults, forKey: Self.key)
+            defaults.set(allDefaults, forKey: rootKey)
         }
         valuesDidChange?()
     }
