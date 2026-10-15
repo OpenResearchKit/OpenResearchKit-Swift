@@ -9,3 +9,13 @@
 "Reset" = "Reset";
 "Cancel" = "Cancel";
 "This resets local data and setup for this study. Uploaded data is not deleted." = "This resets local data and setup for this study. Uploaded data is not deleted.";
+
+/* Per-study advanced settings lock. */
+"Lock advanced settings" = "Lock advanced settings";
+"Unlock advanced settings" = "Unlock advanced settings";
+"Code" = "Code";
+"Unlock" = "Unlock";
+"Enter the code to unlock the advanced settings." = "Enter the code to unlock the advanced settings.";
+"Incorrect code. Try again." = "Incorrect code. Try again.";
+"The advanced settings could not be changed. Try again." = "The advanced settings could not be changed. Try again.";
+"Only available when advanced settings are unlocked. This overrides the currently stored treatment group for this study." = "Only available when advanced settings are unlocked. This overrides the currently stored treatment group for this study.";

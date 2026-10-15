@@ -22,13 +22,14 @@ public struct StudyDetailInfoScreen: View {
     @State var showTerminationDialog = false
     @State private var showResetConfirmation = false
     @State private var resetErrorMessage: String?
+    @State private var showAdvancedSettingsUnlock = false
     
     @State private var refreshToken = 0
     @State var lastUploadDate: Date?
     @State var studyData: [ [String: Any] ] = []
     
     private var shouldShowDebugTools: Bool {
-        Bundle.main.isInDebugMode || Bundle.main.isOnTestFlight
+        !study.isAdvancedSettingsLocked
     }
     
     public var body: some View {
@@ -71,6 +72,14 @@ public struct StudyDetailInfoScreen: View {
                 refreshDerivedStudyState(invalidateScreen: true)
             }
         }
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                advancedSettingsLockButton()
+            }
+        }
+        .sheet(isPresented: $showAdvancedSettingsUnlock) {
+            AdvancedSettingsUnlockView(study: study)
+        }
         .alert(Text("Error", bundle: .module), isPresented: Binding(
             get: { resetErrorMessage != nil },
             set: { if !$0 { resetErrorMessage = nil } }
@@ -82,6 +91,35 @@ public struct StudyDetailInfoScreen: View {
             Text(resetErrorMessage ?? "")
         }
         
+    }
+    
+    @ViewBuilder
+    private func advancedSettingsLockButton() -> some View {
+        if study.advancedSettingsUnlockCode != nil {
+            if study.isAdvancedSettingsLocked {
+                Button {
+                    showAdvancedSettingsUnlock = true
+                } label: {
+                    Label {
+                        Text("Unlock advanced settings", bundle: .module)
+                    } icon: {
+                        Image(systemName: "lock.fill")
+                    }
+                }
+                .accessibilityIdentifier("advancedSettingsLockButton")
+            } else {
+                Button {
+                    study.lockAdvancedSettings()
+                } label: {
+                    Label {
+                        Text("Lock advanced settings", bundle: .module)
+                    } icon: {
+                        Image(systemName: "lock.open.fill")
+                    }
+                }
+                .accessibilityIdentifier("advancedSettingsLockButton")
+            }
+        }
     }
     
     @ViewBuilder
