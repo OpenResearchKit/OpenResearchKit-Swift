@@ -169,6 +169,20 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
         )
     }()
 
+    /// The code that unlocks this study's advanced settings, or `nil` to hide the lock button.
+    ///
+    /// Without a code, advanced settings are available in Debug and TestFlight builds only.
+    open var advancedSettingsUnlockCode: String? {
+        return nil
+    }
+
+    /// Whether advanced settings are locked before they are first locked or unlocked.
+    ///
+    /// Defaults to unlocked in Debug and TestFlight builds, and locked otherwise.
+    open var isAdvancedSettingsLockedByDefault: Bool {
+        return !(Bundle.main.isInDebugMode || Bundle.main.isOnTestFlight)
+    }
+
     /// Called after this study's persisted values change and the store lock is released.
     open func didChangePersistedValues() {}
     
@@ -663,13 +677,17 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
     }
 
     /// Determines if users should be able to export local study data from package-provided debug actions.
+    ///
+    /// The action is only shown while the advanced settings are unlocked, regardless of this value.
     open func shouldShowStudyDataExportAction() -> Bool {
-        return Bundle.main.isInDebugMode || Bundle.main.isOnTestFlight
+        return true
     }
 
     /// Determines if users should be able to force-upload staged study data from package-provided debug actions.
+    ///
+    /// The action is only shown while the advanced settings are unlocked, regardless of this value.
     open func shouldShowStudyDataForceUploadAction() -> Bool {
-        return Bundle.main.isInDebugMode || Bundle.main.isOnTestFlight
+        return true
     }
     
     open func studySpecificInfoView() -> AnyView? {
@@ -732,6 +750,7 @@ extension Study {
         static let PublicUserIdentifier = "publicUserIdentifier"
         static let CompletionDate = "completionDate"
         static let IntroSurveyCompletionDate = "introSurveyCompletionDate"
+        static let AdvancedSettingsLocked = "advancedSettingsLocked"
     }
     
 }
