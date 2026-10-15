@@ -16,6 +16,9 @@
 
 /* Per-study advanced settings lock. */
 "Lock advanced settings" = "Lås avancerede indstillinger";
+"Lock advanced settings?" = "Lås avancerede indstillinger?";
+"Lock" = "Lås";
+"You will need the study code to unlock these settings again." = "Du skal bruge studiets kode for at låse disse indstillinger op igen.";
 "Unlock advanced settings" = "Lås avancerede indstillinger op";
 "Code" = "Kode";
 "Unlock" = "Lås op";

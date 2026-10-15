@@ -108,16 +108,7 @@ public struct StudyDetailInfoScreen: View {
                 }
                 .accessibilityIdentifier("advancedSettingsLockButton")
             } else {
-                Button {
-                    study.lockAdvancedSettings()
-                } label: {
-                    Label {
-                        Text("Lock advanced settings", bundle: .module)
-                    } icon: {
-                        Image(systemName: "lock.open.fill")
-                    }
-                }
-                .accessibilityIdentifier("advancedSettingsLockButton")
+                AdvancedSettingsLockButton(lock: study.lockAdvancedSettings)
             }
         }
     }

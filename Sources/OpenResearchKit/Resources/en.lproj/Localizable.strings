@@ -12,6 +12,9 @@
 
 /* Per-study advanced settings lock. */
 "Lock advanced settings" = "Lock advanced settings";
+"Lock advanced settings?" = "Lock advanced settings?";
+"Lock" = "Lock";
+"You will need the study code to unlock these settings again." = "You will need the study code to unlock these settings again.";
 "Unlock advanced settings" = "Unlock advanced settings";
 "Code" = "Code";
 "Unlock" = "Unlock";
