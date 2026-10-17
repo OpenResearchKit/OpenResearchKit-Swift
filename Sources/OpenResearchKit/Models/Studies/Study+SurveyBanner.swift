@@ -6,10 +6,23 @@
 //
 
 import Foundation
+import SwiftUI
 
-enum StudySurveyBanner {
+/// The survey of a study that is due now and should be shown as a banner.
+public enum StudySurveyBanner: Equatable {
     case mid(MidStudySurvey)
     case completion
+
+    public static func == (lhs: StudySurveyBanner, rhs: StudySurveyBanner) -> Bool {
+        switch (lhs, rhs) {
+        case let (.mid(lhsSurvey), .mid(rhsSurvey)):
+            return lhsSurvey.completionIdentifier == rhsSurvey.completionIdentifier
+        case (.completion, .completion):
+            return true
+        case (.mid, _), (.completion, _):
+            return false
+        }
+    }
 }
 
 extension Study {
