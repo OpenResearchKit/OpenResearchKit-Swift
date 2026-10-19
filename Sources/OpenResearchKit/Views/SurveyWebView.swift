@@ -71,11 +71,7 @@ public struct SurveyWebView: View {
 
                                 presentationMode.wrappedValue.dismiss()
 
-                                if let study = study as? (any HasTerminationSurvey) {
-                                    study.completeTerminationSurvey()
-                                }
-
-                                study.setCompleted()
+                                study.handleConclusionSurveyResult(success: success)
 
                             } else if surveyType == .mid {
 

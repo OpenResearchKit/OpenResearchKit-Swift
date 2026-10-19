@@ -284,6 +284,26 @@ open class Study: ObservableObject, GeneralStudy, HasIntroductorySurvey, HasNoti
     open func setCompleted() {
         self.isCompleted = true
     }
+
+    /// Records the result of the conclusion survey.
+    ///
+    /// A failed survey leaves both the survey and the study pending. A successful survey completes
+    /// the study, unless the study requires a separate completion acknowledgement.
+    func handleConclusionSurveyResult(success: Bool) {
+        guard success else {
+            return
+        }
+
+        if let study = self as? (any HasTerminationSurvey) {
+            study.completeTerminationSurvey()
+        }
+
+        if let study = self as? LongTermStudy, study.requiresCompletionAcknowledgement {
+            return
+        }
+
+        setCompleted()
+    }
     
     // MARK: - Callbacks -
     
