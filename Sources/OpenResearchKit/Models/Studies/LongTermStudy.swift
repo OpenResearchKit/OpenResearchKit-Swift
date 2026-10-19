@@ -125,6 +125,16 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
         
     }
     
+    // MARK: - Completion Acknowledgement -
+
+    /// Keeps the study active after its study period ends until the app calls `acknowledgeCompletion()`.
+    ///
+    /// When `true`, a successful conclusion survey records only the survey completion.
+    /// The study is completed when the participant acknowledges completion, for example on a thank-you screen.
+    /// Defaults to `false`, which completes the study automatically after a successful conclusion survey.
+    open var requiresCompletionAcknowledgement: Bool {
+        return false
+    }
     // MARK: - Data Handling -
     
     /// Appends data to the main study file if the user consented into taking part in the study and when the
