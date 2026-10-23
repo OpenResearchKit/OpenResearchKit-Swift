@@ -7,6 +7,10 @@
 
 import SwiftUI
 
+/// Shows the banner of the survey that is due now, or nothing when no survey is due.
+///
+/// The banner refreshes when the study changes, when the app becomes active, and when a survey
+/// becomes available or expires while it is visible.
 public struct StudySurveyBannerIfNeeded<Content: View>: View {
 
     @Environment(\.scenePhase) private var scenePhase
@@ -43,6 +47,9 @@ public struct StudySurveyBannerIfNeeded<Content: View>: View {
 
             refresh()
         }
+        .task(id: study.nextSurveyBannerChangeDate(after: evaluationDate)) {
+            await refreshAtNextChange()
+        }
     }
 
     @ViewBuilder
@@ -63,6 +70,25 @@ public struct StudySurveyBannerIfNeeded<Content: View>: View {
 
     private func refresh() {
         evaluationDate = study.dateGenerator.generate()
+    }
+
+    /// Refreshes when a survey becomes available or expires. Cancelled when the change date changes
+    /// or the view disappears.
+    private func refreshAtNextChange() async {
+        guard let changeDate = study.nextSurveyBannerChangeDate(after: evaluationDate) else {
+            return
+        }
+
+        let delay = max(changeDate.timeIntervalSince(study.dateGenerator.generate()), 0)
+
+        // A short margin makes sure the change date has passed when the state is read again.
+        try? await Task.sleep(nanoseconds: UInt64((delay + 0.5) * 1_000_000_000))
+
+        guard !Task.isCancelled else {
+            return
+        }
+
+        refresh()
     }
 
 }

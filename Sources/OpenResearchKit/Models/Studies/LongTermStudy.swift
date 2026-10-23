@@ -118,6 +118,12 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
         }
         
         let studyConsentedAndNotDismissed = hasUserGivenConsent && !isDismissedByUser
+
+        // Opted-in studies stay active until the participant acknowledges completion.
+        if requiresCompletionAcknowledgement {
+            return studyConsentedAndNotDismissed && !isCompleted
+        }
+
         let conclusionSurveyNotFinishedOrActiveStudyPeriod = !finishedConclusionSurveyOrNotNeeded || isActiveStudyPeriod
         let isActive = studyConsentedAndNotDismissed && conclusionSurveyNotFinishedOrActiveStudyPeriod
         
@@ -135,6 +141,55 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
     open var requiresCompletionAcknowledgement: Bool {
         return false
     }
+
+    /// The study period ended and the configured conclusion survey is still pending.
+    ///
+    /// Always `false` for studies that do not require a completion acknowledgement.
+    public var isAwaitingConclusionSurvey: Bool {
+        return hasPendingCompletion && !finishedConclusionSurveyOrNotNeeded
+    }
+
+    /// The study period ended, any configured conclusion survey was completed successfully,
+    /// and the participant has not acknowledged completion yet.
+    ///
+    /// Always `false` for studies that do not require a completion acknowledgement.
+    public var isAwaitingCompletionAcknowledgement: Bool {
+        return hasPendingCompletion && finishedConclusionSurveyOrNotNeeded
+    }
+
+    /// Completes the study after the participant acknowledged the end of their participation.
+    ///
+    /// Does nothing unless `isAwaitingCompletionAcknowledgement` is `true`.
+    /// Repeated calls after completion keep the original completion date.
+    /// - Returns: `true` if the study is completed after the call.
+    @discardableResult
+    public func acknowledgeCompletion() -> Bool {
+        if isCompleted {
+            return true
+        }
+
+        guard isAwaitingCompletionAcknowledgement else {
+            return false
+        }
+
+        setCompleted()
+        
+        return true
+    }
+
+    private var hasPendingCompletion: Bool {
+        guard requiresCompletionAcknowledgement,
+              hasUserGivenConsent,
+              !isDismissedByUser,
+              !wasTerminatedBeforeCompletion,
+              !isCompleted,
+              let intendedStudyEndDate else {
+            return false
+        }
+
+        return intendedStudyEndDate <= dateGenerator.generate()
+    }
+
     // MARK: - Data Handling -
     
     /// Appends data to the main study file if the user consented into taking part in the study and when the

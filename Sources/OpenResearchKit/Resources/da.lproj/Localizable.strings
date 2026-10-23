@@ -37,3 +37,14 @@
 "It only takes 3 minutes to complete this survey." = "Det tager kun 3 minutter at udfylde denne undersøgelse.";
 
 "Thanks for participating. You can complete the exit survey at any time." = "Tak, fordi du deltog. Du kan til enhver tid udfylde exit-undersøgelsen.";
+
+/* Study conclusion screen. */
+"Thank you for taking part" = "Tak, fordi du deltog";
+"%@ has ended. Finish to complete your participation." = "%@ er afsluttet. Afslut for at fuldføre din deltagelse.";
+"Study period ended" = "Studieperioden er slut";
+"The study period is over." = "Studieperioden er ovre.";
+"Data collection stopped" = "Dataindsamlingen er stoppet";
+"No further data is recorded." = "Der registreres ikke flere data.";
+"Final survey completed" = "Sidste undersøgelse udfyldt";
+"Thank you for answering the final questions." = "Tak, fordi du besvarede de sidste spørgsmål.";
+"Finish participation" = "Afslut deltagelse";

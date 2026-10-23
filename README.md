@@ -7,6 +7,82 @@ A Swift Package to conduct scientific research in iPhone apps:
 - Collect study data
 - Combine survey replies and study data anonymously
 
+## Demo app
+
+Open [OpenResearchKit Demo/OpenResearchKit Demo.xcodeproj](OpenResearchKit%20Demo/OpenResearchKit%20Demo.xcodeproj) in Xcode. The demo hosts four independent studies in a shared Home and study list, with one active participation at a time. It starts with the attention study ready for its extra conclusion screen. Select a study in the test lab to test consent, surveys, completion, withdrawal, and fixed schedules. See the [demo guide](OpenResearchKit%20Demo/README.md) for settings, API tools, and test flows. All demo API responses and web surveys run locally.
+
+## Locking advanced settings
+
+Override `advancedSettingsUnlockCode` to let testers lock and unlock a study's advanced settings:
+
+```swift
+override var advancedSettingsUnlockCode: String? {
+    return "2468"
+}
+```
+
+`StudyDetailInfoScreen` then shows a lock button in the navigation bar. **Lock advanced settings** asks for confirmation before locking them. Select **Lock** to confirm, or **Cancel** to leave them unlocked. **Unlock advanced settings** asks for the code; Cancel and incorrect codes do not change the lock state. Advanced settings start unlocked in Debug and TestFlight builds, and locked in other release builds. Studies without a code have no lock button, so their advanced settings are only available in Debug and TestFlight builds.
+
+The lock controls the package's treatment-group override, local study reset, data export, and force-upload actions. Normal participation and termination actions stay available. Custom study views must use `study.isAdvancedSettingsLocked` to protect their own advanced controls. Custom export and force-upload visibility overrides still apply, and cannot expose the package's actions while locked.
+
+The lock state is stored with the study's other values. It persists across app launches and build changes, and `study.reset()` restores the build's default. The code is part of the app binary. This lock prevents accidental access to advanced settings; it is not an authentication boundary.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Unlocked: Debug or TestFlight, no saved state
+    [*] --> Locked: Release, no saved state
+    Unlocked --> LockConfirmation: Select Lock
+    LockConfirmation --> Locked: Confirm Lock
+    LockConfirmation --> Unlocked: Cancel
+    Locked --> UnlockEntry: Select Unlock
+    UnlockEntry --> Unlocked: Code matches
+    UnlockEntry --> Locked: Cancel or incorrect code
+```
+
+## Acknowledging study completion
+
+By default, a `LongTermStudy` with a conclusion survey is completed when the participant submits the survey successfully. A study without a conclusion survey stops being active when its study period ends.
+
+Override `requiresCompletionAcknowledgement` to keep the study active until the participant confirms the end of their participation, for example on a thank-you screen:
+
+```swift
+override var requiresCompletionAcknowledgement: Bool {
+    return true
+}
+```
+
+For such a study:
+
+- `isActive` stays `true` after the study period until the participant acknowledges completion. Data collection still ends with the study period.
+- `isAwaitingConclusionSurvey` is `true` after the study period while the configured conclusion survey is pending.
+- A successful conclusion survey records only the survey completion. `isAwaitingCompletionAcknowledgement` then becomes `true`. Without a conclusion survey, it becomes `true` when the study period ends.
+- `acknowledgeCompletion()` completes the study and stores the completion date. It does nothing during the study period, while the survey is pending, or after an early withdrawal. Repeated calls keep the original completion date. Completion is not recorded as an early withdrawal.
+
+Completing the study notifies the `StudyRegistry`, which then no longer returns it as `currentActiveStudy`. For every study, a failed conclusion survey leaves the survey and the study pending. Closing the survey also leaves it pending.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Running: Consent
+    Running --> SurveyPending: Study period ends, survey configured
+    Running --> AwaitingAcknowledgement: Study period ends, no survey
+    SurveyPending --> SurveyPending: Survey fails or is closed
+    SurveyPending --> AwaitingAcknowledgement: Survey succeeds
+    AwaitingAcknowledgement --> Completed: acknowledgeCompletion()
+    Running --> Withdrawn: terminateParticipationImmediately()
+```
+
+## Showing due surveys
+
+`StudySurveyBannerIfNeeded` shows the banner of the survey that is due now, or nothing:
+
+```swift
+StudySurveyBannerIfNeeded(study: study) { banner in
+    banner.padding()
+}
+```
+
+A due conclusion survey has priority over a due mid-study survey. The banner refreshes when the study changes, when the app becomes active, and when a survey becomes available or expires while the banner is visible.
+
 ## Multiple mid-study surveys
 
 Configure multiple mid-study surveys with `midStudySurveys`:

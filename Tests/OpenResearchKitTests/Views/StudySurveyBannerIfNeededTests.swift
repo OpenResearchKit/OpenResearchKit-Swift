@@ -90,6 +90,94 @@ struct StudySurveyBannerIfNeededTests {
         #expect(study.midStudySurveyToDisplay?.id == "second")
     }
 
+    @Test(
+        "A survey that becomes due while the banner is visible appears",
+        .timeLimit(.minutes(1))
+    )
+    @MainActor
+    func surveyBecomingDueWhileVisibleAppears() async {
+        let recorder = BannerRenderRecorder(marker: "due")
+        let study = makeStudy(
+            midStudySurveys: [makeMidSurvey(id: "first", showAfter: 1)]
+        )
+        defer { try? study.reset() }
+        study.store.update(Study.Keys.UserConsentDate, value: Date())
+        let view = StudySurveyBannerIfNeeded(study: study) { banner in
+            banner.background {
+                BannerRenderProbe(
+                    identifier: recorder.marker,
+                    recorder: recorder
+                )
+            }
+        }
+        let hostingController = UIHostingController(rootView: view)
+        let window = UIWindow(frame: UIScreen.main.bounds)
+        defer {
+            window.isHidden = true
+            window.rootViewController = nil
+        }
+
+        window.rootViewController = hostingController
+        window.makeKeyAndVisible()
+
+        await recorder.waitUntilRendered("due")
+    }
+
+    @Test(
+        "A survey that expires while the banner is visible disappears",
+        .timeLimit(.minutes(1))
+    )
+    @MainActor
+    func surveyExpiringWhileVisibleDisappears() async {
+        let recorder = BannerRenderRecorder(marker: "due")
+        let study = makeStudy(
+            midStudySurveys: [makeMidSurvey(id: "first", showAfter: 0, expiresAfter: 1)]
+        )
+        defer { try? study.reset() }
+        study.store.update(Study.Keys.UserConsentDate, value: Date())
+        let window = host(StudySurveyBannerIfNeeded(study: study) { banner in
+            banner.background {
+                BannerRenderProbe(identifier: recorder.marker, recorder: recorder)
+            }
+        })
+        defer {
+            window.isHidden = true
+            window.rootViewController = nil
+        }
+
+        await recorder.waitUntilRendered("due")
+        await recorder.waitUntilRendered("due-removed")
+
+        #expect(study.surveyBanner(at: Date()) == nil)
+    }
+
+    @Test(
+        "The conclusion survey appears when the study period ends while visible",
+        .timeLimit(.minutes(1))
+    )
+    @MainActor
+    func conclusionSurveyAppearsAtStudyEnd() async {
+        let recorder = BannerRenderRecorder(marker: "conclusion")
+        let study = makeStudy(duration: 1, midStudySurveys: [])
+        defer { try? study.reset() }
+        study.store.update(Study.Keys.UserConsentDate, value: Date())
+        let window = host(StudySurveyBannerIfNeeded(study: study) { banner in
+            banner.background {
+                BannerRenderProbe(identifier: recorder.marker, recorder: recorder)
+            }
+        })
+        defer {
+            window.isHidden = true
+            window.rootViewController = nil
+        }
+
+        #expect(study.surveyBanner(at: Date()) == nil)
+
+        await recorder.waitUntilRendered("conclusion")
+
+        #expect(study.surveyBanner(at: Date()) == .completion)
+    }
+
     @Test("A presented mid-study survey keeps its selected identity")
     func presentedMidStudySurveyKeepsSelectedIdentity() throws {
         let study = makeStudy(
@@ -170,13 +258,23 @@ struct StudySurveyBannerIfNeededTests {
 
     private func makeMidSurvey(
         id: String,
-        showAfter: TimeInterval
+        showAfter: TimeInterval,
+        expiresAfter: TimeInterval? = nil
     ) -> MidStudySurvey {
         MidStudySurvey(
             id: id,
             showAfter: showAfter,
-            url: URL(string: "https://example.com/mid/\(id)")!
+            url: URL(string: "https://example.com/mid/\(id)")!,
+            expiresAfter: expiresAfter
         )
+    }
+
+    @MainActor
+    private func host<V: View>(_ view: V) -> UIWindow {
+        let window = UIWindow(frame: UIScreen.main.bounds)
+        window.rootViewController = UIHostingController(rootView: view)
+        window.makeKeyAndVisible()
+        return window
     }
 
     private func giveConsent(
@@ -236,6 +334,27 @@ private struct BannerRenderProbe: UIViewRepresentable {
 
     func updateUIView(_ uiView: UIView, context: Context) {
         recorder.record(identifier)
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(identifier: identifier, recorder: recorder)
+    }
+
+    /// Records `<identifier>-removed` when the banner leaves the hierarchy.
+    static func dismantleUIView(_ uiView: UIView, coordinator: Coordinator) {
+        coordinator.recorder.record("\(coordinator.identifier)-removed")
+    }
+
+    final class Coordinator {
+
+        let identifier: String
+        let recorder: BannerRenderRecorder
+
+        init(identifier: String, recorder: BannerRenderRecorder) {
+            self.identifier = identifier
+            self.recorder = recorder
+        }
+
     }
 
 }

@@ -22,3 +22,14 @@
 "Incorrect code. Try again." = "Incorrect code. Try again.";
 "The advanced settings could not be changed. Try again." = "The advanced settings could not be changed. Try again.";
 "Only available when advanced settings are unlocked. This overrides the currently stored treatment group for this study." = "Only available when advanced settings are unlocked. This overrides the currently stored treatment group for this study.";
+
+/* Study conclusion screen. */
+"Thank you for taking part" = "Thank you for taking part";
+"%@ has ended. Finish to complete your participation." = "%@ has ended. Finish to complete your participation.";
+"Study period ended" = "Study period ended";
+"The study period is over." = "The study period is over.";
+"Data collection stopped" = "Data collection stopped";
+"No further data is recorded." = "No further data is recorded.";
+"Final survey completed" = "Final survey completed";
+"Thank you for answering the final questions." = "Thank you for answering the final questions.";
+"Finish participation" = "Finish participation";

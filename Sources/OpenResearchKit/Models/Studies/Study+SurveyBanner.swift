@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import SwiftUI
 
 /// The survey of a study that is due now and should be shown as a banner.
 public enum StudySurveyBanner: Equatable {
@@ -27,9 +26,17 @@ public enum StudySurveyBanner: Equatable {
 
 extension Study {
 
+    /// The survey that is due at the given date. The conclusion survey has priority over mid-study surveys.
+    ///
+    /// No survey is due after the conclusion survey was completed, even while a study waits for its
+    /// completion acknowledgement.
     func surveyBanner(at date: Date) -> StudySurveyBanner? {
         if let terminationSurveyStudy = self as? (any HasTerminationSurvey) {
-            if terminationSurveyStudy.shouldDisplayTerminationSurvey(at: date) {
+            if terminationSurveyStudy.hasCompletedTerminationSurvey {
+                return nil
+            }
+
+            if hasConclusionSurvey, terminationSurveyStudy.shouldDisplayTerminationSurvey(at: date) {
                 return .completion
             }
         }
@@ -40,6 +47,43 @@ extension Study {
         }
 
         return nil
+    }
+
+    /// The next date after the given date at which the due survey can change without a change to the study,
+    /// because a survey becomes available or expires. Returns `nil` when no such date is scheduled.
+    func nextSurveyBannerChangeDate(after date: Date) -> Date? {
+        var dates: [Date] = []
+
+        if let terminationSurveyStudy = self as? (any HasTerminationSurvey) {
+            guard !terminationSurveyStudy.hasCompletedTerminationSurvey else {
+                return nil
+            }
+
+            if hasConclusionSurvey, let actualStudyEndDate = terminationSurveyStudy.actualStudyEndDate {
+                dates.append(actualStudyEndDate)
+            }
+        }
+
+        if let midSurveyStudy = self as? (any HasMidSurvey) {
+            for survey in midSurveyStudy.pendingMidStudySurveys(at: date) {
+                if let availabilityDate = midSurveyStudy.midStudySurveyAvailabilityDate(for: survey) {
+                    dates.append(availabilityDate)
+                }
+
+                if let expirationDate = midSurveyStudy.midStudySurveyExpirationDate(for: survey) {
+                    dates.append(expirationDate)
+                }
+            }
+        }
+
+        return dates
+            .filter { $0 > date }
+            .min()
+    }
+
+    /// A conclusion survey is due only if one is configured and the study is not completed yet.
+    private var hasConclusionSurvey: Bool {
+        !isCompleted && (self as? LongTermStudy)?.concludingSurveyURL != nil
     }
 
     /// Presents the survey that is due now, using the shared banner priority.
