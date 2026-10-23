@@ -66,7 +66,7 @@ func treatmentGroups<T: HasTreatmentGroups>(for study: T, shouldShowDebugTools: 
     if shouldShowDebugTools && !options.isEmpty {
         Section(
             header: Text("Treatment Group", bundle: .module),
-            footer: Text("Debug and TestFlight only. This overrides the currently stored treatment group for this study.", bundle: .module)
+            footer: Text("Only available when advanced settings are unlocked. This overrides the currently stored treatment group for this study.", bundle: .module)
         ) {
             
             ForEach(options, id: \.rawValue) { option in

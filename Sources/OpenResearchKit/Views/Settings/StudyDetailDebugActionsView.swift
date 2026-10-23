@@ -104,8 +104,9 @@ public struct StudyDetailDebugActionsView: View {
     
     // MARK: - Getter
     
-    private var shouldShowDebugActions: Bool {
-        return study.shouldShowStudyDataExportAction() || study.shouldShowStudyDataForceUploadAction()
+    var shouldShowDebugActions: Bool {
+        return !study.isAdvancedSettingsLocked
+            && (study.shouldShowStudyDataExportAction() || study.shouldShowStudyDataForceUploadAction())
     }
     
 }

@@ -14,6 +14,20 @@
 "Please fill out our short mid-study survey." = "Udfyld venligst vores korte midtvejsundersøgelse.";
 "It only takes 3 minutes to complete this survey." = "Det tager kun 3 minutter at gennemføre undersøgelsen.";
 
+/* Per-study advanced settings lock. */
+"Lock advanced settings" = "Lås avancerede indstillinger";
+"Lock advanced settings?" = "Lås avancerede indstillinger?";
+"Lock" = "Lås";
+"You will need the study code to unlock these settings again." = "Du skal bruge studiets kode for at låse disse indstillinger op igen.";
+"Unlock advanced settings" = "Lås avancerede indstillinger op";
+"Code" = "Kode";
+"Unlock" = "Lås op";
+"Cancel" = "Annuller";
+"Enter the code to unlock the advanced settings." = "Indtast koden for at låse de avancerede indstillinger op.";
+"Incorrect code. Try again." = "Forkert kode. Prøv igen.";
+"The advanced settings could not be changed. Try again." = "De avancerede indstillinger kunne ikke ændres. Prøv igen.";
+"Only available when advanced settings are unlocked. This overrides the currently stored treatment group for this study." = "Kun tilgængelig, når de avancerede indstillinger er låst op. Dette overskriver den gemte behandlingsgruppe for dette studie.";
+
 "Survey Completion Still Pending" = "Undersøgelsen er stadig ikke afsluttet";
 "Reminder: Please fill out our short mid-study survey." = "Påmindelse: Udfyld venligst vores korte undersøgelse midt i studiet.";
 "It only takes about 3 minutes." = "Det tager kun ca. 3 minutter.";
