@@ -256,6 +256,46 @@ final class LongTermStudyCompletionAcknowledgementTests: XCTestCase {
         XCTAssertFalse(study.isCompleted)
     }
 
+    // MARK: - Conclusion Step -
+
+    func testConclusionStepFollowsSurveyAndAcknowledgement() {
+        let (study, dateGenerator) = makeConsentedStudy()
+
+        XCTAssertNil(study.pendingConclusionStep)
+
+        dateGenerator.travel(by: 11)
+
+        XCTAssertEqual(study.pendingConclusionStep, .survey)
+
+        study.handleConclusionSurveyResult(success: true)
+
+        XCTAssertEqual(study.pendingConclusionStep, .acknowledgement)
+
+        XCTAssertTrue(study.acknowledgeCompletion())
+
+        XCTAssertNil(study.pendingConclusionStep)
+    }
+
+    func testStudyWithoutSurveyGoesStraightToAcknowledgement() {
+        let (study, dateGenerator) = makeConsentedStudy(concludingSurveyURL: nil)
+        dateGenerator.travel(by: 11)
+
+        XCTAssertEqual(study.pendingConclusionStep, .acknowledgement)
+    }
+
+    func testConclusionStepIsNilWithoutAcknowledgementOrAfterWithdrawal() {
+        let (defaultStudy, defaultDateGenerator) = makeConsentedStudy(requiresAcknowledgement: false)
+        defaultDateGenerator.travel(by: 11)
+
+        XCTAssertNil(defaultStudy.pendingConclusionStep)
+
+        let (withdrawnStudy, withdrawnDateGenerator) = makeConsentedStudy()
+        withdrawnStudy.terminateParticipationImmediately()
+        withdrawnDateGenerator.travel(by: 11)
+
+        XCTAssertNil(withdrawnStudy.pendingConclusionStep)
+    }
+
     // MARK: - Survey Banner -
 
     func testConclusionBannerIsDueUntilSurveyIsCompleted() {
@@ -273,8 +313,7 @@ final class LongTermStudyCompletionAcknowledgementTests: XCTestCase {
         XCTAssertTrue(study.isAwaitingCompletionAcknowledgement)
         XCTAssertNil(study.surveyBanner(at: dateGenerator.generate()))
         XCTAssertNil(study.nextSurveyBannerChangeDate(after: dateGenerator.generate()))
-    }/Users/lennart/Documents/Development/one-sec/OpenResearchKit-Swift/Tests/OpenResearchKitTests/Models/Studies/LongTermStudyCompletionAcknowledgementTests.swift
-    XCTAssertEqual(study.nextSurveyBannerChangeDate(after: dateGenerator.generate()), study.intendedStudyEndDate)
+    }
 
     func testFailedSurveyKeepsConclusionBannerDue() {
         let (study, dateGenerator) = makeConsentedStudy()

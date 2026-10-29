@@ -25,7 +25,7 @@
 
 /* Study conclusion screen. */
 "Thank you for taking part" = "Thank you for taking part";
-"%@ has ended. Finish to complete your participation." = "%@ has ended. Finish to complete your participation.";
+"The study has ended. Finish to complete your participation." = "The study has ended. Finish to complete your participation.";
 "Study period ended" = "Study period ended";
 "The study period is over." = "The study period is over.";
 "Data collection stopped" = "Data collection stopped";
@@ -33,3 +33,6 @@
 "Final survey completed" = "Final survey completed";
 "Thank you for answering the final questions." = "Thank you for answering the final questions.";
 "Finish participation" = "Finish participation";
+"Study Period Ended" = "Study Period Ended";
+"Thank you for taking part. Please complete the final survey to finish your participation." = "Thank you for taking part. Please complete the final survey to finish your participation.";
+"Start Final Survey" = "Start Final Survey";

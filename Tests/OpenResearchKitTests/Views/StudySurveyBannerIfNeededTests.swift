@@ -292,7 +292,7 @@ struct StudySurveyBannerIfNeededTests {
 }
 
 @MainActor
-private final class BannerRenderRecorder {
+final class BannerRenderRecorder {
 
     var marker: String
 
@@ -322,7 +322,7 @@ private final class BannerRenderRecorder {
 
 }
 
-private struct BannerRenderProbe: UIViewRepresentable {
+struct BannerRenderProbe: UIViewRepresentable {
 
     let identifier: String
     let recorder: BannerRenderRecorder

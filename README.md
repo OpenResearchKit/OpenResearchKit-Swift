@@ -71,6 +71,23 @@ stateDiagram-v2
     Running --> Withdrawn: terminateParticipationImmediately()
 ```
 
+`pendingConclusionStep` combines both states: `.survey`, `.acknowledgement`, or `nil` while no step is pending.
+
+### Conclusion views
+
+`StudyConclusionFlow` shows your content while the study runs. After the study period it shows `StudyConclusionSurveyView` until the conclusion survey succeeds, then the thank-you screen with **Finish participation**. It switches at the study end by itself and adds no background, so it fits inside a screen of your own:
+
+```swift
+NavigationStack {
+    StudyConclusionFlow(study: study) {
+        MyStudyProgressView(study: study)
+    }
+    .navigationTitle(study.studyInformation.title)
+}
+```
+
+To present the thank-you screen on its own, for example in a full-screen cover, use `StudyConclusionView`. `StudyConclusionContent` and `StudyConclusionFinishButton` are its building blocks for custom layouts.
+
 ## Showing due surveys
 
 `StudySurveyBannerIfNeeded` shows the banner of the survey that is due now, or nothing:

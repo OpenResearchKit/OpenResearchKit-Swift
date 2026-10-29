@@ -40,7 +40,7 @@
 
 /* Study conclusion screen. */
 "Thank you for taking part" = "Tak, fordi du deltog";
-"%@ has ended. Finish to complete your participation." = "%@ er afsluttet. Afslut for at fuldføre din deltagelse.";
+"The study has ended. Finish to complete your participation." = "Studiet er afsluttet. Afslut for at fuldføre din deltagelse.";
 "Study period ended" = "Studieperioden er slut";
 "The study period is over." = "Studieperioden er ovre.";
 "Data collection stopped" = "Dataindsamlingen er stoppet";

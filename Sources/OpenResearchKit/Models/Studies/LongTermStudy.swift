@@ -146,7 +146,7 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
     ///
     /// Always `false` for studies that do not require a completion acknowledgement.
     public var isAwaitingConclusionSurvey: Bool {
-        return hasPendingCompletion && !finishedConclusionSurveyOrNotNeeded
+        return pendingConclusionStep == .survey
     }
 
     /// The study period ended, any configured conclusion survey was completed successfully,
@@ -154,7 +154,23 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
     ///
     /// Always `false` for studies that do not require a completion acknowledgement.
     public var isAwaitingCompletionAcknowledgement: Bool {
-        return hasPendingCompletion && finishedConclusionSurveyOrNotNeeded
+        return pendingConclusionStep == .acknowledgement
+    }
+
+    /// The step the participant still has to take after the study period, or `nil` while there is none.
+    ///
+    /// Always `nil` for studies that do not require a completion acknowledgement.
+    public var pendingConclusionStep: StudyConclusionStep? {
+        return pendingConclusionStep(at: dateGenerator.generate())
+    }
+
+    /// The conclusion step that is pending at the given date.
+    func pendingConclusionStep(at date: Date) -> StudyConclusionStep? {
+        guard hasPendingCompletion(at: date) else {
+            return nil
+        }
+
+        return finishedConclusionSurveyOrNotNeeded ? .acknowledgement : .survey
     }
 
     /// Completes the study after the participant acknowledged the end of their participation.
@@ -177,7 +193,7 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
         return true
     }
 
-    private var hasPendingCompletion: Bool {
+    private func hasPendingCompletion(at date: Date) -> Bool {
         guard requiresCompletionAcknowledgement,
               hasUserGivenConsent,
               !isDismissedByUser,
@@ -187,7 +203,7 @@ open class LongTermStudy: Study, LongTerm, HasTerminationSurvey {
             return false
         }
 
-        return intendedStudyEndDate <= dateGenerator.generate()
+        return intendedStudyEndDate <= date
     }
 
     // MARK: - Data Handling -
